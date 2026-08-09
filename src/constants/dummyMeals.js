@@ -1,5 +1,5 @@
 // 나중에 API로 교체할 더미 식단 데이터
-import mealImage from '../assets/mypage/meal-broccoli.png';
+import mealImage from '../assets/mypage/meal-herb.png';
 
 export const DUMMY_MEALS = [
   {

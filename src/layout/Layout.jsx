@@ -8,15 +8,25 @@ import Header from './header/Header';
 function Layout() {
   const { pathname } = useLocation();
   // 마이페이지는 전용 상단바를 쓰므로 공통 Header 숨김
-  const hideHeader = pathname.startsWith('/mypage');
+  // 마이페이지·레시피/유사요리/장보기 상세는 전용 상단바
+  const hideHeader =
+    pathname.startsWith('/mypage') ||
+    pathname.startsWith('/recipes') ||
+    pathname.startsWith('/similar-recipes') ||
+    pathname.startsWith('/shopping-list');
+  // 상세·유사·장보기는 하단 CTA만 사용
+  const hideBottomNav =
+    pathname.startsWith('/recipes') ||
+    pathname.startsWith('/similar-recipes') ||
+    pathname.startsWith('/shopping-list');
 
   return (
     <AppContainer>
       {!hideHeader && <Header />}
-      <Main>
+      <Main $noNav={hideBottomNav}>
         <Outlet />
       </Main>
-      <BottomNav />
+      {!hideBottomNav && <BottomNav />}
     </AppContainer>
   );
 }

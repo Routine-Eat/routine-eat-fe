@@ -1,13 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import styled from "styled-components";
-import eggFoodImg from "../../assets/images/EggFood.svg";
 import infoIconImg from "../../assets/icons/Information.svg";
 import starFilledIcon from "../../assets/icons/StarFilled.svg";
 import starEmptyIcon from "../../assets/icons/StarEmpty.svg";
-import vegetableImg from "../../assets/images/Vegetable.svg";
-import meatImg from "../../assets/images/Meat.svg";
 import heartFilledIcon from "../../assets/icons/HeartFilled.svg";
 import heartEmptyIcon from "../../assets/icons/HeartEmpty.svg";
+import closeIcon from "../../assets/icons/x.svg";
+import checkIcon from "../../assets/icons/check.svg";
+import plusIcon from "../../assets/icons/plus.svg";
+import { DUMMY_DISHES, DUMMY_ENERGY_LEVELS, DUMMY_MEALS, DUMMY_INGREDIENT_CATEGORIES, } from "../../constants/home/DummyHome.js";
 
 const HomeContainer = styled.div`
 background: #fffdfc;
@@ -37,15 +38,48 @@ font-weight: 400;
 margin-top: 16px;
 display: flex;
 overflow-x: auto;
-scroll-snap-type: x mandatory;
 -webkit-overflow-scrolling: touch;
 padding: 4px 0 12px 0;
-margin-right: -24px;
 scrollbar-width: none;
+scroll-snap-type: x mandatory;
+scroll-behavior: smooth;
+
 
 &::-webkit-scrollbar{
 display: none;
 }
+}
+
+.dish-list-spacer{
+flex: 0 0 auto;
+width: calc((100% - 210px) / 2);
+scroll-snap-align: none;
+}
+
+.dish-list-wrap{
+position: relative;
+}
+
+.dish-fade-right{
+position: absolute;
+top: 4px;
+right: 0;
+bottom: 12px;
+width: 90px;
+background: linear-gradient(90deg, rgba(255,253,252,0) 0%, rgba(255,253,252,0.15) 40%, rgba(255,253,252,1) 90%);
+pointer-events: none;
+z-index: 50;
+}
+
+.dish-fade-left{
+position: absolute;
+top: 4px;
+left: 0;
+bottom: 12px;
+width: 90px;
+background: linear-gradient(270deg, rgba(255,253,252,0) 0%, rgba(255,253,252,0.15) 40%, rgba(255,253,252,1) 90%);
+pointer-events: none;
+z-index: 50;
 }
 `;
 
@@ -54,10 +88,14 @@ position: relative;
 flex-shrink: 0;
 width: 210px;
 border-radius: 24px;
-background: ${({ $active }) => ($active ? "#fafafa" : "#ffffff")};
-box-shadow: 0px 0px 10px 0px rgba(107, 56, 0, 0.06), 0px 0px 40px 0px rgba(97, 51, 0, 0.05);
+background: ${({ $isFront }) => ($isFront ? "#fafafa" : "#ffffff")};
+box-shadow: ${({ $isFront }) =>
+    $isFront
+      ? "0px 0px 10px 0px rgba(107, 56, 0, 0.06), -8px 0px 24px 0px rgba(97, 51, 0, 0.08)"
+      : "0px 0px 10px 0px rgba(107, 56, 0, 0.06), 0px 0px 40px 0px rgba(97, 51, 0, 0.05)"};
 padding: 16px;
-scroll-snap-align: start;
+overflow: hidden;
+scroll-snap-align: center;
 z-index: ${({ $zIndex }) => $zIndex};
 margin-left: ${({ $overlap }) => ($overlap ? "-47px" : "0")};
 
@@ -79,10 +117,17 @@ object-fit: contain;
 }
 }
 
-.thumb{
+.thumb-wrap{
+position: relative;
 margin: 28px auto 0;
 width: 124px;
 height: 124px;
+}
+
+.thumb{
+margin: 0;
+width: 100%;
+height: 100%;
 border-radius: 50%;
 background: #f0f0f0;
 box-shadow: 0px 0px 10px 0px rgba(61, 32, 0, 0.05), 0px 0px 40px 0px rgba(110, 58, 0, 0.13);
@@ -326,8 +371,15 @@ cursor: pointer;
 background: ${({ $selected }) => ($selected ? "#72d472" : "#ffffff")};
 box-shadow: 0px 0px 8px -1px rgba(72, 28, 0, 0.08), 0px 0px 40px 0px rgba(17, 0, 0, 0.05);
 
-.chip-emoji{
-font-size: 16px;
+.chip-icon{
+display: flex;
+align-items: center;
+
+img{
+width: 16px;
+height: 16px;
+display: block;
+}
 }
 
 .chip-name{
@@ -470,45 +522,6 @@ line-height: 1.3;
 }
 `;
 
-const DISHES = [
-  { id: 1, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 1, image: eggFoodImg },
-  { id: 2, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 4, image: eggFoodImg },
-  { id: 3, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 2, image: eggFoodImg },
-];
-
-const ENERGY_LEVELS = ["의욕 넘침", "보통", "귀찮음"];
-
-const INITIAL_MEALS = [
-  { id: 1, name: "채소 식단", desc: "지난주 영양 밸런스를 반영한 채소 위주의 식단", liked: true, image: vegetableImg },
-  { id: 2, name: "단백질 식단", desc: "지난주 영양 밸런스를 반영한 채소 위주의 식단", liked: true, image: meatImg },
-  { id: 3, name: "채소 식단", desc: "지난주 영양 밸런스를 반영한 채소 위주의 식단", liked: false, image: vegetableImg },
-  { id: 4, name: "채소 식단", desc: "지난주 영양 밸런스를 반영한 채소 위주의 식단", liked: true, image: vegetableImg },
-];
-
-const INGREDIENT_CATEGORIES = [
-  {
-    title: "신선식품",
-    items: [
-      { id: "milk", name: "우유", qty: "1팩", emoji: "🥛" },
-      { id: "beef", name: "우삼겹", qty: "1팩", emoji: "🥓" },
-      { id: "onion", name: "양파", qty: "1팩", emoji: "🧅" },
-      { id: "cheese", name: "치즈", qty: "1팩", emoji: "🧀" },
-      { id: "egg", name: "계란", qty: "1팩", emoji: "🥚" },
-    ],
-  },
-  {
-    title: "가공식품",
-    items: [
-      { id: "dumpling1", name: "만두", qty: "1팩", emoji: "🥟" },
-      { id: "tuna1", name: "참치캔", qty: "1팩", emoji: "🐟" },
-      { id: "dumpling2", name: "만두", qty: "1팩", emoji: "🥟" },
-      { id: "icecream", name: "아이스크림", qty: "1팩", emoji: "🍦" },
-      { id: "tuna2", name: "참치캔", qty: "1팩", emoji: "🐟" },
-      { id: "dumpling3", name: "만두", qty: "1팩", emoji: "🥟" },
-      { id: "dumpling4", name: "만두", qty: "1팩", emoji: "🥟" },
-    ],
-  },
-];
 function StarRow({ count, total = 5, size, onStarClick }) {
   return (
     <>
@@ -532,14 +545,36 @@ function StarRow({ count, total = 5, size, onStarClick }) {
 export default function Home() {
   const [energy, setEnergy] = useState("보통");
   const [difficulty, setDifficulty] = useState(4);
-  const [meals, setMeals] = useState(INITIAL_MEALS);
+  const [meals, setMeals] = useState(DUMMY_MEALS);
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
   const [selectedIngredients, setSelectedIngredients] = useState([]);
+  const [activeDishIndex, setActiveDishIndex] = useState(0);
+  const dishListRef = useRef(null);
+  const dishCardRefs = useRef([]);
+  const handleDishScroll = () => {
+    const container = dishListRef.current;
+    if (!container) return;
+    const containerCenter = container.getBoundingClientRect().left + container.offsetWidth / 2;
+
+    let closestIndex = 0;
+    let closestDistance = Infinity;
+    dishCardRefs.current.forEach((card, idx) => {
+      if (!card) return;
+      const cardCenter = card.getBoundingClientRect().left + card.offsetWidth / 2;
+      const distance = Math.abs(cardCenter - containerCenter);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = idx;
+      }
+    });
+
+    setActiveDishIndex(closestIndex);
+  };
 
   const toggleIngredient = (id) => {
     setSelectedIngredients((prev) => {
       if (prev.includes(id)) return prev.filter((v) => v !== id);
-      if (prev.length >= 3) return prev; // 최대 3개까지
+      if (prev.length >= 3) return prev;
       return [...prev, id];
     });
   };
@@ -564,38 +599,48 @@ export default function Home() {
         <span className="section-title">오늘의 추천 메뉴예요.</span>
         <div className="section-subtitle">보통 난이도 채소 위주로 골랐어요.</div>
 
-        <div className="dish-list">
-          {DISHES.map((dish, i) => (
-            <DishCard key={dish.id} $active={i === 0} $zIndex={DISHES.length - i} $overlap={i > 0}>
-                {i === 0 && (
-                    <div className="info-icon">
-                        <img src={infoIconImg} alt="정보 아이콘" />
-                    </div>
-                )}
-                 {dish.image ? (
-        <img className="thumb" src={dish.image} alt={dish.name} />
-      ) : (
-        <img className="thumb" src={eggFoodImg} alt={dish.name} />
-      )}
-              <div className="dish-name">{dish.name}</div>
-              <div className="dish-meta">
-                <span className="time">{dish.time}</span>
-                <span className="no-extra">추가 재료 구매 X</span>
-              </div>
-              <div className="dish-cost">{dish.cost}</div>
-              <div className="dish-difficulty">
-                <span className="label">난이도</span>
-                <StarRow count={dish.difficulty} />
-              </div>
-            </DishCard>
-          ))}
+        <div className="dish-list-wrap">
+          <div className="dish-list" ref={dishListRef} onScroll={handleDishScroll}>
+            <div className="dish-list-spacer" aria-hidden />
+            {DUMMY_DISHES.map((dish, i) => (
+              <DishCard
+                key={dish.id}
+                ref={(el) => (dishCardRefs.current[i] = el)}
+                $isFront={i === activeDishIndex}
+                $zIndex={DUMMY_DISHES.length - Math.abs(i - activeDishIndex)}
+                $overlap={i > 0}
+              >
+                <div className="info-icon">
+                  <img src={infoIconImg} alt="정보 아이콘" />
+                </div>
+                <div className="thumb-wrap">
+                  <img className="thumb" src={dish.image} alt={dish.name} />
+                </div>
+                <div className="dish-name">{dish.name}</div>
+                <div className="dish-meta">
+                  <span className="time">{dish.time}</span>
+                  <span className="no-extra">추가 재료 구매 X</span>
+                </div>
+                <div className="dish-cost">{dish.cost}</div>
+                <div className="dish-difficulty">
+                  <span className="label">난이도</span>
+                  {Array.from({ length: dish.difficulty }).map((_, idx) => (
+                    <img key={idx} className="star" src={starFilledIcon} alt="" />
+                  ))}
+                </div>
+              </DishCard>
+            ))}
+            <div className="dish-list-spacer" aria-hidden />
+          </div>
+          <div className="dish-fade-left" aria-hidden />
+          <div className="dish-fade-right" aria-hidden />
         </div>
       </FirstSection>
 
       <SecondSection>
         <div className="energy-title">오늘의 요리 열정(에너지)</div>
         <div className="energy-toggle">
-          {ENERGY_LEVELS.map((level) => (
+          {DUMMY_ENERGY_LEVELS.map((level) => (
             <button
               key={level}
               className={`energy-option${energy === level ? " active" : ""}`}
@@ -627,19 +672,19 @@ export default function Home() {
         <div className="section-subtitle">지난주 영양 밸런스를 반영한 채소 위주의 식단이에요</div>
 
         <div className="meal-grid">
-  {meals.map((meal) => (
-    <MealCard key={meal.id}>
-      <div className="thumb-box">
-        <img className="thumb" src={meal.image} alt={meal.name} />
-        <button className="like-button" onClick={() => toggleLike(meal.id)}>
-          <img src={meal.liked ? heartFilledIcon : heartEmptyIcon} alt="찜하기" />
-        </button>
-      </div>
-      <div className="meal-name">{meal.name}</div>
-      <div className="meal-desc">{meal.desc}</div>
-    </MealCard>
-  ))}
-</div>
+          {meals.map((meal) => (
+            <MealCard key={meal.id}>
+              <div className="thumb-box">
+                <img className="thumb" src={meal.image} alt={meal.name} />
+                <button className="like-button" onClick={() => toggleLike(meal.id)}>
+                  <img src={meal.liked ? heartFilledIcon : heartEmptyIcon} alt="찜하기" />
+                </button>
+              </div>
+              <div className="meal-name">{meal.name}</div>
+              <div className="meal-desc">{meal.desc}</div>
+            </MealCard>
+          ))}
+        </div>
       </ThirdSection>
       {isIngredientModalOpen && (
         <ModalOverlay onClick={handleCancel}>
@@ -647,7 +692,7 @@ export default function Home() {
             <div className="modal-title">원하는 재료 선택하기</div>
             <div className="modal-subtitle">보유한 재료 중 최대 3개까지 선택가능</div>
 
-            {INGREDIENT_CATEGORIES.map((category) => (
+            {DUMMY_INGREDIENT_CATEGORIES.map((category) => (
               <div className="ingredient-category" key={category.title}>
                 <div className="category-title">{category.title}</div>
                 <div className="chip-wrap">
@@ -657,21 +702,34 @@ export default function Home() {
                       $selected={selectedIngredients.includes(item.id)}
                       onClick={() => toggleIngredient(item.id)}
                     >
-                      <span className="chip-emoji">{item.emoji}</span>
+                      {item.icon && (
+                        <span className="chip-icon">
+                          <img src={item.icon} alt="" />
+                        </span>
+                      )}
                       <span className="chip-name">{item.name}</span>
                       <span className="chip-qty">{item.qty}</span>
                     </IngredientChip>
                   ))}
+                  {category.title === "가공식품" && (
+                    <IngredientChip onClick={() => {/* TODO: 재료 추가 모달/페이지 연결 */ }}>
+                      <img src={plusIcon} alt="" style={{ width: 12, height: 12 }} />
+                      <span className="chip-name">추가</span>
+                    </IngredientChip>
+                  )}
+
                 </div>
               </div>
             ))}
 
             <div className="modal-actions">
               <ModalButton $variant="cancel" onClick={handleCancel}>
-                ✕ 취소
+                <img src={closeIcon} alt="" style={{ width: 13, height: 13 }} />
+                취소
               </ModalButton>
               <ModalButton $variant="apply" onClick={handleApply}>
-                ✓ 적용
+                <img src={checkIcon} alt="" style={{ width: 14, height: 10 }} />
+                적용
               </ModalButton>
             </div>
           </ModalBox>

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 
 import editIcon from '../../assets/mypage/edit.svg';
+import BackButton from '../../common/button/BackButton';
 import IngredientsTab from './IngredientsTab';
 import RecipeTab from './RecipeTab';
 
@@ -17,26 +18,40 @@ function Mypage() {
   const navigate = useNavigate();
   const [mainTab, setMainTab] = useState('recipe');
   const [selectedIds, setSelectedIds] = useState([]);
-  const hasSelection = selectedIds.length > 0;
+  const [isEditing, setIsEditing] = useState(false);
+  const isIngredientsTab = mainTab === 'ingredients';
+
+  const finishEditing = () => {
+    setIsEditing(false);
+    setSelectedIds([]);
+  };
+
+  const switchTab = (tabId) => {
+    setMainTab(tabId);
+    setIsEditing(false);
+    setSelectedIds([]);
+  };
 
   return (
     <Page>
       {/* 마이페이지 전용 상단바 */}
       <TopBar>
         <TopRow>
-          <IconBtn type="button" aria-label="뒤로가기" onClick={() => navigate(-1)}>
-            {'<'}
-          </IconBtn>
+          <SideLeft>
+            <BackButton onClick={() => navigate(-1)} />
+          </SideLeft>
           <Title>my</Title>
-          {hasSelection ? (
-            <DoneBtn type="button" onClick={() => setSelectedIds([])}>
-              완료
-            </DoneBtn>
-          ) : (
-            <IconBtn type="button" aria-label="편집">
-              <EditImg src={editIcon} alt="" />
-            </IconBtn>
-          )}
+          <SideRight>
+            {isIngredientsTab && isEditing ? (
+              <DoneBtn type="button" onClick={finishEditing}>
+                완료
+              </DoneBtn>
+            ) : isIngredientsTab ? (
+              <IconBtn type="button" aria-label="편집" onClick={() => setIsEditing(true)}>
+                <EditImg src={editIcon} alt="" />
+              </IconBtn>
+            ) : null}
+          </SideRight>
         </TopRow>
 
         <MainTabs>
@@ -45,10 +60,7 @@ function Mypage() {
               key={tab.id}
               type="button"
               $active={mainTab === tab.id}
-              onClick={() => {
-                setMainTab(tab.id);
-                setSelectedIds([]);
-              }}
+              onClick={() => switchTab(tab.id)}
             >
               {tab.label}
             </MainTab>
@@ -58,7 +70,11 @@ function Mypage() {
 
       <Content>
         {mainTab === 'ingredients' && (
-          <IngredientsTab selectedIds={selectedIds} setSelectedIds={setSelectedIds} />
+          <IngredientsTab
+            isEditing={isEditing}
+            selectedIds={selectedIds}
+            setSelectedIds={setSelectedIds}
+          />
         )}
         {mainTab === 'recipe' && <RecipeTab />}
         {mainTab === 'tools' && <Empty>도구 탭은 다음에 구현할게요.</Empty>}
@@ -89,21 +105,37 @@ const TopBar = styled.header`
   box-shadow: 0 1px 14.6px -1px rgba(201, 201, 189, 0.32);
 `;
 
-/* 상단 한 줄: 뒤로가기 / my / 편집 */
+/* 상단 한 줄 — 3열 그리드로 제목 중앙 고정 */
 const TopRow = styled.div`
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
-  justify-content: space-between;
   height: 56px;
   padding: 0 16px;
 `;
 
-/* 가운데 "my" 제목 */
+/* 왼쪽 슬롯(뒤로가기) */
+const SideLeft = styled.div`
+  justify-self: start;
+`;
+
+/* 오른쪽 슬롯(편집/완료) — 너비 변해도 제목 위치 유지 */
+const SideRight = styled.div`
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  min-width: 28px;
+  min-height: 28px;
+`;
+
+/* 가운데 "my" 제목 — 그리드 중앙열 */
 const Title = styled.h1`
   margin: 0;
   font-size: 20px;
   font-weight: 600;
   color: #232323;
+  text-align: center;
 `;
 
 /* 뒤로가기·편집 아이콘 버튼 */
@@ -126,13 +158,15 @@ const EditImg = styled.img`
   height: 20px;
 `;
 
-/* 선택 모드일 때 "완료" 텍스트 버튼 */
+/* 선택 모드 "완료" 텍스트 버튼 — 피그마 #777 13px */
 const DoneBtn = styled.button`
   border: none;
   background: transparent;
-  font-size: 15px;
-  font-weight: 600;
-  color: #72d472;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: #777;
+  white-space: nowrap;
   cursor: pointer;
 `;
 

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+
 import styled from 'styled-components';
 
 import arrowIcon from '../../assets/mypage/arrow.svg';
@@ -28,11 +29,10 @@ function IngredientIcon({ icon }) {
   return <IconImg src={icon} alt="" />;
 }
 
-function IngredientsTab({ selectedIds, setSelectedIds }) {
+function IngredientsTab({ isEditing, selectedIds, setSelectedIds }) {
   const navigate = useNavigate();
   const [items, setItems] = useState(DUMMY_INGREDIENTS);
   const [filter, setFilter] = useState('all');
-  const hasSelection = selectedIds.length > 0;
 
   // 필터에 맞는 섹션만 보여줌
   const sections = useMemo(() => {
@@ -47,6 +47,7 @@ function IngredientsTab({ selectedIds, setSelectedIds }) {
   }, [filter, items]);
 
   const toggleSelect = (id) => {
+    if (!isEditing) return;
     setSelectedIds((prev) =>
       prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
     );
@@ -82,42 +83,50 @@ function IngredientsTab({ selectedIds, setSelectedIds }) {
             <SectionTitle>{section.label}</SectionTitle>
             <ChipRow>
               {section.items.map((item) => {
-                const selected = selectedIds.includes(item.id);
+                const selected = isEditing && selectedIds.includes(item.id);
 
                 return (
                   <Chip
                     key={item.id}
                     type="button"
                     $selected={selected}
+                    $editing={isEditing}
                     onClick={() => toggleSelect(item.id)}
                   >
-                    <IngredientIcon icon={item.icon} />
-                    <ChipName $selected={selected}>{item.name}</ChipName>
+                    {/* 아이콘 + 이름 묶음 — 피그마 gap 6 */}
+                    <ChipLabel>
+                      <IngredientIcon icon={item.icon} />
+                      <ChipName $selected={selected}>{item.name}</ChipName>
+                    </ChipLabel>
                     <ChipAmount $selected={selected}>{item.amount}</ChipAmount>
                   </Chip>
                 );
               })}
 
-              {/* 추가 버튼 — 이후 API 연동 시 연결 */}
+              {/* 추가 칩(+ 버튼) — 피그마 1056:2493 */}
               <AddChip type="button">
-                <IconImg src={plusIcon} alt="" />
-                <ChipName>추가</ChipName>
+                <ChipLabel>
+                  <PlusIconWrap>
+                    <PlusIcon src={plusIcon} alt="" />
+                  </PlusIconWrap>
+                  <AddName>추가</AddName>
+                </ChipLabel>
               </AddChip>
             </ChipRow>
           </Section>
         ))}
       </List>
 
-      {/* 하단 액션: 기본 CTA / 선택 시 초기화·삭제 */}
+      {/* 하단 액션 — 편집: 초기화·삭제 / 일반: CTA */}
       <BottomBar>
-        {hasSelection ? (
+        {isEditing ? (
           <ActionRow>
             <ResetBtn type="button" onClick={resetSelection}>
-              <SmallIcon src={resetIcon} alt="" />
+              <ResetIcon src={resetIcon} alt="" />
               초기화
             </ResetBtn>
             <DeleteBtn type="button" onClick={deleteSelected}>
-              <SmallIcon src={trashIcon} alt="" />
+              <DeleteIcon src={trashIcon} alt="" />
               삭제({selectedIds.length})
             </DeleteBtn>
           </ActionRow>
@@ -163,11 +172,11 @@ const FilterBtn = styled.button`
   cursor: pointer;
 `;
 
-/* 재료 섹션들을 담는 스크롤 리스트 */
+/* 재료 섹션 스크롤 리스트 — 피그마 좌우 20px, 섹션 간격 48px */
 const List = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: 48px;
   flex: 1;
   padding: 12px 20px 140px;
   overflow-y: auto;
@@ -195,8 +204,9 @@ const ChipRow = styled.div`
   gap: 12px 4px;
 `;
 
-/* 재료 칩(알약 모양 버튼) */
-const Chip = styled.button`
+/* 재료 칩 공통(흰 알약) — 피그마 shadow + inset */
+const ChipBase = styled.button`
+  position: relative;
   display: flex;
   align-items: center;
   gap: 8px;
@@ -204,30 +214,75 @@ const Chip = styled.button`
   padding: 0 12px;
   border: none;
   border-radius: 30px;
-  background: ${({ $selected }) => ($selected ? '#72d472' : '#fff')};
+  background: #fff;
   box-shadow:
-    0 0 7.9px -1px rgba(50, 40, 0, 0.08),
-    0 0 40px 0 rgba(128, 83, 0, 0.05);
+    0 0 7.9px -1px rgba(72, 28, 0, 0.08),
+    0 0 40px 0 rgba(17, 0, 0, 0.05),
+    inset 0 0 5px 0 #fff;
+`;
+
+/* 재료 칩 — 편집·선택 시 초록, 일반 모드는 클릭 불가 */
+const Chip = styled(ChipBase)`
+  background: ${({ $selected }) => ($selected ? '#72d472' : '#fff')};
+  box-shadow: ${({ $selected }) =>
+    $selected
+      ? '0 0 7.9px -1px rgba(50, 40, 0, 0.08), 0 0 40px 0 rgba(128, 83, 0, 0.05), inset 0 0 2.5px 0 #fff'
+      : '0 0 7.9px -1px rgba(72, 28, 0, 0.08), 0 0 40px 0 rgba(17, 0, 0, 0.05), inset 0 0 5px 0 #fff'};
+  pointer-events: ${({ $editing }) => ($editing ? 'auto' : 'none')};
+  cursor: ${({ $editing }) => ($editing ? 'pointer' : 'default')};
+`;
+
+/* 재료 추가 칩(+ 버튼) — 피그마 1056:2493 흰 알약 */
+const AddChip = styled(ChipBase)`
+  justify-content: center;
   cursor: pointer;
 `;
 
-/* 재료 추가 칩(+ 버튼) */
-const AddChip = styled(Chip)`
+/* + 아이콘 20×20 프레임 */
+const PlusIconWrap = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+`;
+
+/* + 아이콘 — 피그마 약 11×11 */
+const PlusIcon = styled.img`
+  width: 11px;
+  height: 11px;
+  object-fit: contain;
+`;
+
+/* 추가 텍스트 — 피그마 14px SemiBold #2a2a2a */
+const AddName = styled.span`
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.14px;
+  color: #2a2a2a;
+`;
+
+/* 칩 안 아이콘+이름 묶음 */
+const ChipLabel = styled.span`
+  display: flex;
+  align-items: center;
   gap: 6px;
 `;
 
-/* 칩 안 재료 이름 텍스트 */
+/* 칩 안 재료 이름 — 피그마 14px SemiBold */
 const ChipName = styled.span`
   font-size: 14px;
   font-weight: 600;
+  letter-spacing: 0.14px;
   color: ${({ $selected }) => ($selected ? '#fff' : '#2a2a2a')};
 `;
 
-/* 칩 안 수량 텍스트 */
+/* 칩 안 수량 — 피그마 12px Medium #a9a9a9 */
 const ChipAmount = styled.span`
   font-size: 12px;
   font-weight: 500;
-  color: ${({ $selected }) => ($selected ? 'rgba(255,255,255,0.85)' : '#a9a9a9')};
+  color: ${({ $selected }) => ($selected ? '#fff' : '#a9a9a9')};
 `;
 
 /* 겹친 아이콘용 정사각 프레임 */
@@ -299,36 +354,37 @@ const CartIcon = styled.img`
   object-fit: contain;
 `;
 
-/* 선택 모드 하단 버튼 가로 줄 */
+/* 선택 모드 하단 버튼 가로 줄 — 피그마 160+160 */
 const ActionRow = styled.div`
   display: flex;
-  gap: 10px;
+  justify-content: center;
+  gap: 8px;
 `;
 
-/* 회색 초기화 버튼 */
+/* 회색 초기화 버튼(둥근 사각형) */
 const ResetBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  width: 104px;
+  gap: 4px;
+  width: 160px;
   height: 48px;
   border: none;
   border-radius: 10px;
-  background: #f3f3f3;
-  color: #2a2a2a;
-  font-size: 15px;
+  background: #e7e7e7;
+  color: #3e3e3e;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
 `;
 
-/* 초록 삭제 버튼 */
+/* 초록 삭제 버튼(둥근 사각형) */
 const DeleteBtn = styled.button`
   display: flex;
-  flex: 1;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 4px;
+  width: 160px;
   height: 48px;
   border: none;
   border-radius: 10px;
@@ -339,8 +395,14 @@ const DeleteBtn = styled.button`
   cursor: pointer;
 `;
 
-/* 초기화/삭제 버튼 안 작은 아이콘 */
-const SmallIcon = styled.img`
+/* 초기화 아이콘 — 피그마 14×14 */
+const ResetIcon = styled.img`
+  width: 14px;
+  height: 14px;
+`;
+
+/* 삭제 아이콘 — 피그마 16×16 */
+const DeleteIcon = styled.img`
   width: 16px;
   height: 16px;
 `;

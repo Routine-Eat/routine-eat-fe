@@ -3,11 +3,10 @@ import { useNavigate } from 'react-router-dom';
 
 import styled from 'styled-components';
 
-import chevronIcon from '../../assets/feed/chevron.svg';
 import filterIcon from '../../assets/feed/filter.svg';
 import searchIcon from '../../assets/feed/search.svg';
-import heartFilled from '../../assets/mypage/heart-filled.svg';
-import heartOutline from '../../assets/mypage/heart-outline.svg';
+import heartEmpty from '../../assets/icons/HeartEmpty.svg';
+import heartFilled from '../../assets/icons/HeartFilled.svg';
 import starIcon from '../../assets/mypage/star.svg';
 import { DUMMY_RECIPES } from '../../constants/dummyRecipes';
 import FilterPanel from './FilterPanel';
@@ -42,7 +41,7 @@ function RecipeCard({ recipe, onToggleSave, onOpen }) {
         }}
         aria-label="저장"
       >
-        <HeartImg src={recipe.isSaved ? heartFilled : heartOutline} alt="" />
+        <HeartImg src={recipe.isSaved ? heartFilled : heartEmpty} alt="" />
       </HeartBtn>
       <FoodImg src={recipe.image} alt={recipe.title} />
       <CardBody>
@@ -68,10 +67,8 @@ function Feed() {
   const [recipes, setRecipes] = useState(DUMMY_RECIPES);
   const [query, setQuery] = useState('');
   const [sortBy, setSortBy] = useState(SORT_OPTIONS[0]);
-  const [isSortOpen, setIsSortOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [filter, setFilter] = useState(INITIAL_FILTER);
-  const sortRef = useRef(null);
   const filterRef = useRef(null);
 
   const toggleSave = (id) => {
@@ -86,21 +83,23 @@ function Feed() {
     setFilter((prev) => ({ ...prev, ...patch }));
   };
 
+  // 정렬 — 원클릭으로 다음 옵션으로 전환
+  const toggleSort = () => {
+    setSortBy((prev) => (prev === SORT_OPTIONS[0] ? SORT_OPTIONS[1] : SORT_OPTIONS[0]));
+  };
+
   useEffect(() => {
-    if (!isSortOpen && !isFilterOpen) return undefined;
+    if (!isFilterOpen) return undefined;
 
     const handlePointerDown = (event) => {
-      if (isSortOpen && sortRef.current && !sortRef.current.contains(event.target)) {
-        setIsSortOpen(false);
-      }
-      if (isFilterOpen && filterRef.current && !filterRef.current.contains(event.target)) {
+      if (filterRef.current && !filterRef.current.contains(event.target)) {
         setIsFilterOpen(false);
       }
     };
 
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [isSortOpen, isFilterOpen]);
+  }, [isFilterOpen]);
 
   const filtered = recipes.filter((r) => {
     if (query.trim() && !r.title.includes(query.trim())) return false;
@@ -123,50 +122,17 @@ function Feed() {
         <SearchIcon src={searchIcon} alt="" />
       </SearchBox>
 
-      {/* 정렬 선택·필터 */}
+      {/* 정렬 토글·필터 */}
       <ToolRow>
-        <SortWrap ref={sortRef}>
-          <SortBtn
-            type="button"
-            aria-expanded={isSortOpen}
-            aria-haspopup="listbox"
-            onClick={() => {
-              setIsSortOpen((prev) => !prev);
-              setIsFilterOpen(false);
-            }}
-          >
-            {sortBy}
-            <ChevronImg src={chevronIcon} alt="" $open={isSortOpen} />
-          </SortBtn>
-          {isSortOpen && (
-            <SortMenu role="listbox" aria-label="정렬 기준">
-              {SORT_OPTIONS.map((option) => (
-                <SortOption
-                  key={option}
-                  type="button"
-                  role="option"
-                  aria-selected={sortBy === option}
-                  $active={sortBy === option}
-                  onClick={() => {
-                    setSortBy(option);
-                    setIsSortOpen(false);
-                  }}
-                >
-                  {option}
-                </SortOption>
-              ))}
-            </SortMenu>
-          )}
-        </SortWrap>
+        <SortBtn type="button" onClick={toggleSort} aria-label="정렬 전환">
+          {sortBy}
+        </SortBtn>
         <FilterWrap ref={filterRef}>
           <FilterBtn
             type="button"
             aria-label="필터"
             aria-expanded={isFilterOpen}
-            onClick={() => {
-              setIsFilterOpen((prev) => !prev);
-              setIsSortOpen(false);
-            }}
+            onClick={() => setIsFilterOpen((prev) => !prev)}
           >
             <FilterImg src={filterIcon} alt="" />
           </FilterBtn>
@@ -264,60 +230,15 @@ const ToolRow = styled.div`
   padding: 0 29px 0 20px;
 `;
 
-const SortWrap = styled.div`
-  position: relative;
-`;
-
 const SortBtn = styled.button`
   display: flex;
   align-items: center;
-  gap: 5px;
   border: none;
   background: transparent;
   padding: 0;
   font-size: 14px;
-  color: #000;
+  color: #8b8b8b;
   cursor: pointer;
-`;
-
-const ChevronImg = styled.img`
-  width: 8px;
-  height: 15px;
-  transform: rotate(${({ $open }) => ($open ? '-90deg' : '90deg')});
-  transition: transform 0.15s ease;
-`;
-
-const SortMenu = styled.div`
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  z-index: 10;
-  min-width: 128px;
-  padding: 6px;
-  border-radius: 10px;
-  background: #fff;
-  box-shadow:
-    0 0 10px 0 rgba(107, 56, 0, 0.06),
-    0 0 40px 0 rgba(97, 51, 0, 0.05);
-`;
-
-const SortOption = styled.button`
-  display: block;
-  width: 100%;
-  border: none;
-  border-radius: 8px;
-  background: ${({ $active }) => ($active ? '#f3f8f0' : 'transparent')};
-  padding: 10px 12px;
-  font-size: 14px;
-  color: ${({ $active }) => ($active ? '#2a2a2a' : '#6b6b6b')};
-  text-align: left;
-  white-space: nowrap;
-  cursor: pointer;
-
-  &:hover {
-    background: #f3f8f0;
-    color: #2a2a2a;
-  }
 `;
 
 const FilterWrap = styled.div`

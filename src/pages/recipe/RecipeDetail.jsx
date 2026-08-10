@@ -1,18 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+
 import styled from 'styled-components';
 
 import starEmpty from '../../assets/feed/star-empty.svg';
 import starFilled from '../../assets/feed/star-filled.svg';
-import heartFilled from '../../assets/mypage/heart-filled.svg';
-import heartOutline from '../../assets/mypage/heart-outline.svg';
-import backIcon from '../../assets/recipe/back.svg';
+import heartEmpty from '../../assets/icons/HeartEmpty.svg';
+import heartFilled from '../../assets/icons/HeartFilled.svg';
 import chevronDown from '../../assets/recipe/chevron-down.svg';
 import startCookingIcon from '../../assets/recipe/start-cooking-icon.png';
-import {
-  RECIPE_INGREDIENTS,
-  RECIPE_SEASONINGS,
-} from '../../constants/dummyRecipeDetail';
+import BackButton from '../../common/button/BackButton';
+import { RECIPE_INGREDIENTS, RECIPE_SEASONINGS } from '../../constants/dummyRecipeDetail';
 import { DUMMY_RECIPES } from '../../constants/dummyRecipes';
 import { SIMILAR_RECIPES } from '../../constants/dummySimilarRecipes';
 
@@ -30,9 +28,7 @@ function RecipeDetail() {
 
   const toggleSimilarSave = (itemId) => {
     setSimilar((prev) =>
-      prev.map((item) =>
-        item.id === itemId ? { ...item, isSaved: !item.isSaved } : item
-      )
+      prev.map((item) => (item.id === itemId ? { ...item, isSaved: !item.isSaved } : item))
     );
   };
 
@@ -56,9 +52,7 @@ function RecipeDetail() {
   return (
     <Page>
       {/* 뒤로가기 */}
-      <BackBtn type="button" onClick={() => navigate(-1)} aria-label="뒤로가기">
-        <BackImg src={backIcon} alt="" />
-      </BackBtn>
+      <PageBackBtn onClick={() => navigate(-1)} />
 
       <Scroll>
         {/* 히어로 이미지 영역 */}
@@ -78,11 +72,7 @@ function RecipeDetail() {
               <MetaLabel>난이도</MetaLabel>
               <Stars>
                 {Array.from({ length: 5 }, (_, i) => (
-                  <StarImg
-                    key={i}
-                    src={i < recipe.difficulty ? starFilled : starEmpty}
-                    alt=""
-                  />
+                  <StarImg key={i} src={i < recipe.difficulty ? starFilled : starEmpty} alt="" />
                 ))}
               </Stars>
             </MetaGroup>
@@ -169,7 +159,7 @@ function RecipeDetail() {
                   }}
                   aria-label="저장"
                 >
-                  <HeartImg src={item.isSaved ? heartFilled : heartOutline} alt="" />
+                  <HeartImg src={item.isSaved ? heartFilled : heartEmpty} alt="" />
                 </HeartBtn>
               </SimilarThumb>
               <SimilarName>{item.title}</SimilarName>
@@ -207,23 +197,12 @@ const Scroll = styled.div`
   padding: 48px 24px 140px;
 `;
 
-/* 뒤로가기 버튼 */
-const BackBtn = styled.button`
+/* 좌상단 뒤로가기 — 피그마 1034:2764 y60 x24 */
+const PageBackBtn = styled(BackButton)`
   position: absolute;
-  top: 48px;
+  top: 60px;
   left: 24px;
   z-index: 2;
-  display: flex;
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-`;
-
-/* 뒤로가기 화살표 아이콘 */
-const BackImg = styled.img`
-  width: 12px;
-  height: 20px;
 `;
 
 /* 히어로(회색 라운드 + 음식 이미지) */

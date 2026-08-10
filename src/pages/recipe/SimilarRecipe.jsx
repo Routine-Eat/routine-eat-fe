@@ -1,15 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+
 import styled from 'styled-components';
 
 import starEmpty from '../../assets/feed/star-empty.svg';
 import starFilled from '../../assets/feed/star-filled.svg';
-import backIcon from '../../assets/recipe/back.svg';
 import chevronDown from '../../assets/recipe/chevron-down.svg';
 import kimchi1 from '../../assets/recipe/kimchi-1.svg';
 import kimchi2 from '../../assets/recipe/kimchi-2.svg';
 import shoppingBag from '../../assets/recipe/shopping-bag.svg';
 import startCookingIcon from '../../assets/recipe/start-cooking-icon.png';
+import BackButton from '../../common/button/BackButton';
 import { SIMILAR_RECIPES } from '../../constants/dummySimilarRecipes';
 
 const SERVING_OPTIONS = ['1인분', '2인분', '3인분'];
@@ -36,9 +37,7 @@ function SimilarRecipe() {
   return (
     <Page>
       {/* 뒤로가기 버튼 */}
-      <BackBtn type="button" onClick={() => navigate(-1)} aria-label="뒤로가기">
-        <BackImg src={backIcon} alt="" />
-      </BackBtn>
+      <PageBackBtn onClick={() => navigate(-1)} />
 
       <Scroll>
         {/* 히어로: 회색 라운드 박스 + 원형 음식 이미지 */}
@@ -58,11 +57,7 @@ function SimilarRecipe() {
               <MetaLabel>난이도</MetaLabel>
               <Stars>
                 {Array.from({ length: 5 }, (_, i) => (
-                  <StarImg
-                    key={i}
-                    src={i < recipe.difficulty ? starFilled : starEmpty}
-                    alt=""
-                  />
+                  <StarImg key={i} src={i < recipe.difficulty ? starFilled : starEmpty} alt="" />
                 ))}
               </Stars>
             </MetaGroup>
@@ -178,23 +173,12 @@ const Scroll = styled.div`
   padding: 48px 24px 140px;
 `;
 
-/* 좌상단 뒤로가기 버튼 */
-const BackBtn = styled.button`
+/* 좌상단 뒤로가기 — 피그마 1034:2764 y60 x24 */
+const PageBackBtn = styled(BackButton)`
   position: absolute;
-  top: 48px;
+  top: 60px;
   left: 24px;
   z-index: 2;
-  display: flex;
-  border: none;
-  background: transparent;
-  padding: 0;
-  cursor: pointer;
-`;
-
-/* 뒤로가기 화살표 이미지 */
-const BackImg = styled.img`
-  width: 12px;
-  height: 20px;
 `;
 
 /* 히어로 회색 라운드 박스 */

@@ -4,8 +4,7 @@ import dumpling from '../assets/mypage/dumpling.svg';
 import egg from '../assets/mypage/egg.svg';
 import iceCream from '../assets/mypage/ice-cream.svg';
 import meat from '../assets/mypage/meat.svg';
-import milk1 from '../assets/mypage/milk-1.svg';
-import milk2 from '../assets/mypage/milk-2.svg';
+import milk from '../assets/mypage/milk.png';
 import onion from '../assets/mypage/onion.svg';
 import seasoning from '../assets/mypage/seasoning.svg';
 import tuna from '../assets/mypage/tuna.svg';
@@ -18,7 +17,7 @@ export const CATEGORY_FILTERS = [
 ];
 
 export const DUMMY_INGREDIENTS = [
-  { id: 'milk', name: '우유', amount: '1팩', category: 'fresh', icon: [milk1, milk2] },
+  { id: 'milk', name: '우유', amount: '1팩', category: 'fresh', icon: milk },
   { id: 'beef', name: '우삼겹', amount: '1팩', category: 'fresh', icon: meat },
   { id: 'onion', name: '양파', amount: '1팩', category: 'fresh', icon: onion },
   { id: 'cheese', name: '치즈', amount: '1팩', category: 'fresh', icon: cheese },

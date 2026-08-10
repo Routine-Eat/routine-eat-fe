@@ -1,13 +1,11 @@
 import { useNavigate } from 'react-router-dom';
+
 import styled from 'styled-components';
 
-import backIcon from '../../assets/recipe/back.svg';
 import plusIcon from '../../assets/recipe/plus.svg';
 import startCookingIcon from '../../assets/recipe/start-cooking-icon.png';
-import {
-  RECOMMENDED_PRODUCTS,
-  SHOPPING_GROUPS,
-} from '../../constants/dummyShoppingList';
+import BackButton from '../../common/button/BackButton';
+import { RECOMMENDED_PRODUCTS, SHOPPING_GROUPS } from '../../constants/dummyShoppingList';
 
 function ShoppingList() {
   const navigate = useNavigate();
@@ -16,9 +14,7 @@ function ShoppingList() {
     <Page>
       {/* 상단 바: 뒤로가기 · 제목 · 추가(+) */}
       <TopBar>
-        <IconBtn type="button" onClick={() => navigate(-1)} aria-label="뒤로가기">
-          <BackImg src={backIcon} alt="" />
-        </IconBtn>
+        <BackButton onClick={() => navigate(-1)} />
         <PageTitle>장보기 목록</PageTitle>
         <IconBtn type="button" aria-label="추가">
           <PlusImg src={plusIcon} alt="" />
@@ -85,7 +81,7 @@ const TopBar = styled.header`
   padding: 70px 24px 0;
 `;
 
-/* 아이콘 버튼(뒤로가기/플러스) */
+/* 아이콘 버튼(플러스) */
 const IconBtn = styled.button`
   display: flex;
   align-items: center;
@@ -96,12 +92,6 @@ const IconBtn = styled.button`
   background: transparent;
   padding: 0;
   cursor: pointer;
-`;
-
-/* 뒤로가기 화살표 */
-const BackImg = styled.img`
-  width: 12px;
-  height: 20px;
 `;
 
 /* 페이지 제목 "장보기 목록" */

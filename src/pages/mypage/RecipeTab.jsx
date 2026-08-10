@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 
 import styled from 'styled-components';
 
+import heartEmpty from '../../assets/icons/HeartEmpty.svg';
+import heartFilled from '../../assets/icons/HeartFilled.svg';
 import arrowIcon from '../../assets/mypage/arrow.svg';
 import cartIcon from '../../assets/mypage/cart.svg';
-import heartFilled from '../../assets/mypage/heart-filled.svg';
-import heartOutline from '../../assets/mypage/heart-outline.svg';
 import starIcon from '../../assets/mypage/star.svg';
 import { DUMMY_MEALS } from '../../constants/dummyMeals';
 import { DUMMY_RECIPES } from '../../constants/dummyRecipes';
@@ -20,7 +20,7 @@ function RecipeCard({ recipe, onToggleSave }) {
 
       {/* 하트 아이콘 */}
       <HeartBtn type="button" onClick={() => onToggleSave(recipe.id)} aria-label="저장">
-        <HeartImg src={recipe.isSaved ? heartFilled : heartOutline} alt="" />
+        <HeartImg src={recipe.isSaved ? heartFilled : heartEmpty} alt="" />
       </HeartBtn>
 
       {/* 음식 이미지 */}
@@ -59,7 +59,7 @@ function MealCard({ meal, mode, onToggleSave }) {
         </MealImgWrap>
         {/* 하트 — 썸네일 우상단 */}
         <MealHeartBtn type="button" onClick={() => onToggleSave(meal.id)} aria-label="저장">
-          <HeartImg src={meal.isSaved ? heartFilled : heartOutline} alt="" />
+          <HeartImg src={meal.isSaved ? heartFilled : heartEmpty} alt="" />
         </MealHeartBtn>
       </MealThumb>
 

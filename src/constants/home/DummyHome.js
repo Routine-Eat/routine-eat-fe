@@ -51,7 +51,7 @@ export const DUMMY_INGREDIENT_CATEGORIES = [
   },
 ];
 
-export const DUMMY_PROGRESS = [
+export const DUMMY_DIET_PROGRESS = [
   { id: 1, name: "시금치 계란볶음", status: "8월 1일", completed: true, image: eggFoodImg },
   { id: 2, name: "계란 야채 볶음밥", status: "3일전", completed: true, image: eggFoodImg },
   { id: 3, name: "계란 샌드위치", status: "예정", completed: false, image: eggFoodImg },

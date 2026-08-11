@@ -1,5 +1,6 @@
 import { BrowserRouter, Route, Routes } from 'react-router-dom';
 
+import HomeMenu from "./pages/home/HomeMenu";
 import Layout from './layout/Layout';
 import Feed from './pages/feed/Feed';
 import Home from './pages/home/Home';
@@ -8,6 +9,9 @@ import Mypage from './pages/mypage/Mypage';
 import RecipeDetail from './pages/recipe/RecipeDetail';
 import SimilarRecipe from './pages/recipe/SimilarRecipe';
 import ShoppingList from './pages/shopping/ShoppingList';
+import HomeDietStart from './pages/home/HomeDietStart';
+import HomeCooking from "./pages/home/HomeCooking";
+
 
 function App() {
   return (
@@ -24,6 +28,9 @@ function App() {
           <Route path="/market" element={<Market />} />
           <Route path="/mypage" element={<Mypage />} />
         </Route>
+        <Route path="/menu/:mealId" element={<HomeMenu />} />
+        <Route path="/diet-start/:mealId" element={<HomeDietStart />} />
+        <Route path="/cooking/:mealId" element={<HomeCooking />} />
       </Routes>
     </BrowserRouter>
   );

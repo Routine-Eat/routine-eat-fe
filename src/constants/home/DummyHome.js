@@ -13,6 +13,8 @@ export const DUMMY_DISHES = [
   { id: 1, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 1, image: eggFoodImg },
   { id: 2, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 4, image: eggFoodImg },
   { id: 3, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 2, image: eggFoodImg },
+  { id: 4, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 3, image: eggFoodImg },
+  { id: 5, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 1, image: eggFoodImg },
 ];
 
 export const DUMMY_ENERGY_LEVELS = ["의욕 넘침", "보통", "귀찮음"];
@@ -47,4 +49,12 @@ export const DUMMY_INGREDIENT_CATEGORIES = [
       { id: "dumpling4", name: "만두", qty: "1팩", icon: dumplingImg },
     ],
   },
+];
+
+export const DUMMY_PROGRESS = [
+  { id: 1, name: "시금치 계란볶음", status: "8월 1일", completed: true, image: eggFoodImg },
+  { id: 2, name: "계란 야채 볶음밥", status: "3일전", completed: true, image: eggFoodImg },
+  { id: 3, name: "계란 샌드위치", status: "예정", completed: false, image: eggFoodImg },
+  { id: 4, name: "해물 야채 볶음밥", status: "예정", completed: false, image: eggFoodImg },
+  { id: 5, name: "토마토 달걀 볶음", status: "예정", completed: false, image: eggFoodImg },
 ];

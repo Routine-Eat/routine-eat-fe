@@ -1,4 +1,6 @@
 import React, { useState, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+
 import styled from "styled-components";
 import infoIconImg from "../../assets/icons/Information.svg";
 import starFilledIcon from "../../assets/icons/StarFilled.svg";
@@ -543,6 +545,7 @@ function StarRow({ count, total = 5, size, onStarClick }) {
 }
 
 export default function Home() {
+  const navigate = useNavigate();
   const [energy, setEnergy] = useState("보통");
   const [difficulty, setDifficulty] = useState(4);
   const [meals, setMeals] = useState(DUMMY_MEALS);
@@ -673,10 +676,20 @@ export default function Home() {
 
         <div className="meal-grid">
           {meals.map((meal) => (
-            <MealCard key={meal.id}>
+                <MealCard
+      key={meal.id}
+      onClick={() => navigate(`/menu/${meal.id}`)}
+      style={{ cursor: "pointer" }}
+    >
               <div className="thumb-box">
                 <img className="thumb" src={meal.image} alt={meal.name} />
-                <button className="like-button" onClick={() => toggleLike(meal.id)}>
+                        <button
+          className="like-button"
+          onClick={(e) => {
+            e.stopPropagation();
+            toggleLike(meal.id);
+          }}
+        >
                   <img src={meal.liked ? heartFilledIcon : heartEmptyIcon} alt="찜하기" />
                 </button>
               </div>
@@ -713,7 +726,7 @@ export default function Home() {
                   ))}
                   {category.title === "가공식품" && (
                     <IngredientChip onClick={() => {/* TODO: 재료 추가 모달/페이지 연결 */ }}>
-                      <img src={plusIcon} alt="" style={{ width: 12, height: 12 }} />
+                      <img src={plusIcon} alt="" style={{ width: 20, height: 20 }} />
                       <span className="chip-name">추가</span>
                     </IngredientChip>
                   )}

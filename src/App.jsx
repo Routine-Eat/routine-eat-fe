@@ -11,6 +11,7 @@ import SimilarRecipe from './pages/recipe/SimilarRecipe';
 import ShoppingList from './pages/shopping/ShoppingList';
 import HomeDietStart from './pages/home/HomeDietStart';
 import HomeCooking from "./pages/home/HomeCooking";
+import HomeCookingStep from "./pages/home/HomeCookingStep";
 
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
         <Route path="/menu/:mealId" element={<HomeMenu />} />
         <Route path="/diet-start/:mealId" element={<HomeDietStart />} />
         <Route path="/cooking/:mealId" element={<HomeCooking />} />
+        <Route path="/cooking/:mealId/step" element={<HomeCookingStep />} />
       </Routes>
     </BrowserRouter>
   );

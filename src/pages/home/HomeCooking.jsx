@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
 import micIcon from "../../assets/icons/mic.svg";
@@ -108,16 +108,72 @@ height: 16px;
 export default function HomeCooking() {
   const navigate = useNavigate();
   const { mealId } = useParams();
+  const touchStartY = useRef(null);
 
   const dish = DUMMY_DISHES[0]; // TODO: mealId 기준으로 실제 요리 데이터 연결
 
   const handleStartSwipe = () => {
-    // TODO: 실제 조리 단계 화면으로 이동
-    console.log("레시피 시작", mealId);
+    navigate(`/cooking/${mealId}/step`);
   };
 
+    const handleTouchStart = (e) => {
+    touchStartY.current = e.touches[0].clientY;
+  };
+
+  const handleTouchEnd = (e) => {
+    if (touchStartY.current === null) return;
+    const deltaY = touchStartY.current - e.changedTouches[0].clientY;
+    if (deltaY > 50) {
+      handleStartSwipe();
+    }
+    touchStartY.current = null;
+  };
+
+  const isDragging = useRef(false);
+
+  const handleMouseDown = (e) => {
+    touchStartY.current = e.clientY;
+    isDragging.current = true;
+        window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUpGlobal);
+  };
+
+  const handleMouseMove = (e) => {
+    if (!isDragging.current || touchStartY.current === null) return;
+    const deltaY = touchStartY.current - e.clientY;
+    if (deltaY > 50) {
+      isDragging.current = false;
+      touchStartY.current = null;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUpGlobal);
+      handleStartSwipe();
+    }
+  };
+
+  const handleMouseUpGlobal = () => {
+    isDragging.current = false;
+    touchStartY.current = null;
+    window.removeEventListener("mousemove", handleMouseMove);
+    window.removeEventListener("mouseup", handleMouseUpGlobal);
+  };
+
+  const wheelTriggered = useRef(false);
+
+  const handleWheel = (e) => {
+    if (e.deltaY > 20 && !wheelTriggered.current) {
+      wheelTriggered.current = true;
+      handleStartSwipe();
+    }
+  };
+
+
   return (
-    <PageContainer>
+    <PageContainer
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onMouseDown={handleMouseDown}
+      onWheel={handleWheel}
+    >
       <TopBar>
         <BackButton onClick={() => navigate(-1)} />
         <RightButtons>
@@ -140,7 +196,7 @@ export default function HomeCooking() {
         </div>
       </DishCard>
 
-      <ChevronStack onClick={handleStartSwipe}>
+      <ChevronStack>
         <img src={chevronUpIcon} alt="" />
         <img src={chevronUpIcon} alt="" />
         <img src={chevronUpIcon} alt="" />

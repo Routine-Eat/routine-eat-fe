@@ -58,3 +58,38 @@ export const DUMMY_DIET_PROGRESS = [
   { id: 4, name: "해물 야채 볶음밥", status: "예정", completed: false, image: eggFoodImg },
   { id: 5, name: "토마토 달걀 볶음", status: "예정", completed: false, image: eggFoodImg },
 ];
+
+export const DUMMY_COOKING_STEPS = [
+  {
+    title: "재료 준비하기1",
+    body: ["오징어 다리 사이를 눌러 입을", "제거하고 깨끗하게 씻어주세요."],
+    link1: "오징어 입 제거 방법을 모르겠어요",
+    body2: "양파, 양배추, 대파를 먹기 좋은 크기로 썰어 볼에 담아주세요.",
+    link2: "채소 3인방 써는 법",
+    ingredients: ["양파 반 개", "양배추 1/4개", "대파 반 개"],
+  },
+  {
+    title: "재료 준비하기2",
+    body: ["손질한 오징어를 링기에 넣고 2분간 쪄준", "뒤, 건져서 식혀주세요."],
+    link1: "쪄주는 팁을 알려주는 링크 있으면 넣기",
+    body2: "",
+    link2: "",
+    ingredients: [],
+  },
+  {
+    title: "오징어 양념하기",
+    body: ["식힌 오징어를 먹기 좋게 썰어 다른 볼에", "담아주세요."],
+    link1: "오징어 써는 법",
+    body2: "오징어를 담은 볼에 고추장, 고춧가루, 설탕, 잔간장, 굴소스, 참기름, 후추를 넣어주세요.",
+    link2: "",
+    ingredients: ["고추장 1큰술", "고춧가루", "설탕", "간장", "굴소스", "참기름"],
+  },
+  {
+    title: "재료 준비하기2", // 4단계 예시 (실제 데이터에 맞게 채워주세요)
+    body: ["손질한 오징어를 링기에 넣고 2분간 쪄준", "뒤, 건져서 식힙니다."],
+    link1: "",
+    body2: "",
+    link2: "",
+    ingredients: ["양파 반 개", "양배추 1/4개", "대파 반 개"],
+  },
+];

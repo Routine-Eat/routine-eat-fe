@@ -1,10 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import styled from "styled-components";
 import { useNavigate } from "react-router-dom";
 import {useParams} from "react-router-dom";
 import starFilledIcon from "../../assets/icons/StarFilled.svg";
-import { DUMMY_DISHES } from "../../constants/home/DummyHome.js";
+import { DUMMY_DISHES, THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
 import BackButton from "../../common/button/BackButton";
+import shoppingCartIcon from "../../assets/icons/shoppingCart.svg";
+import dragHandleBar from "../../assets/icons/dragHandleBar.svg";
+import starEmptyIcon from "../../assets/icons/StarEmpty.svg";
+import BottomFixedButton from "../../common/button/BottomFixedButton";
 
 const PageContainer = styled.div`
 background: #fffdfc;
@@ -35,6 +39,25 @@ font-weight: 600;
 }
 `;
 
+const PageTitle = styled.p`
+  margin: 8px 0 0;
+  text-align: center;
+  color: #481c00;
+  font-size: 22px;
+  font-family: Wanted Sans Variable;
+  font-weight: 700;
+  letter-spacing: -0.22px;
+`;
+
+const PageSubtitle = styled.p`
+  margin: 6px 0 0;
+  text-align: center;
+  color: #8b8b8b;
+  font-size: 14px;
+  font-family: Wanted Sans Variable;
+  font-weight: 500;
+`;
+
 const RecipeList = styled.div`
 display: flex;
 flex-direction: column;
@@ -45,17 +68,17 @@ margin-top: 16px;
 const RecipeCard = styled.div`
 display: flex;
 align-items: center;
-gap: 15px;
-height: 124px;
-padding: 13px 15px;
-border-radius: 20px;
+gap: 20px;
+height: 148px;
+padding: 12px 16px 12px 12px;
+border-radius: 22px;
 background: white;
 box-shadow: 0px 0px 10px 0px rgba(72, 28, 0, 0.05), 0px 0px 30px 0px rgba(72, 28, 0, 0.06);
 
 .thumb-box{
 flex-shrink: 0;
-width: 99px;
-height: 99px;
+width: 124px;
+height: 124px;
 border-radius: 18px;
 background: #f1f1f1;
 display: flex;
@@ -65,8 +88,8 @@ overflow: hidden;
 }
 
 .thumb{
-width: 73px;
-height: 74px;
+width: 99px;
+height: 100px;
 border-radius: 50%;
 object-fit: cover;
 box-shadow: 0px 0px 10px 0px rgba(61, 32, 0, 0.05), 0px 0px 40px 0px rgba(110, 58, 0, 0.13);
@@ -88,7 +111,7 @@ margin-top: 8px;
 display: flex;
 align-items: center;
 gap: 6px;
-font-size: 13px;
+font-size: 14px;
 font-family: Pretendard Variable;
 font-weight: 500;
 
@@ -104,7 +127,7 @@ color: #888;
 .recipe-cost{
 margin-top: 8px;
 color: #696866;
-font-size: 13px;
+font-size: 14px;
 font-family: Pretendard Variable;
 font-weight: 500;
 }
@@ -117,40 +140,157 @@ gap: 4px;
 
 .label{
 color: #696866;
-font-size: 13px;
+font-size: 14px;
 font-family: Pretendard Variable;
 font-weight: 500;
 }
 
 .star{
-width: 15px;
-height: 15px;
+width: 16px;
+height: 16px;
 }
 }
 `;
 
-const StartButton = styled.button`
-position: fixed;
-bottom: 24px;
-left: 50%;
-transform: translateX(-50%);
-width: calc(100% - 48px);
-max-width: 342px;
-height: 48px;
-border-radius: 10px;
-border: none;
-background: #72d472;
-box-shadow: 0px 0px 8px 0px rgba(3, 3, 3, 0.05), 0px 0px 30px 0px rgba(3, 3, 3, 0.05);
-color: white;
-font-size: 16px;
-font-family: Pretendard Variable;
-font-weight: 600;
-cursor: pointer;
+const StartModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 3, 3, 0.15);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 200;
+  padding: 0 20px 20px;
+`;
+
+const StartModalSheet = styled.div`
+  position: relative;
+  width: 100%;
+  max-width: 350px;
+  background: white;
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0px 0px 40px 0px rgba(3, 3, 3, 0.08), 0px 0px 10px 0px rgba(3, 3, 3, 0.06);
+  padding: 40px 20px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+`;
+
+const DragHandle = styled.div`
+  position: absolute;
+  left: 50%;
+  top: 8px;
+  transform: translateX(-50%);
+
+  img {
+    display: block;
+  }
+`;
+
+const ModalHeadingBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+`;
+
+const CartIconBox = styled.div`
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 32px;
+    height: 32px;
+    display: block;
+  }
+`;
+
+const ModalHeadingText = styled.div`
+  text-align: center;
+  color: #2e2e2e;
+  font-size: 18px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.18px;
+  line-height: 1.3;
+
+  p {
+    margin: 0;
+  }
+`;
+
+const ChipRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+`;
+
+const MissingChip = styled.div`
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #f5f5f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #727272;
+  font-size: 15px;
+  font-family: Wanted Sans Variable;
+  font-weight: 500;
+`;
+
+const StartModalActions = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const StartModalButton = styled.button`
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 15px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  box-shadow: inset 0px 0px 3px 0px white;
+  background: ${({ $variant }) => ($variant === "primary" ? "#d6f3a1" : "#f5f5f6")};
+  color: #444;
 `;
 
 export default function HomeMenu() {
   const navigate = useNavigate();
   const { mealId } = useParams();
+
+   const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
+  const menuDishes = DUMMY_DISHES.slice(0, 3);
+    const [isStartModalOpen, setIsStartModalOpen] = useState(false);
+  const missingIngredients = MISSING_INGREDIENTS;
+
+  const handleStartClick = () => {
+    if (missingIngredients.length > 0) {
+      setIsStartModalOpen(true);
+    } else {
+      navigate(`/diet-start/${mealId}`);
+    }
+  };
+
+  const handleAddToShoppingList = () => {
+    setIsStartModalOpen(false);
+    navigate("/shopping-list");
+  };
+
+  const handleProceedWithoutAdding = () => {
+    setIsStartModalOpen(false);
+    navigate(`/diet-start/${mealId}`);
+  };
 
   return (
     <PageContainer>
@@ -158,8 +298,11 @@ export default function HomeMenu() {
         <BackButton className="back-button" onClick={() => navigate(-1)} />
       </Header>
 
+       <PageTitle>{theme.title}</PageTitle>
+      <PageSubtitle>{theme.desc.join("")}</PageSubtitle>
+
       <RecipeList>
-        {DUMMY_DISHES.map((recipe) => (
+        {menuDishes.map((recipe) => (
           <RecipeCard key={recipe.id}>
             <div className="thumb-box">
               <img className="thumb" src={recipe.image} alt={recipe.name} />
@@ -168,13 +311,22 @@ export default function HomeMenu() {
               <div className="recipe-name">{recipe.name}</div>
               <div className="recipe-meta">
                 <span className="time">{recipe.time}</span>
-                <span className="no-extra">추가 재료 구매 X</span>
+                                {recipe.matchRate != null ? (
+                  <span className="no-extra">재료 일치율 {recipe.matchRate}%</span>
+                ) : (
+                  <span className="no-extra">추가 재료 구매 X</span>
+                )}
               </div>
               <div className="recipe-cost">{recipe.cost}</div>
               <div className="recipe-difficulty">
                 <span className="label">난이도</span>
-                {Array.from({ length: recipe.difficulty }).map((_, idx) => (
-                  <img key={idx} className="star" src={starFilledIcon} alt="" />
+                                {Array.from({ length: 5 }).map((_, idx) => (
+                  <img
+                    key={idx}
+                    className="star"
+                    src={idx < recipe.difficulty ? starFilledIcon : starEmptyIcon}
+                    alt=""
+                  />
                 ))}
               </div>
             </div>
@@ -182,9 +334,43 @@ export default function HomeMenu() {
         ))}
       </RecipeList>
 
-            <StartButton onClick={() => navigate(`/diet-start/${mealId}`)}>
+              <BottomFixedButton onClick={handleStartClick}>
         식단 시작하기
-      </StartButton>
+      </BottomFixedButton>
+            {isStartModalOpen && (
+        <StartModalOverlay onClick={() => setIsStartModalOpen(false)}>
+          <StartModalSheet onClick={(e) => e.stopPropagation()}>
+            <DragHandle>
+              <img src={dragHandleBar} alt="" />
+            </DragHandle>
+
+            <ModalHeadingBox>
+              <CartIconBox>
+                <img src={shoppingCartIcon} alt="" />
+              </CartIconBox>
+              <ModalHeadingText>
+                <p>식단에 포함된 재료가 부족해요.</p>
+                <p>장보기 목록에 추가할까요?</p>
+              </ModalHeadingText>
+            </ModalHeadingBox>
+
+            <ChipRow>
+              {missingIngredients.map((name) => (
+                <MissingChip key={name}>{name}</MissingChip>
+              ))}
+            </ChipRow>
+
+            <StartModalActions>
+              <StartModalButton onClick={handleAddToShoppingList}>
+                장보기 목록에 추가
+              </StartModalButton>
+              <StartModalButton $variant="primary" onClick={handleProceedWithoutAdding}>
+                추가 없이 진행할게요
+              </StartModalButton>
+            </StartModalActions>
+          </StartModalSheet>
+        </StartModalOverlay>
+      )}
     </PageContainer>
   );
 }

@@ -1,257 +1,319 @@
-import React, { useState } from "react";
+import React from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
-import BackButton from "../../common/button/BackButton";
-import { DUMMY_DIET_PROGRESS } from "../../constants/home/DummyHome.js";
-import checkIcon from "../../assets/icons/check2.svg";
+import { DUMMY_DIET_PROGRESS, THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
+import muscleIcon from "../../assets/icons/muscle.svg";
+import BottomFixedButton from "../../common/button/BottomFixedButton";
 
 const PageContainer = styled.div`
-background: #fffdfc;
-max-width: 390px;
-margin: 0 auto;
-min-height: 100vh;
-padding: 60px 20px 100px;
-position: relative;
+  background: #fffefd;
+  max-width: 390px;
+  margin: 0 auto;
+  min-height: 100vh;
+  padding: 60px 24px 24px;
+  position: relative;
 `;
 
-const Header = styled.div`
-display: flex;
-align-items: center;
+const StopLink = styled.button`
+  position: absolute;
+  right: 24px;
+  top: 24px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #bebebf;
+  font-size: 14px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.14px;
 `;
 
-const SectionTitle = styled.div`
-margin-top: 24px;
-display: flex;
-align-items: center;
-justify-content: space-between;
+const IconBox = styled.div`
+  width: 40px;
+  height: 40px;
 
-.title{
-color: #030303;
-font-size: 16px;
-font-family: Pretendard Variable;
-font-weight: 600;
-}
+  img {
+    width: 40px;
+    height: 40px;
+    display: block;
+  }
+`;
 
-.toggle-label{
-display: flex;
-align-items: center;
-gap: 6px;
-color: #616161;
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: 500;
-}
+const PageTitle = styled.p`
+  margin: 12px 0 0;
+  color: #481c00;
+  font-size: 22px;
+  font-family: Wanted Sans Variable;
+  font-weight: 700;
+  letter-spacing: -0.22px;
+`;
+
+const PageSubtitle = styled.p`
+  margin: 8px 0 0;
+  color: #8b8b8b;
+  font-size: 14px;
+  font-family: Wanted Sans Variable;
+  font-weight: 500;
+  letter-spacing: -0.28px;
 `;
 
 const MealTabs = styled.div`
-margin-top: 15px;
-display: flex;
-gap: 10px;
+  margin-top: 32px;
+  display: flex;
+  gap: 8px;
 `;
 
-const MealTab = styled.button`
-flex: 1;
-height: 62px;
-border-radius: 10px;
-border: ${({ $done }) => ($done ? "3px solid #c2ee73" : "none")};
-background: ${({ $done }) => ($done ? "#d6f3a1" : "#f5f5f6")};
-color: ${({ $done }) => ($done ? "#444" : "#8b8b8b")};
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: ${({ $done }) => ($done ? "700" : "600")};
-cursor: pointer;
-display: flex;
-flex-direction: column;
-align-items: flex-start;
-justify-content: flex-start;
-gap: 10px;
-padding: 8px 0 0 21px;
-
-.check-icon{
-width: 18px;
-height: 13px;
-}
+const MealTab = styled.div`
+  flex: 1;
+  height: 68px;
+  border-radius: 10px;
+  background: ${({ $done }) => ($done ? "#d6f3a1" : "#f5f5f6")};
+  border: ${({ $done }) => ($done ? "2px solid #c2ee73" : "none")};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #727272;
+  font-size: 14px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
 `;
 
-const ProgressHeader = styled.div`
-margin-top: 24px;
-display: flex;
-align-items: center;
-justify-content: space-between;
+const RecipeListHeading = styled.p`
+  margin: 30px 0 0;
+  color: #444;
+  font-size: 18px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.36px;
+`;
 
-.title{
-color: #030303;
-font-size: 16px;
-font-family: Pretendard Variable;
-font-weight: 600;
-}
-
-.count{
-color: #8b8b8b;
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: 500;
-}
+const EmptyNotice = styled.p`
+  margin: 8px 0 0;
+  color: #444;
+  font-size: 16px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.32px;
 `;
 
 const MealList = styled.div`
-margin-top: 8px;
-display: flex;
-flex-direction: column;
-gap: 4px;
+  margin-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 `;
 
 const MealRow = styled.div`
-position: relative;
-padding: 8px;
-border-radius: 10px;
-background: ${({ $isNext }) => ($isNext ? "#d6f3a1" : "#ffffff")};
-box-shadow: 0px 0px 10px 0px rgba(154, 80, 0, 0.05), 0px 0px 40px 0px rgba(154, 80, 0, 0.08);
-border: ${({ $isNext }) => ($isNext ? "3px solid #c2ee73" : "none")};
+  position: relative;
+  height: 88px;
+  border-radius: 16px;
+  padding: 0 20px 0 8px;
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  background: ${({ $isNext }) => ($isNext ? "#d6f3a1" : "#ffffff")};
+  border: ${({ $isNext }) => ($isNext ? "2px solid #c2ee73" : "none")};
+  box-shadow: 0px 0px 8px 0px rgba(3, 3, 3, 0.05), 0px 0px 30px 0px rgba(3, 3, 3, 0.05);
 
-.row{
-display: flex;
-align-items: center;
-gap: 11px;
-}
+  .thumb-box {
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+    border-radius: 14px;
+    background: #f1f1f1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
 
-.thumb-box{
-flex-shrink: 0;
-width: 46px;
-height: 46px;
-border-radius: 10px;
-background: #f1f1f1;
-display: flex;
-align-items: center;
-justify-content: center;
-overflow: hidden;
-}
+  .thumb {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    box-shadow: 0px 0px 10px 0px rgba(61, 32, 0, 0.05), 0px 0px 40px 0px rgba(110, 58, 0, 0.13);
+  }
 
-.thumb{
-width: 30px;
-height: 30px;
-border-radius: 50%;
-object-fit: cover;
-}
+  .info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
 
-.info{
-width: 261px;
-display: flex;
-align-items: center;
-justify-content: space-between;
-}
+  .meal-name {
+    color: ${({ $isNext }) => ($isNext ? "#004100" : "#5a5a5b")};
+    font-size: 16px;
+    font-family: Wanted Sans Variable;
+    font-weight: 700;
+    letter-spacing: -0.16px;
+  }
 
-.name-wrap{
-display: flex;
-flex-direction: column;
-gap: 4px;
-}
+  .meal-status {
+    color: ${({ $isNext }) => ($isNext ? "#006000" : "#bebebf")};
+    font-size: 15px;
+    font-family: Wanted Sans Variable;
+    font-weight: 500;
+    letter-spacing: -0.15px;
+  }
 
-.meal-name{
-color: #2e2e2e;
-font-size: 14px;
-font-family: Pretendard Variable;
-font-weight: 600;
-}
-
-.meal-status{
-color: ${({ $isNext }) => ($isNext ? "#727272" : "#bebebf")};
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: 500;
-}
-
-.meal-complete{
-color: ${({ $completed, $isNext }) =>
-  $completed ? "#72d472" : $isNext ? "#727272" : "#bebebf"};
-font-size: 13px;
-font-family: Pretendard Variable;
-font-weight: 600;
-}
+  .detail-link {
+    flex-shrink: 0;
+    color: ${({ $isNext }) => ($isNext ? "#5a5a5b" : "#8b8b8b")};
+    font-size: 14px;
+    font-family: Wanted Sans Variable;
+    font-weight: 500;
+    text-decoration: underline;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+  }
 `;
 
-const StartButton = styled.button`
-position: fixed;
-bottom: 24px;
-left: 50%;
-transform: translateX(-50%);
-width: calc(100% - 40px);
-max-width: 350px;
-height: 48px;
-border-radius: 10px;
-border: none;
-background: #72d271;
-box-shadow: 0px 0px 10px 0px rgba(154, 80, 0, 0.05), 0px 0px 40px 0px rgba(154, 80, 0, 0.08);
-color: #f5f5f6;
-font-size: 14px;
-font-family: Pretendard Variable;
-font-weight: 600;
-cursor: pointer;
+const MissingSection = styled.div`
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 `;
 
-const MEAL_SLOTS = ["1끼", "2끼", "3끼", "4끼", "5끼"];
+const MissingHeading = styled.p`
+  margin: 0;
+  color: #444;
+  font-size: 16px;
+  font-family: Wanted Sans Variable;
+  font-weight: 500;
+  letter-spacing: -0.16px;
+`;
+
+const ChipRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const MissingChip = styled.div`
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 8px;
+  background: #f5f5f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #8b8b8b;
+  font-size: 15px;
+  font-family: Wanted Sans Variable;
+  font-weight: 500;
+`;
+
+const MissingActions = styled.div`
+  display: flex;
+  gap: 4px;
+`;
+
+const MissingActionButton = styled.button`
+  flex: 1;
+  height: 44px;
+  border-radius: 10px;
+  border: ${({ $variant }) => ($variant === "bought" ? "none" : "1px solid #d9d9da")};
+  background: ${({ $variant }) => ($variant === "bought" ? "#e9e9e9" : "#fffefd")};
+  color: ${({ $variant }) => ($variant === "bought" ? "#727272" : "#5a5a5b")};
+  font-size: 15px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  cursor: pointer;
+`;
 
 export default function HomeDietStart() {
   const navigate = useNavigate();
   const { mealId } = useParams();
-  const completedCount = DUMMY_DIET_PROGRESS.filter((m) => m.completed).length;
-  const nextMealId = DUMMY_DIET_PROGRESS.find((m) => !m.completed)?.id;
+
+  const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
+  const meals = DUMMY_DIET_PROGRESS.slice(0, 3);
+  const completedCount = meals.filter((m) => m.completed).length;
+  const nextMealId = meals.find((m) => !m.completed)?.id;
+  const missingIngredients = MISSING_INGREDIENTS;
+
+  const handleAddToShoppingList = () => {
+    navigate("/shopping-list");
+  };
 
   return (
     <PageContainer>
-      <Header>
-        <BackButton onClick={() => navigate(-1)} />
-      </Header>
+      <StopLink onClick={() => navigate("/")}>식단 중단하기 &gt;</StopLink>
 
-      <SectionTitle>
-        <span className="title">진행중인 식단</span>
-        <span className="toggle-label">식단 토글</span>
-      </SectionTitle>
+      <IconBox>
+        <img src={muscleIcon} alt="" />
+      </IconBox>
+
+      <PageTitle>{theme.title}을 진행 중이에요</PageTitle>
+      <PageSubtitle>레시피 선택 후 시작하기 버튼을 통해 시작해보세요!</PageSubtitle>
+
+           <EmptyNotice>
+        {completedCount === 0
+          ? "아직 진행한 레시피가 없네요!"
+        : `${completedCount}끼 챙겨먹기에 성공했어요!`}
+     </EmptyNotice>
 
       <MealTabs>
-          {MEAL_SLOTS.map((slot, idx) => (
-    <MealTab key={slot} $done={idx < completedCount}>
-      {slot}
-      {idx < completedCount && (
-        <img className="check-icon" src={checkIcon} alt="" />
-      )}
-    </MealTab>
-   ))}
+        {meals.map((meal, idx) => (
+          <MealTab key={meal.id} $done={idx < completedCount}>
+            {idx + 1}끼
+          </MealTab>
+        ))}
       </MealTabs>
 
-      <ProgressHeader>
-        <span className="title">진행 상황</span>
-        <span className="count">{completedCount}/5끼 완료</span>
-      </ProgressHeader>
+      <RecipeListHeading>{meals.length}끼 레시피</RecipeListHeading>
+            <EmptyNotice>
+        {completedCount === 0
+          ? "아직 진행한 레시피가 없네요!"
+          : `${completedCount}끼 챙겨먹기에 성공했어!`}
+      </EmptyNotice>
 
       <MealList>
-        {DUMMY_DIET_PROGRESS.map((meal) => (
-              <MealRow
-      key={meal.id}
-      $isNext={meal.id === nextMealId}
-      $completed={meal.completed}
-    >
-            <div className="row">
-              <div className="thumb-box">
-                <img className="thumb" src={meal.image} alt={meal.name} />
-              </div>
-              <div className="info">
-                <div className="name-wrap">
-                  <span className="meal-name">{meal.name}</span>
-                  <span className="meal-status">{meal.status}</span>
-                </div>
-                <span className="meal-complete">
-                  {meal.completed ? "완료" : "미완료"}
-                </span>
-              </div>
+        {meals.map((meal) => (
+          <MealRow key={meal.id} $isNext={meal.id === nextMealId}>
+            <div className="thumb-box">
+              <img className="thumb" src={meal.image} alt={meal.name} />
             </div>
+            <div className="info">
+              <span className="meal-name">{meal.name}</span>
+              <span className="meal-status">{meal.completed ? "완료" : "미완료"}</span>
+            </div>
+            <button
+              className="detail-link"
+              onClick={() => navigate(`/recipes/${meal.id}`)}
+            >
+              상세보기
+            </button>
           </MealRow>
         ))}
       </MealList>
 
-      <StartButton onClick={() => navigate(`/cooking/${mealId}`)}>
-        요리 시작하기
-      </StartButton>
+      {missingIngredients.length > 0 && (
+        <MissingSection>
+          <MissingHeading>잠깐만요! 부족한 재료가 있어요</MissingHeading>
+          <ChipRow>
+            {missingIngredients.map((name) => (
+              <MissingChip key={name}>{name}</MissingChip>
+            ))}
+          </ChipRow>
+          <MissingActions>
+            <MissingActionButton $variant="bought">
+              이미 구매했어요
+            </MissingActionButton>
+            <MissingActionButton $variant="add" onClick={handleAddToShoppingList}>
+              장보기 목록에 추가
+            </MissingActionButton>
+          </MissingActions>
+        </MissingSection>
+      )}
+
+            <BottomFixedButton variant="inline" onClick={() => navigate(`/cooking/${mealId}`)}>
+        식단 시작하기
+      </BottomFixedButton>
     </PageContainer>
   );
 }

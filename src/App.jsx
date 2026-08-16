@@ -12,6 +12,8 @@ import ShoppingList from './pages/shopping/ShoppingList';
 import HomeDietStart from './pages/home/HomeDietStart';
 import HomeCooking from "./pages/home/HomeCooking";
 import HomeCookingStep from "./pages/home/HomeCookingStep";
+import CookingComplete from "./pages/home/CookingComplete";
+import CookingReview from "./pages/home/CookingReview";
 
 
 function App() {
@@ -33,6 +35,8 @@ function App() {
         <Route path="/diet-start/:mealId" element={<HomeDietStart />} />
         <Route path="/cooking/:mealId" element={<HomeCooking />} />
         <Route path="/cooking/:mealId/step" element={<HomeCookingStep />} />
+        <Route path="/cooking/:mealId/complete" element={<CookingComplete />} />
+        <Route path="/cooking/:mealId/review" element={<CookingReview />} />
       </Routes>
     </BrowserRouter>
   );

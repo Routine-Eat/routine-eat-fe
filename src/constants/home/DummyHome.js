@@ -7,14 +7,17 @@ import onionImg from "../../assets/images/onion.svg";
 import dumplingImg from "../../assets/images/dumpling.svg";
 import icecreamImg from "../../assets/images/ice cream.svg";
 import eggImg from "../../assets/images/egg.svg";
-
+import alarmIcon from "../../assets/icons/alarm.svg";
+import liftingIcon from "../../assets/icons/lifting.svg";
+import graphIcon from "../../assets/icons/graph.svg";
+import sparkleIcon from "../../assets/icons/sparkle.svg";
 
 export const DUMMY_DISHES = [
-  { id: 1, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 1, image: eggFoodImg },
-  { id: 2, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 4, image: eggFoodImg },
-  { id: 3, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 2, image: eggFoodImg },
-  { id: 4, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 3, image: eggFoodImg },
-  { id: 5, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 1, image: eggFoodImg },
+  { id: 1, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 1, image: eggFoodImg, matchRate: null },
+  { id: 2, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 4, image: eggFoodImg, matchRate: 88 },
+  { id: 3, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 2, image: eggFoodImg, matchRate: null },
+  { id: 4, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 3, image: eggFoodImg, matchRate: 65 },
+  { id: 5, name: "계란 야채 볶음밥", time: "15분 소요", cost: "예상 재료비 1,800원", difficulty: 1, image: eggFoodImg, matchRate: null },
 ];
 
 export const DUMMY_ENERGY_LEVELS = ["의욕 넘침", "보통", "귀찮음"];
@@ -91,5 +94,34 @@ export const DUMMY_COOKING_STEPS = [
     body2: "",
     link2: "",
     ingredients: ["양파 반 개", "양배추 1/4개", "대파 반 개"],
+  },
+];
+
+export const MISSING_INGREDIENTS = ["굴소스", "다진 마늘", "토마토"];
+
+export const THEME_CARDS = [
+  {
+    id: "quick",
+    icon: alarmIcon,
+    title: "간편 요리 식단",
+    desc: ["빠른 시간 안에 만드는, ", "설거지가 적은 간단한 요리"],
+  },
+  {
+    id: "one-ingredient",
+    icon: liftingIcon,
+    title: "한 가지 재료 털기",
+    desc: ["아직 문장 작성 미완료..."],
+  },
+  {
+    id: "skill-up",
+    icon: graphIcon,
+    title: "요리 스킬 스텝업",
+    desc: ["좀 더 난이도 높은 ", "3끼 메뉴에 도전하기"],
+  },
+  {
+    id: "max-ingredient",
+    icon: sparkleIcon,
+    title: "재료 최대치 활용",
+    desc: ["가지고 있는 재료를 활용해 최소 비용으로 만드는 요리"],
   },
 ];

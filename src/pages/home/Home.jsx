@@ -2,296 +2,446 @@ import React, { useState, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 
 import styled from "styled-components";
-import infoIconImg from "../../assets/icons/Information.svg";
 import starFilledIcon from "../../assets/icons/StarFilled.svg";
 import starEmptyIcon from "../../assets/icons/StarEmpty.svg";
-import heartFilledIcon from "../../assets/icons/HeartFilled.svg";
-import heartEmptyIcon from "../../assets/icons/HeartEmpty.svg";
 import closeIcon from "../../assets/icons/x.svg";
 import checkIcon from "../../assets/icons/check.svg";
-import plusIcon from "../../assets/icons/plus.svg";
-import { DUMMY_DISHES, DUMMY_ENERGY_LEVELS, DUMMY_MEALS, DUMMY_INGREDIENT_CATEGORIES, } from "../../constants/home/DummyHome.js";
+import recipeImg from "../../assets/images/recipeImg.svg";
+import { DUMMY_DISHES, DUMMY_INGREDIENT_CATEGORIES, THEME_CARDS } from "../../constants/home/DummyHome.js";
+import chevronBrownIcon from "../../assets/icons/chevronBrown.svg";
+import chevronGrayIcon from "../../assets/icons/chevronGray.svg";
+import fireIcon from "../../assets/icons/fire.svg";
+import cometIcon from "../../assets/icons/comet.svg";
+import checkBadgeIcon from "../../assets/icons/checkBadge.svg";
+import chevronDarkGrayIcon from "../../assets/icons/chevronDarkGray.svg";
+
+const ENERGY_OPTIONS = ["의욕 없음", "보통", "의욕 넘침"];
+
+function getParticle(word) {
+  if (!word) return "가";
+  const lastChar = word[word.length - 1];
+  const code = lastChar.charCodeAt(0) - 0xac00;
+  if (code < 0 || code > 11171) return "가";
+  const hasBatchim = code % 28 !== 0;
+  return hasBatchim ? "이" : "가";
+}
+
+const CAROUSEL_CARD_WIDTH = 216;
+const CAROUSEL_CARD_HEIGHT = 288;
+const CAROUSEL_SIDE_SCALE = 0.85;
+const CAROUSEL_SIDE_OFFSET = 168;
+const CAROUSEL_SWIPE_THRESHOLD = 50;
+
+const DIFFICULTY_LABELS = [
+  "아주 간단해요",
+  "간단한 편이에요",
+  "과정이 조금 있어요",
+  "과정이 많은 편이에요",
+  "과정이 꽤 복잡해요",
+];
 
 const HomeContainer = styled.div`
-background: #fffdfc;
+background: #fffefd;
 max-width: 390px;
 margin: 0 auto;
-padding: 0 24px;
+padding: 0 24px 40px;
 overflow-x: hidden;
 `;
 
-const FirstSection = styled.div`
-.section-title{
-color: #212020;
-font-size: 16px;
-font-family: Pretendard Variable;
+const Title = styled.p`
+margin: 20px 0 0;
+color: #481c00;
+font-size: 22px;
+font-family: Wanted Sans Variable;
 font-weight: 700;
-}
+letter-spacing: -0.22px;
+text-align: center;
+`;
 
-.section-subtitle{
-margin-top: 4px;
-color: #888;
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: 400;
-}
+const Subtitle = styled.p`
+margin: 6px 0 0;
+color: #bebebf;
+font-size: 15px;
+font-family: Wanted Sans Variable;
+font-weight: 500;
+letter-spacing: -0.3px;
+text-align: center;
+`;
 
-.dish-list{
-margin-top: 16px;
-display: flex;
-overflow-x: auto;
--webkit-overflow-scrolling: touch;
-padding: 4px 0 12px 0;
-scrollbar-width: none;
-scroll-snap-type: x mandatory;
-scroll-behavior: smooth;
-
-
-&::-webkit-scrollbar{
-display: none;
-}
-}
-
-.dish-list-spacer{
-flex: 0 0 auto;
-width: calc((100% - 210px) / 2);
-scroll-snap-align: none;
-}
-
-.dish-list-wrap{
+const RecipeCardWrap = styled.div`
+margin: 28px auto 0;
+width: 216px;
+height: 288px;
+border-radius: 30px;
 position: relative;
-}
+overflow: hidden;
+background: linear-gradient(148deg, #fff6b4 14%, #fffbe1 44%, #ffeca0 57%, #fff6b4 80%);
+box-shadow: 0px 0px 20px 0px rgba(72, 28, 0, 0.15), 0px 0px 10px 0px rgba(72, 28, 0, 0.04);
 
-.dish-fade-right{
+&::after{
+content: "";
 position: absolute;
-top: 4px;
-right: 0;
-bottom: 12px;
-width: 90px;
-background: linear-gradient(90deg, rgba(255,253,252,0) 0%, rgba(255,253,252,0.15) 40%, rgba(255,253,252,1) 90%);
+inset: 0;
+border-radius: inherit;
+box-shadow: inset 0px 0px 15px 0px white;
 pointer-events: none;
-z-index: 50;
-}
-
-.dish-fade-left{
-position: absolute;
-top: 4px;
-left: 0;
-bottom: 12px;
-width: 90px;
-background: linear-gradient(270deg, rgba(255,253,252,0) 0%, rgba(255,253,252,0.15) 40%, rgba(255,253,252,1) 90%);
-pointer-events: none;
-z-index: 50;
 }
 `;
 
-const DishCard = styled.div`
-position: relative;
-flex-shrink: 0;
-width: 210px;
-border-radius: 24px;
-background: ${({ $isFront }) => ($isFront ? "#fafafa" : "#ffffff")};
-box-shadow: ${({ $isFront }) =>
-    $isFront
-      ? "0px 0px 10px 0px rgba(107, 56, 0, 0.06), -8px 0px 24px 0px rgba(97, 51, 0, 0.08)"
-      : "0px 0px 10px 0px rgba(107, 56, 0, 0.06), 0px 0px 40px 0px rgba(97, 51, 0, 0.05)"};
-padding: 16px;
-overflow: hidden;
-scroll-snap-align: center;
-z-index: ${({ $zIndex }) => $zIndex};
-margin-left: ${({ $overlap }) => ($overlap ? "-47px" : "0")};
-
-.info-icon{
+const RecipeThumbBox = styled.div`
 position: absolute;
-top: 16px;
-left: 16px;
-z-index: 2;
-width: 24px;
-height: 24px;
-border-radius: 50%;
+left: 12px;
+right: 12px;
+top: 11px;
+height: 153px;
+border-radius: 26px;
+background: white;
+box-shadow: 0px 0px 5px 0px rgba(107, 56, 0, 0.08), 0px 0px 40px 0px rgba(97, 51, 0, 0.05);
 overflow: hidden;
+display: flex;
+align-items: center;
+justify-content: center;
 
 img{
 width: 100%;
 height: 100%;
-display: block;
-object-fit: contain;
-}
-}
-
-.thumb-wrap{
-position: relative;
-margin: 28px auto 0;
-width: 124px;
-height: 124px;
-}
-
-.thumb{
-margin: 0;
-width: 100%;
-height: 100%;
-border-radius: 50%;
-background: #f0f0f0;
-box-shadow: 0px 0px 10px 0px rgba(61, 32, 0, 0.05), 0px 0px 40px 0px rgba(110, 58, 0, 0.13);
 object-fit: cover;
 display: block;
+transform: scale(1.);
 }
+`;
 
-.dish-name{
-margin-top: 16px;
-color: #3c3a39;
-font-size: 16px;
-font-family: Pretendard Variable;
+const RecipeName = styled.p`
+position: absolute;
+left: 18px;
+top: 180px;
+margin: 0;
+width: 160px;
+color: #481c00;
+font-size: 20px;
+font-family: Wanted Sans Variable;
 font-weight: 700;
-}
+letter-spacing: -0.4px;
+`;
 
-.dish-meta{
-margin-top: 6px;
+const RecipeDesc = styled.div`
+position: absolute;
+left: 18px;
+top: 212px;
+width: 190px;
+color: #805200;
+font-size: 12px;
+font-family: Wanted Sans Variable;
+font-weight: 500;
+letter-spacing: -0.24px;
+line-height: 1.4;
+
+p{
+margin: 0;
+}
+`;
+
+const ToggleClosed = styled.button`
+margin-top: 20px;
+width: 100%;
+height: 59px;
+border-radius: 15px;
+background: #fff6b5;
+border: none;
+cursor: pointer;
 display: flex;
 align-items: center;
-gap: 6px;
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: 500;
+gap: 8px;
+padding: 0 20px;
+box-shadow: inset 0px 0px 3px 0px white;
 
-.time{
-color: #00b4c1;
+.chevron{
+display: block;
+width: 14px;
+height: 14px;
 }
 
-.no-extra{
-color: #888;
+.label{
+color: #481c00;
+font-size: 16px;
+font-family: Wanted Sans Variable;
+font-weight: 600;
+letter-spacing: -0.16px;
 }
+`;
+
+const ToggleOpenCard = styled.div`
+margin-top: 20px;
+width: 100%;
+border-radius: 24px;
+background: white;
+box-shadow: 0px 0px 6px 0px rgba(114, 114, 114, 0.25);
+padding: 20px;
+display: flex;
+flex-direction: column;
+gap: 24px;
+`;
+
+const ToggleOpenHeader = styled.button`
+display: flex;
+align-items: center;
+gap: 7px;
+background: none;
+border: none;
+cursor: pointer;
+padding: 0;
+
+.chevron{
+display: block;
+width: 14px;
+height: 14px;
 }
 
-.dish-cost{
-margin-top: 4px;
-color: #696866;
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: 500;
+.label{
+color: #bebebf;
+font-size: 16px;
+font-family: Wanted Sans Variable;
+font-weight: 600;
+letter-spacing: -0.16px;
 }
+`;
 
-.dish-difficulty{
-margin-top: 6px;
+const DetailSection = styled.div`
+display: flex;
+flex-direction: column;
+gap: 28px;
+
+.field-label{
 display: flex;
 align-items: center;
 gap: 4px;
+color: #2e2e2e;
+font-size: 16px;
+font-family: Wanted Sans Variable;
+font-weight: 600;
+letter-spacing: -0.16px;
+margin-bottom: 12px;
 
-.label{
-color: #696866;
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: 500;
-margin-right: 2px;
+.field-icon{
+width: 20px;
+height: 20px;
+display: block;
 }
 
-.star{
-width: 15px;
-height: 15px;
-display: inline-block;
+.difficulty-desc{
+color: #888;
+font-size: 14px;
+font-weight: 500;
+margin-left: 4px;
 }
 }
 `;
 
-const SecondSection = styled.div`
-margin-top: 24px;
-border-radius: 20px;
-background: #ffeca0;
-padding: 20px;
-box-shadow: 0px 0px 10px 0px rgba(154, 80, 0, 0.05), 0px 0px 40px 0px rgba(154, 80, 0, 0.08);
-
-.energy-title{
-color: #3c3a39;
-font-size: 15px;
-font-family: Pretendard Variable;
-font-weight: 500;
-}
-
-.energy-toggle{
-margin-top: 12px;
+const EnergyToggle = styled.div`
 display: flex;
 gap: 4px;
-background: #fbfbfb;
-border-radius: 30px;
+background: #f5f5f6;
+border-radius: 12px;
 padding: 4px;
-}
+`;
 
-.energy-option{
+const EnergyOption = styled.button`
 flex: 1;
 text-align: center;
-padding: 8px 0;
-border-radius: 25px;
+padding: 10px 0;
+border-radius: 10px;
 border: none;
 cursor: pointer;
-font-size: 14px;
-font-family: Pretendard Variable;
+font-size: 15px;
+font-family: Wanted Sans Variable;
 font-weight: 600;
-color: #3c3a39;
+color: #727272;
 background: transparent;
 
 &.active{
-background: #ffcd00;
-color: white;
-font-weight: 700;
+background: #ffeca0;
+color: #2e2e2e;
 }
-}
+`;
 
-.difficulty-title{
-margin-top: 16px;
-color: #3c3a39;
-font-size: 15px;
-font-family: Pretendard Variable;
-font-weight: 500;
-}
-
-.difficulty-stars{
-margin-top: 8px;
+const DifficultyRow = styled.div`
 display: flex;
-gap: 6px;
+align-items: center;
+gap: 4px;
+width: fit-content;
+padding: 0 8px;
 
 .star{
-width: 30px;
-height: 30px;
-display: inline-block;
+width: 32px;
+height: 32px;
+cursor: pointer;
 }
-}
+`;
 
-.ingredient-button{
-margin-top: 16px;
+const IngredientButton = styled.button`
 width: 100%;
-height: 40px;
-border-radius: 10px;
+height: 48px;
+border-radius: 12px;
 border: none;
-background: #fbfbfb;
+background: #f5f5f6;
 display: flex;
 align-items: center;
 justify-content: space-between;
 padding: 0 16px;
 cursor: pointer;
 
-.left{
-display: flex;
-align-items: center;
-gap: 8px;
-
-.carrot-icon{
-width: 17px;
-height: 17px;
-border-radius: 4px;
-background: #e5e5e5;
-}
-
 .label{
-color: #3c3a39;
-font-size: 14px;
-font-family: Pretendard Variable;
+color: #2e2e2e;
+font-size: 15px;
+font-family: Wanted Sans Variable;
 font-weight: 600;
-}
+letter-spacing: -0.15px;
 }
 
 .chevron{
-color: #999;
+display: block;
+width: 14px;
+height: 14px;
+}
+`;
+
+const SelectedIngredientButton = styled.button`
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  background: #ffeca0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+
+  .left {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+
+  .ingredient-icon {
+    width: 20px;
+    height: 20px;
+    display: block;
+  }
+
+  .ingredient-text {
+    display: flex;
+    align-items: center;
+  }
+
+  .ingredient-name {
+    color: #2c0500;
+    font-size: 14px;
+    font-family: Wanted Sans Variable;
+    font-weight: 600;
+    letter-spacing: 0.14px;
+    white-space: nowrap;
+  }
+
+  .suffix {
+    color: #8f765c;
+    font-size: 12px;
+    font-family: Wanted Sans Variable;
+    font-weight: 600;
+    letter-spacing: 0.12px;
+    margin-left: 4px;
+    white-space: nowrap;
+  }
+
+  .chevron {
+    width: 14px;
+    height: 14px;
+    display: block;
+    flex-shrink: 0;
+  }
+`;
+
+const RecommendButton = styled.button`
+width: 100%;
+height: 48px;
+border-radius: 12px;
+border: none;
+background: #d6f3a1;
+box-shadow: inset 0px 0px 3px 0px white;
+color: #444;
+font-size: 15px;
+font-family: Wanted Sans Variable;
+font-weight: 600;
+letter-spacing: -0.3px;
+cursor: pointer;
+`;
+
+const ThemeSectionTitle = styled.p`
+margin: 64px 0 0;
+text-align: center;
+color: #481c00;
+font-size: 22px;
+font-family: Wanted Sans Variable;
+font-weight: 700;
+letter-spacing: -0.22px;
+`;
+
+const ThemeSectionSubtitle = styled.p`
+margin: 8px 0 0;
+text-align: center;
+color: #bebebf;
+font-size: 15px;
+font-family: Wanted Sans Variable;
+font-weight: 500;
+letter-spacing: -0.3px;
+`;
+
+const ThemeGrid = styled.div`
+margin-top: 32px;
+display: grid;
+grid-template-columns: repeat(2, 1fr);
+gap: 8px;
+`;
+
+const ThemeCard = styled.button`
+height: 148px;
+border-radius: 15px;
+background: white;
+box-shadow: 0px 0px 10px 0px rgba(3, 3, 3, 0.03), 0px 0px 40px 0px rgba(3, 3, 3, 0.05);
+border: none;
+cursor: pointer;
+padding: 22px 16px;
+display: flex;
+flex-direction: column;
+align-items: flex-start;
+gap: 8px;
+text-align: left;
+
+.icon{
+width: 32px;
+height: 32px;
+display: block;
+}
+
+.title{
+color: #1a1a1a;
 font-size: 18px;
+font-family: Wanted Sans Variable;
+font-weight: 700;
+letter-spacing: -0.36px;
+}
+
+.desc{
+width: 100%;
+color: #727272;
+font-size: 12.5px;
+font-family: Wanted Sans Variable;
+font-weight: 500;
+letter-spacing: -0.3px;
+line-height: 1.3;
+
+p{
+margin: 0;
 }
 }
 `;
@@ -364,9 +514,9 @@ justify-content: center;
 const IngredientChip = styled.button`
 display: flex;
 align-items: center;
-gap: 6px;
+gap: 4px;
 height: 36px;
-padding: 0 12px;
+padding: 0 8px;
 border-radius: 30px;
 border: none;
 cursor: pointer;
@@ -378,8 +528,8 @@ display: flex;
 align-items: center;
 
 img{
-width: 16px;
-height: 16px;
+width: 20px;
+height: 20px;
 display: block;
 }
 }
@@ -417,163 +567,240 @@ background: ${({ $variant }) => ($variant === "apply" ? "#72d472" : "#e7e7e7")};
 color: ${({ $variant }) => ($variant === "apply" ? "#ffffff" : "#3e3e3e")};
 `;
 
-const RecommendButton = styled.button`
-margin-top: 16px;
-width: 100%;
-height: 53px;
-border-radius: 18px;
-border: none;
-background: #d6f3a1;
-box-shadow: 0px 0px 10px 0px rgba(154, 80, 0, 0.05), 0px 0px 40px 0px rgba(154, 80, 0, 0.08);
-color: #3c3a39;
-font-size: 16px;
-font-family: Pretendard Variable;
-font-weight: 600;
-cursor: pointer;
+const ConfirmModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 3, 3, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
 `;
 
-const ThirdSection = styled.div`
-margin-top: 32px;
-
-.section-title{
-color: #212020;
-font-size: 16px;
-font-family: Pretendard Variable;
-font-weight: 700;
-}
-
-.section-subtitle{
-margin-top: 4px;
-color: #888;
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: 400;
-}
-
-.meal-grid{
-margin-top: 16px;
-display: grid;
-grid-template-columns: repeat(2, 1fr);
-gap: 12px;
-}
+const ConfirmModalBox = styled.div`
+  width: 100%;
+  max-width: 312px;
+  background: white;
+  border: 0.5px solid #d9d9da;
+  border-radius: 22px;
+  padding: 24px 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
 `;
 
-const MealCard = styled.div`
-position: relative;
-border-radius: 15px;
-background: white;
-box-shadow: 0px 0px 10px 0px rgba(154, 80, 0, 0.05), 0px 0px 40px 0px rgba(154, 80, 0, 0.08);
-padding: 8px;
+const ConfirmIconBox = styled.div`
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 
-.thumb-box{
-position: relative;
-width: 100%;
-height: 90px;
-border-radius: 15px;
-background: #f2f2f2;
-overflow: hidden;
-display: flex;
-align-items: center;
-justify-content: center;
-}
-
-.thumb{
-max-width: 60%;
-max-height: 75%;
-width: auto;
-height: auto;
-object-fit: contain;
-display: block;
-}
-
-.like-button{
-position: absolute;
-top: 8px;
-right: 8px;
-width: 24px;
-height: 24px;
-border-radius: 50%;
-background: transparent;
-border: none;
-display: flex;
-align-items: center;
-justify-content: center;
-cursor: pointer;
-
-img{
-width: 18px;
-height: 18px;
-}
-}
-
-.meal-name{
-margin-top: 12px;
-color: #212020;
-font-size: 14px;
-font-family: Pretendard Variable;
-font-weight: 600;
-}
-
-.meal-desc{
-margin-top: 6px;
-color: #888;
-font-size: 12px;
-font-family: Pretendard Variable;
-font-weight: 400;
-line-height: 1.3;
-}
+  img {
+    width: 40px;
+    height: 40px;
+    display: block;
+  }
 `;
 
-function StarRow({ count, total = 5, size, onStarClick }) {
-  return (
-    <>
-      {Array.from({ length: total }).map((_, i) => (
-        <img
-          key={i}
-          className="star"
-          src={i < count ? starFilledIcon : starEmptyIcon}
-          alt=""
-          style={{
-            ...(size ? { width: size, height: size } : undefined),
-            cursor: onStarClick ? "pointer" : "default",
-          }}
-          onClick={onStarClick ? () => onStarClick(i + 1) : undefined}
-        />
-      ))}
-    </>
-  );
-}
+const ConfirmText = styled.div`
+  text-align: center;
+  color: #1a1a1a;
+  font-size: 18px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.18px;
+  line-height: 1.4;
+
+  p {
+    margin: 0;
+  }
+`;
+
+const ConfirmActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const ConfirmButton = styled.button`
+  width: 130px;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.16px;
+  background: ${({ $variant }) => ($variant === "confirm" ? "#72d472" : "#f5f5f6")};
+  color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
+`;
+
+const CarouselWrap = styled.div`
+  position: relative;
+  margin: 28px auto 0;
+  width: 100%;
+  height: ${CAROUSEL_CARD_HEIGHT}px;
+  overflow: visible;
+`;
+
+const CarouselTrack = styled.div`
+  position: relative;
+  width: 100%;
+  height: 100%;
+  touch-action: pan-y;
+  user-select: none;
+`;
+
+const CarouselCard = styled.div`
+  position: absolute;
+  top: 0;
+  left: 50%;
+  width: ${CAROUSEL_CARD_WIDTH}px;
+  height: ${CAROUSEL_CARD_HEIGHT}px;
+  margin-left: -${CAROUSEL_CARD_WIDTH / 2}px;
+  border-radius: 30px;
+  overflow: hidden;
+  cursor: grab;
+  will-change: transform, opacity;
+  transition: ${({ $dragging }) =>
+    $dragging
+      ? "none"
+      : "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease, filter 0.35s ease"};
+  transform: ${({ $x, $scale }) => `translateX(${$x}px) scale(${$scale})`};
+  opacity: ${({ $active }) => ($active ? 1 : 0.55)};
+  filter: ${({ $active }) => ($active ? "none" : "saturate(0.5)")};
+  z-index: ${({ $active }) => ($active ? 2 : 1)};
+  box-shadow: 0px 0px 12px 0px rgba(72, 28, 0, 0.06),
+    0px 0px 20px 0px rgba(46, 46, 46, 0.25);
+
+  background: ${({ $active }) =>
+    $active
+      ? "linear-gradient(148deg, #fff6b4 14%, #fffbe1 44%, #ffeca0 57%, #fff6b4 80%)"
+      : "linear-gradient(148deg, #f5f5f6 14%, #ffffff 44%, #d9d9da 57%, #f5f5f6 80%)"};
+
+  &::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0px 0px 15px 0px white;
+    pointer-events: none;
+  }
+`;
+
+const CarouselThumbBox = styled.div`
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  top: 11px;
+  height: 153px;
+  border-radius: 26px;
+  background: white;
+  box-shadow: 0px 0px 5px 0px rgba(107, 56, 0, 0.08),
+    0px 0px 40px 0px rgba(97, 51, 0, 0.05);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+`;
+
+const CarouselCardName = styled.p`
+  position: absolute;
+  left: 18px;
+  top: 180px;
+  margin: 0;
+  width: 160px;
+  color: ${({ $active }) => ($active ? "#481c00" : "#444")};
+  font-size: 20px;
+  font-family: Wanted Sans Variable;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+`;
+
+const CarouselCardDesc = styled.div`
+  position: absolute;
+  left: 18px;
+  top: 212px;
+  width: 190px;
+  color: ${({ $active }) => ($active ? "#805200" : "#5a5a5b")};
+  font-size: 12px;
+  font-family: Wanted Sans Variable;
+  font-weight: 500;
+  letter-spacing: -0.24px;
+  line-height: 1.4;
+
+  p {
+    margin: 0;
+  }
+`;
+
+const CarouselArrowButton = styled.button`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 5;
+  padding: 0;
+
+  &.left {
+    left: 4px;
+  }
+  &.right {
+    right: 4px;
+  }
+
+  img {
+    width: 8px;
+    height: 14px;
+    display: block;
+  }
+
+  &.left img {
+    transform: rotate(180deg);
+  }
+`;
 
 export default function Home() {
   const navigate = useNavigate();
   const [energy, setEnergy] = useState("보통");
   const [difficulty, setDifficulty] = useState(4);
-  const [meals, setMeals] = useState(DUMMY_MEALS);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
+  const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [isRecommended, setIsRecommended] = useState(false);
+  const [recommendedDishes, setRecommendedDishes] = useState([]);
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [carouselDragX, setCarouselDragX] = useState(0);
+  const [isCarouselDragging, setIsCarouselDragging] = useState(false);
   const [selectedIngredients, setSelectedIngredients] = useState([]);
-  const [activeDishIndex, setActiveDishIndex] = useState(0);
-  const dishListRef = useRef(null);
-  const dishCardRefs = useRef([]);
-  const handleDishScroll = () => {
-    const container = dishListRef.current;
-    if (!container) return;
-    const containerCenter = container.getBoundingClientRect().left + container.offsetWidth / 2;
+    const carouselStartXRef = useRef(0);
+  const carouselDraggingRef = useRef(false);
 
-    let closestIndex = 0;
-    let closestDistance = Infinity;
-    dishCardRefs.current.forEach((card, idx) => {
-      if (!card) return;
-      const cardCenter = card.getBoundingClientRect().left + card.offsetWidth / 2;
-      const distance = Math.abs(cardCenter - containerCenter);
-      if (distance < closestDistance) {
-        closestDistance = distance;
-        closestIndex = idx;
-      }
-    });
+  const recommendedDish = DUMMY_DISHES[0];
 
-    setActiveDishIndex(closestIndex);
-  };
-
+    const allIngredients = DUMMY_INGREDIENT_CATEGORIES.flatMap((c) => c.items);
+  const selectedIngredientObjects = selectedIngredients
+    .map((id) => allIngredients.find((item) => item.id === id))
+    .filter(Boolean);
   const toggleIngredient = (id) => {
     setSelectedIngredients((prev) => {
       if (prev.includes(id)) return prev.filter((v) => v !== id);
@@ -590,115 +817,237 @@ export default function Home() {
     setIsIngredientModalOpen(false);
   };
 
-  const toggleLike = (id) => {
-    setMeals((prev) =>
-      prev.map((m) => (m.id === id ? { ...m, liked: !m.liked } : m))
-    );
+    const handleConfirmRecommend = () => {
+          const dishes = DUMMY_DISHES.length >= 3 ? DUMMY_DISHES.slice(0, 3) : DUMMY_DISHES;
+    setRecommendedDishes(dishes);
+    setCarouselIndex(Math.floor(dishes.length / 2));
+    setIsRecommended(true);
+    setIsConfirmModalOpen(false);
+  };
+
+    const goToCarouselIndex = (nextIndex) => {
+    const count = recommendedDishes.length;
+    if (count === 0) return;
+    const clamped = Math.max(0, Math.min(count - 1, nextIndex));
+    setCarouselIndex(clamped);
+  };
+
+  const handleCarouselPointerDown = (e) => {
+    if (recommendedDishes.length <= 1) return;
+    carouselDraggingRef.current = true;
+    setIsCarouselDragging(true);
+    carouselStartXRef.current = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+  };
+
+  const handleCarouselPointerMove = (e) => {
+    if (!carouselDraggingRef.current) return;
+    const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    setCarouselDragX(clientX - carouselStartXRef.current);
+  };
+
+  const endCarouselDrag = () => {
+    if (!carouselDraggingRef.current) return;
+    carouselDraggingRef.current = false;
+    setIsCarouselDragging(false);
+
+    if (carouselDragX <= -CAROUSEL_SWIPE_THRESHOLD) {
+      goToCarouselIndex(carouselIndex + 1);
+    } else if (carouselDragX >= CAROUSEL_SWIPE_THRESHOLD) {
+      goToCarouselIndex(carouselIndex - 1);
+    }
+    setCarouselDragX(0);
   };
 
   return (
     <HomeContainer>
-      <FirstSection>
-        <span className="section-title">오늘의 추천 메뉴예요.</span>
-        <div className="section-subtitle">보통 난이도 채소 위주로 골랐어요.</div>
+            {isRecommended ? (
+        <>
+          <Title>
+            조건을 고려해
+            <br />
+            레시피 3개를 추천해드렸어요
+          </Title>
 
-        <div className="dish-list-wrap">
-          <div className="dish-list" ref={dishListRef} onScroll={handleDishScroll}>
-            <div className="dish-list-spacer" aria-hidden />
-            {DUMMY_DISHES.map((dish, i) => (
-              <DishCard
-                key={dish.id}
-                ref={(el) => (dishCardRefs.current[i] = el)}
-                $isFront={i === activeDishIndex}
-                $zIndex={DUMMY_DISHES.length - Math.abs(i - activeDishIndex)}
-                $overlap={i > 0}
-              >
-                <div className="info-icon">
-                  <img src={infoIconImg} alt="정보 아이콘" />
-                </div>
-                <div className="thumb-wrap">
-                  <img className="thumb" src={dish.image} alt={dish.name} />
-                </div>
-                <div className="dish-name">{dish.name}</div>
-                <div className="dish-meta">
-                  <span className="time">{dish.time}</span>
-                  <span className="no-extra">추가 재료 구매 X</span>
-                </div>
-                <div className="dish-cost">{dish.cost}</div>
-                <div className="dish-difficulty">
-                  <span className="label">난이도</span>
-                  {Array.from({ length: dish.difficulty }).map((_, idx) => (
-                    <img key={idx} className="star" src={starFilledIcon} alt="" />
-                  ))}
-                </div>
-              </DishCard>
-            ))}
-            <div className="dish-list-spacer" aria-hidden />
-          </div>
-          <div className="dish-fade-left" aria-hidden />
-          <div className="dish-fade-right" aria-hidden />
-        </div>
-      </FirstSection>
-
-      <SecondSection>
-        <div className="energy-title">오늘의 요리 열정(에너지)</div>
-        <div className="energy-toggle">
-          {DUMMY_ENERGY_LEVELS.map((level) => (
-            <button
-              key={level}
-              className={`energy-option${energy === level ? " active" : ""}`}
-              onClick={() => setEnergy(level)}
+          <CarouselWrap>
+            <CarouselTrack
+              onPointerDown={handleCarouselPointerDown}
+              onPointerMove={handleCarouselPointerMove}
+              onPointerUp={endCarouselDrag}
+              onPointerLeave={endCarouselDrag}
+              onPointerCancel={endCarouselDrag}
             >
-              {level}
-            </button>
-          ))}
-        </div>
+              {recommendedDishes.map((dish, index) => {
+                const offset = index - carouselIndex;
+                const isActive = offset === 0;
+                const baseX = offset * CAROUSEL_SIDE_OFFSET;
+                const x = baseX + (isCarouselDragging ? carouselDragX : 0);
+                const scale = isActive ? 1 : CAROUSEL_SIDE_SCALE;
 
-        <div className="difficulty-title">난이도</div>
-        <div className="difficulty-stars">
-          <StarRow count={difficulty} size={30} onStarClick={setDifficulty} />
-        </div>
+                return (
+                  <CarouselCard
+                    key={dish.id ?? index}
+                    $x={x}
+                    $scale={scale}
+                    $active={isActive}
+                    $dragging={isCarouselDragging}
+                    onClick={() => !isCarouselDragging && goToCarouselIndex(index)}
+                  >
+                                        <CarouselThumbBox>
+                      <img src={recipeImg} alt={dish.name} />
+                    </CarouselThumbBox>
+                    <CarouselCardName $active={isActive}>{dish.name}</CarouselCardName>
+                    <CarouselCardDesc $active={isActive}>
+                      <p>15분 안에 간단하게 요리할 수 있어요.</p>
+                      <p>난이도가 낮아요. 있는 재료로만 요리할 수 있어요.</p>
+                    </CarouselCardDesc>
+                  </CarouselCard>
+                );
+              })}
+            </CarouselTrack>
 
-        <button className="ingredient-button" onClick={() => setIsIngredientModalOpen(true)}>
-          <span className="left">
-            <span className="carrot-icon" />
-            <span className="label">원하는 재료 선택하기</span>
-          </span>
-          <span className="chevron">›</span>
-        </button>
-      </SecondSection>
+            {carouselIndex > 0 && (
+              <CarouselArrowButton
+                className="left"
+                onClick={() => goToCarouselIndex(carouselIndex - 1)}
+              >
+                <img src={chevronDarkGrayIcon} alt="이전" />
+              </CarouselArrowButton>
+            )}
+            {carouselIndex < recommendedDishes.length - 1 && (
+              <CarouselArrowButton
+                className="right"
+                onClick={() => goToCarouselIndex(carouselIndex + 1)}
+              >
+                <img src={chevronDarkGrayIcon} alt="다음" />
+              </CarouselArrowButton>
+            )}
+          </CarouselWrap>
+        </>
+      ) : (
+        <>
+          <Title>오늘의 추천 레시피예요</Title>
+          <Subtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</Subtitle>
 
-      <RecommendButton>다시 추천 받기</RecommendButton>
+          <RecipeCardWrap>
+            <RecipeThumbBox>
+              <img src={recipeImg} alt={recommendedDish.name} />
+            </RecipeThumbBox>
+            <RecipeName>{recommendedDish.name}</RecipeName>
+            <RecipeDesc>
+              <p>15분 안에 간단하게 요리할 수 있어요.</p>
+              <p>난이도가 낮아요. 있는 재료로만 요리할 수 있어요.</p>
+            </RecipeDesc>
+          </RecipeCardWrap>
+        </>
+      )}
 
-      <ThirdSection>
-        <span className="section-title">이번주 추천 식단이에요.</span>
-        <div className="section-subtitle">지난주 영양 밸런스를 반영한 채소 위주의 식단이에요</div>
+      {!isDetailOpen && (
+        <ToggleClosed onClick={() => setIsDetailOpen(true)}>
+          <img className="chevron" src={chevronBrownIcon} alt="" />
+          <span className="label">상세조건을 선택해 재추천 받아보세요</span>
+        </ToggleClosed>
+      )}
 
-        <div className="meal-grid">
-          {meals.map((meal) => (
-                <MealCard
-      key={meal.id}
-      onClick={() => navigate(`/menu/${meal.id}`)}
-      style={{ cursor: "pointer" }}
-    >
-              <div className="thumb-box">
-                <img className="thumb" src={meal.image} alt={meal.name} />
-                        <button
-          className="like-button"
-          onClick={(e) => {
-            e.stopPropagation();
-            toggleLike(meal.id);
-          }}
-        >
-                  <img src={meal.liked ? heartFilledIcon : heartEmptyIcon} alt="찜하기" />
-                </button>
+      {isDetailOpen && (
+        <ToggleOpenCard>
+          <ToggleOpenHeader onClick={() => setIsDetailOpen(false)}>
+            <img className="chevron" src={chevronGrayIcon} alt="" />
+            <span className="label">추천 상세조건 설정</span>
+          </ToggleOpenHeader>
+
+          <DetailSection>
+            <div>
+                            <div className="field-label">
+                <img className="field-icon" src={fireIcon} alt="" />
+                오늘의 요리 열정
               </div>
-              <div className="meal-name">{meal.name}</div>
-              <div className="meal-desc">{meal.desc}</div>
-            </MealCard>
-          ))}
-        </div>
-      </ThirdSection>
+              <EnergyToggle>
+                {ENERGY_OPTIONS.map((level) => (
+                  <EnergyOption
+                    key={level}
+                    className={energy === level ? "active" : ""}
+                    onClick={() => setEnergy(level)}
+                  >
+                    {level}
+                  </EnergyOption>
+                ))}
+              </EnergyToggle>
+            </div>
+
+            <div>
+                            <div className="field-label">
+                <img className="field-icon" src={cometIcon} alt="" />
+                난이도
+                 <span className="difficulty-desc">{DIFFICULTY_LABELS[difficulty - 1]}</span>
+              </div>
+              <DifficultyRow>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <img
+                    key={i}
+                    className="star"
+                    src={i < difficulty ? starFilledIcon : starEmptyIcon}
+                    alt=""
+                    onClick={() => setDifficulty(i + 1)}
+                  />
+                ))}
+              </DifficultyRow>
+            </div>
+
+                        {selectedIngredientObjects.length === 0 ? (
+              <IngredientButton onClick={() => setIsIngredientModalOpen(true)}>
+                <span className="label">원하는 재료 선택하기</span>
+                <img className="chevron" src={chevronDarkGrayIcon} alt="" />
+              </IngredientButton>
+            ) : (
+              <SelectedIngredientButton onClick={() => setIsIngredientModalOpen(true)}>
+                <div className="left">
+                  {selectedIngredientObjects[0].icon && (
+                    <img
+                      className="ingredient-icon"
+                      src={selectedIngredientObjects[0].icon}
+                      alt=""
+                    />
+                  )}
+                  <div className="ingredient-text">
+                    <span className="ingredient-name">
+                      {selectedIngredientObjects[0].name}
+                      {selectedIngredientObjects.length > 1 &&
+                        ` 외 ${selectedIngredientObjects.length - 1}개`}
+                    </span>
+                    <span className="suffix">
+                      {getParticle(selectedIngredientObjects[0].name)} 포함된 레시피 추천할게요
+                    </span>
+                  </div>
+                </div>
+                <img className="chevron" src={chevronBrownIcon} alt="" />
+              </SelectedIngredientButton>
+            )}
+          </DetailSection>
+
+                    <RecommendButton onClick={() => setIsConfirmModalOpen(true)}>
+            선택한 조건으로 추천받기
+          </RecommendButton>
+        </ToggleOpenCard>
+      )}
+
+      <ThemeSectionTitle>오늘의 추천 식단이에요</ThemeSectionTitle>
+      <ThemeSectionSubtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</ThemeSectionSubtitle>
+
+      <ThemeGrid>
+        {THEME_CARDS.map((theme) => (
+           <ThemeCard key={theme.id} onClick={() => navigate(`/menu/${theme.id}`)}>
+            <img className="icon" src={theme.icon} alt="" />
+            <span className="title">{theme.title}</span>
+            <div className="desc">
+              {theme.desc.map((line, i) => (
+                <p key={i}>{line}</p>
+              ))}
+            </div>
+          </ThemeCard>
+        ))}
+      </ThemeGrid>
+
       {isIngredientModalOpen && (
         <ModalOverlay onClick={handleCancel}>
           <ModalBox onClick={(e) => e.stopPropagation()}>
@@ -724,13 +1073,6 @@ export default function Home() {
                       <span className="chip-qty">{item.qty}</span>
                     </IngredientChip>
                   ))}
-                  {category.title === "가공식품" && (
-                    <IngredientChip onClick={() => {/* TODO: 재료 추가 모달/페이지 연결 */ }}>
-                      <img src={plusIcon} alt="" style={{ width: 20, height: 20 }} />
-                      <span className="chip-name">추가</span>
-                    </IngredientChip>
-                  )}
-
                 </div>
               </div>
             ))}
@@ -747,6 +1089,27 @@ export default function Home() {
             </div>
           </ModalBox>
         </ModalOverlay>
+      )}
+            {isConfirmModalOpen && (
+        <ConfirmModalOverlay onClick={() => setIsConfirmModalOpen(false)}>
+          <ConfirmModalBox onClick={(e) => e.stopPropagation()}>
+            <ConfirmIconBox>
+              <img src={checkBadgeIcon} alt="" />
+            </ConfirmIconBox>
+            <ConfirmText>
+              <p>선택한 조건을 포함해</p>
+              <p>레시피를 재추천할게요</p>
+            </ConfirmText>
+            <ConfirmActions>
+              <ConfirmButton $variant="cancel" onClick={() => setIsConfirmModalOpen(false)}>
+                취소
+              </ConfirmButton>
+              <ConfirmButton $variant="confirm" onClick={handleConfirmRecommend}>
+                확인
+              </ConfirmButton>
+            </ConfirmActions>
+          </ConfirmModalBox>
+        </ConfirmModalOverlay>
       )}
     </HomeContainer>
   );

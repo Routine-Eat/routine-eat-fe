@@ -5,70 +5,90 @@ import styled from 'styled-components';
 import notificationIcon from '../../assets/header/notification.svg';
 import shoppingBagIcon from '../../assets/header/shopping-bag.svg';
 
-function Header() {
+function Header({ searchActive = false, onExitSearch }) {
+  /* 피드 검색 중이면 공통 헤더 클릭 = 검색 닫기 */
+  const exitIfSearching = (e) => {
+    if (!searchActive) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onExitSearch?.();
+  };
+
   return (
-    // 공통 상단 헤더
-    <Bar>
-      {/* 오른쪽 아이콘 묶음 */}
+    // 공통 상단 헤더 — 피그마 1739:5501
+    <Bar
+      $searchActive={searchActive}
+      onClick={exitIfSearching}
+      role={searchActive ? 'button' : undefined}
+      aria-label={searchActive ? '검색 닫기' : undefined}
+    >
       <Actions>
-        {/* 알림 아이콘 */}
-        <IconBtn type="button" aria-label="알림">
-          <IconImg src={notificationIcon} alt="" />
-        </IconBtn>
-        {/* 장바구니 아이콘 */}
-        <IconLink to="/shopping-list" aria-label="장바구니">
-          <IconImg src={shoppingBagIcon} alt="" />
+        {/* Frame 293 — 30×30, 에셋이 프레임을 채움 */}
+        <IconLink to="/notifications" aria-label="알림" onClick={exitIfSearching}>
+          <FullIcon src={notificationIcon} alt="" />
+        </IconLink>
+
+        {/* tabler:shopping-bag — 30×30, Group inset + stroke overflow */}
+        <IconLink to="/shopping-list" aria-label="장바구니" onClick={exitIfSearching}>
+          <BagGroup>
+            <BagOverflow>
+              <FullIcon src={shoppingBagIcon} alt="" />
+            </BagOverflow>
+          </BagGroup>
         </IconLink>
       </Actions>
     </Bar>
   );
 }
 
-/* 헤더 바 — 피그마 115px, 아이콘 top 72px */
+/* 피그마 아이콘 top 24 / right 20 / gap 8 — 하단 여백만 축소 */
 const Bar = styled.header`
   display: flex;
   align-items: flex-start;
   justify-content: flex-end;
-  height: 115px;
-  padding: 72px 20px 0;
-  background: #fff;
+  flex-shrink: 0;
+  height: 62px;
+  padding: 24px 20px 0;
+  background: #fffefd;
+  cursor: ${({ $searchActive }) => ($searchActive ? 'pointer' : 'default')};
 `;
 
-/* 오른쪽 아이콘 가로 줄 */
 const Actions = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 8px;
 `;
 
-/* 아이콘 버튼 */
-const IconBtn = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  padding: 0;
-  border: none;
-  background: transparent;
-  cursor: pointer;
-`;
-
-/* 장바구니 링크 */
+/* 피그마 아이콘 프레임 공통 30×30 */
 const IconLink = styled(Link)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 25px;
-  height: 25px;
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  overflow: visible;
 `;
 
-/* 아이콘 이미지 */
-const IconImg = styled.img`
+const FullIcon = styled.img`
   display: block;
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  max-width: none;
+`;
+
+/* 피그마 Group: inset 13.33% 17.51% 13.33% 20% */
+const BagGroup = styled.div`
+  position: absolute;
+  top: 13.33%;
+  right: 17.51%;
+  bottom: 13.33%;
+  left: 20%;
+`;
+
+/* 피그마 stroke overflow: inset -4.55% -5.33% */
+const BagOverflow = styled.div`
+  position: absolute;
+  inset: -4.55% -5.33%;
 `;
 
 export default Header;

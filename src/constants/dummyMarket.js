@@ -9,6 +9,56 @@ export const products = [
     price: 11570,
     discountRate: 30,
     discountPrice: 8900,
+  },
+  {
+    id: 2,
+    imgUrl: meatUrl,
+    name: '냉동 우삼겹 1kg ',
+    price: 25900,
+    discountRate: 5,
+    discountPrice: 24500,
+  },
+  {
+    id: 3,
+    imgUrl: squidUrl,
+    name: '손질 자숙 오징어 200g',
+    price: 11570,
+    discountRate: 30,
+    discountPrice: 8900,
+  },
+  {
+    id: 4,
+    imgUrl: meatUrl,
+    name: '냉동 우삼겹 1kg ',
+    price: 25900,
+    discountRate: 5,
+    discountPrice: 24500,
+  },
+  {
+    id: 5,
+    imgUrl: squidUrl,
+    name: '손질 자숙 오징어 200g',
+    price: 11570,
+    discountRate: 30,
+    discountPrice: 8900,
+  },
+  {
+    id: 6,
+    imgUrl: meatUrl,
+    name: '냉동 우삼겹 1kg ',
+    price: 25900,
+    discountRate: 5,
+    discountPrice: 24500,
+  },
+];
+export const productsDetail = [
+  {
+    id: 1,
+    imgUrl: squidUrl,
+    name: '손질 자숙 오징어 200g',
+    price: 11570,
+    discountRate: 30,
+    discountPrice: 8900,
     rank: '수산물 부문 1위',
     origin: '대한민국',
     review: 3281,
@@ -76,6 +126,7 @@ export const products = [
   },
 ];
 export const timeSaleProduct = {
+  id: 1,
   imgUrl: squidUrl,
   name: '손질 자숙 오징어 200g',
   price: 11570,
@@ -85,6 +136,7 @@ export const timeSaleProduct = {
 };
 export const saveRecipeProducts = [
   {
+    id: 1,
     imgUrl: squidUrl,
     name: '손질 자숙 오징어 200g',
     price: 11570,
@@ -92,6 +144,7 @@ export const saveRecipeProducts = [
     discountPrice: 8900,
   },
   {
+    id: 2,
     imgUrl: meatUrl,
     name: '냉동 우삼겹 1kg ',
     price: 25900,
@@ -99,6 +152,7 @@ export const saveRecipeProducts = [
     discountPrice: 24500,
   },
   {
+    id: 3,
     imgUrl: squidUrl,
     name: '손질 자숙 오징어 200g',
     price: 11570,
@@ -106,6 +160,7 @@ export const saveRecipeProducts = [
     discountPrice: 8900,
   },
   {
+    id: 4,
     imgUrl: meatUrl,
     name: '냉동 우삼겹 1kg ',
     price: 25900,
@@ -115,19 +170,19 @@ export const saveRecipeProducts = [
 ];
 export const recipes = [
   {
-    imgUrl: '',
+    imgUrl: meatUrl,
     name: '매콤 우삼겹 아끼소바',
   },
   {
-    imgUrl: '',
+    imgUrl: meatUrl,
     name: '우삼겹 부타동',
   },
   {
-    imgUrl: '',
+    imgUrl: meatUrl,
     name: '매콤 우삼겹 아끼소바',
   },
   {
-    imgUrl: '',
+    imgUrl: meatUrl,
     name: '우삼겹 부타동',
   },
 ];

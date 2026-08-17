@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 
 import styled from 'styled-components';
 
@@ -8,7 +8,7 @@ import HeartEmpty from '@/assets/market/heartEmptyIcon.svg';
 import HeartFull from '@/assets/market/heartFullIcon.svg';
 import CartIconUrl from '@/assets/market/shoppingCartIcon_gray.svg';
 import { recipes } from '@/constants/dummyMarket';
-import { products } from '@/constants/dummyMarket';
+import { productsDetail } from '@/constants/dummyMarket';
 
 const TABS = ['상품설명', '상세정보', '후기'];
 
@@ -16,13 +16,14 @@ export default function MarketDetail() {
   const { productId } = useParams();
   const [isSelect, setIsSelect] = useState('상품설명');
   // productId와 일치하는 상품 찾기 (숫자 변환 처리)
-  const targetProduct = products.find((p) => p.id === Number(productId)) || products[0];
+  const targetProduct = productsDetail.find((p) => p.id === Number(productId)) || products[0];
   const [productData, setProductData] = useState(targetProduct);
+  const navigate = useNavigate();
 
   return (
     <Contents>
       <Header>
-        <BackButton>
+        <BackButton onClick={() => navigate(-1)}>
           <img src={BackIconUrl} />
         </BackButton>
         <ProductHeaderName>{productData.name}</ProductHeaderName>
@@ -40,14 +41,20 @@ export default function MarketDetail() {
         <InfoHead>
           <RankingBox>{productData.rank}</RankingBox>
           {productData.isSave ? (
-            <img src={HeartFull} onClick={() => setProductData((prev)=>({ ...prev, isSave: false }))} />
+            <img
+              src={HeartFull}
+              onClick={() => setProductData((prev) => ({ ...prev, isSave: false }))}
+            />
           ) : (
-            <img src={HeartEmpty} onClick={() => setProductData((prev)=>({ ...prev, isSave: true }))} />
+            <img
+              src={HeartEmpty}
+              onClick={() => setProductData((prev) => ({ ...prev, isSave: true }))}
+            />
           )}
         </InfoHead>
         <NameAndReview>
           <ProductName>{productData.name}</ProductName>
-          <Review>후기 {productData.review?.toLocaleString()}건</Review>
+          <Review onClick={()=>setIsSelect("후기")}>후기 {productData.review?.toLocaleString()}건</Review>
         </NameAndReview>
         <MadeIn>원산지: {productData.origin}</MadeIn>
         <Price>{productData.price?.toLocaleString()}원</Price>
@@ -70,7 +77,7 @@ export default function MarketDetail() {
       <RecipesBox>
         {recipes.map((r) => (
           <RecipeCard>
-            <img src={r.imgUrl} />
+            <RecipeImg src={r.imgUrl} />
             <RecipeName>{r.name}</RecipeName>
           </RecipeCard>
         ))}
@@ -229,6 +236,9 @@ const Review = styled.div`
   text-decoration-thickness: auto;
   text-underline-offset: auto;
   text-underline-position: from-font;
+  &:hover{
+    cursor: pointer;
+  }
 `;
 const DeliveryBox = styled.div`
   display: flex;
@@ -285,6 +295,11 @@ const RecipeCard = styled.div`
   border-radius: 12px;
   background: var(--50, #f5f5f6);
   flex-shrink: 0;
+`;
+const RecipeImg = styled.img`
+  height: 144px;
+  width: 144px;
+  border-radius: 12px;
 `;
 const RecipeName = styled.div`
   position: absolute;

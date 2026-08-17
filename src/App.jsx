@@ -38,7 +38,7 @@ function App() {
         <Route path="/cooking/:mealId/step" element={<HomeCookingStep />} />
         <Route path="/cooking/:mealId/complete" element={<CookingComplete />} />
         <Route path="/cooking/:mealId/review" element={<CookingReview />} />
-        <Route path="/market/detail/:productId" element={<MarketDetail />} />
+        <Route path="/market/product/:productId" element={<MarketDetail />} />
       </Routes>
     </BrowserRouter>
   );

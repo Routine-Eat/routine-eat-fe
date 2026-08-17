@@ -3,9 +3,9 @@ import { useState } from 'react';
 import styled from 'styled-components';
 
 import searchIconUrl from '@/assets/market/searchIcon.svg';
-import { products, timeSaleProduct, saveRecipeProducts } from '@/constants/dummyMarket';
-import TimeSaleProduct from '@/pages/market/TimeSaleProduct';
+import { products, saveRecipeProducts, timeSaleProduct } from '@/constants/dummyMarket';
 import Product from '@/pages/market/Product';
+import TimeSaleProduct from '@/pages/market/TimeSaleProduct';
 
 const TABS = ['추천', '베스트', '단독', '세일'];
 
@@ -34,7 +34,7 @@ function Market() {
       <TimeSaleProduct {...timeSaleProduct} />
       <AdBanner>광고 배너</AdBanner>
       <ProductIntro>저장한 레시피 속 재료</ProductIntro>
-            <ProductsBar>
+      <ProductsBar>
         {saveRecipeProducts.map((p, index) => (
           <Product key={index} {...p} />
         ))}

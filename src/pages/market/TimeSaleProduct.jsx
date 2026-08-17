@@ -4,6 +4,7 @@ import styled from 'styled-components';
 
 import clockIconUrl from '@/assets/market/clockIcon.svg';
 import ShoppingCart from '@/pages/market/ShoppingCart';
+import { useNavigate } from 'react-router-dom';
 
 function getTimeLeft(targetDate) {
   if (!targetDate) return { hours: '00', minutes: '00', seconds: '00', isEnded: true };
@@ -21,8 +22,9 @@ function getTimeLeft(targetDate) {
   return { hours, minutes, seconds, isEnded: false };
 }
 
-export default function TimeSaleProduct({ imgUrl, name, price, discountRate, discountPrice, targetDate }) {
+export default function TimeSaleProduct({ id,imgUrl, name, price, discountRate, discountPrice, targetDate }) {
   const [timeLeft, setTimeLeft] = useState(() => getTimeLeft(targetDate));
+  const navigate=useNavigate();
   useEffect(() => {
     // 1초(1000ms)마다 남아있는 시간 재계산
     const timer = setInterval(() => {
@@ -40,7 +42,7 @@ export default function TimeSaleProduct({ imgUrl, name, price, discountRate, dis
   }, [targetDate]);
 
   return (
-    <Card>
+    <Card onClick={()=>navigate(`/market/product/${id}`)}>
       <Thumbnail src={imgUrl} />
       <InfoBox>
         <Time>

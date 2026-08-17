@@ -1,10 +1,12 @@
 import ShoppingCart from '@/pages/market/ShoppingCart';
+import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 
 
-export default function Product({ imgUrl, name, price, discountRate, discountPrice }) {
+export default function Product({ id,imgUrl, name, price, discountRate, discountPrice }) {
+  const navigate=useNavigate();
   return (
-    <Card>
+    <Card onClick={()=>navigate(`/market/product/${id}`)}>
       <Thumbnail src={imgUrl} />
       <Name>{name}</Name>
       <Price>{price.toLocaleString()}원</Price>

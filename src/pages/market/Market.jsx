@@ -4,8 +4,8 @@ import styled from 'styled-components';
 
 import searchIconUrl from '@/assets/market/searchIcon.svg';
 import { products, timeSaleProduct, saveRecipeProducts } from '@/constants/dummyMarket';
-import { Product } from '@/pages/market/Product';
-import { TimeSaleProduct } from '@/pages/market/TimeSaleProduct';
+import TimeSaleProduct from '@/pages/market/TimeSaleProduct';
+import Product from '@/pages/market/Product';
 
 const TABS = ['추천', '베스트', '단독', '세일'];
 

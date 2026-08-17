@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 import CartIconUrl from "@/assets/market/shoppingCartIcon.svg"
 
-export function ShoppingCart({top,left}) {
+export default function ShoppingCart({top,left}) {
     return(
         <Circle $top={top} $left={left}>
             <CartIcon src={CartIconUrl}/>

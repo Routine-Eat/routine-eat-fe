@@ -14,6 +14,7 @@ import HomeCooking from "./pages/home/HomeCooking";
 import HomeCookingStep from "./pages/home/HomeCookingStep";
 import CookingComplete from "./pages/home/CookingComplete";
 import CookingReview from "./pages/home/CookingReview";
+import MarketDetail from '@/pages/market/MarketDetail';
 
 
 function App() {
@@ -37,6 +38,7 @@ function App() {
         <Route path="/cooking/:mealId/step" element={<HomeCookingStep />} />
         <Route path="/cooking/:mealId/complete" element={<CookingComplete />} />
         <Route path="/cooking/:mealId/review" element={<CookingReview />} />
+        <Route path="/market/detail/:productId" element={<MarketDetail />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,8 +1,8 @@
+import ShoppingCart from '@/pages/market/ShoppingCart';
 import styled from 'styled-components';
 
-import { ShoppingCart } from '@/pages/market/ShoppingCart';
 
-export function Product({ imgUrl, name, price, discountRate, discountPrice }) {
+export default function Product({ imgUrl, name, price, discountRate, discountPrice }) {
   return (
     <Card>
       <Thumbnail src={imgUrl} />

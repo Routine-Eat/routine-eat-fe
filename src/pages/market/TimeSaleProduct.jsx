@@ -3,7 +3,7 @@ import { useEffect, useState } from 'react';
 import styled from 'styled-components';
 
 import clockIconUrl from '@/assets/market/clockIcon.svg';
-import { ShoppingCart } from '@/pages/market/ShoppingCart';
+import ShoppingCart from '@/pages/market/ShoppingCart';
 
 function getTimeLeft(targetDate) {
   if (!targetDate) return { hours: '00', minutes: '00', seconds: '00', isEnded: true };
@@ -21,7 +21,7 @@ function getTimeLeft(targetDate) {
   return { hours, minutes, seconds, isEnded: false };
 }
 
-export function TimeSaleProduct({ imgUrl, name, price, discountRate, discountPrice, targetDate }) {
+export default function TimeSaleProduct({ imgUrl, name, price, discountRate, discountPrice, targetDate }) {
   const [timeLeft, setTimeLeft] = useState(() => getTimeLeft(targetDate));
   useEffect(() => {
     // 1초(1000ms)마다 남아있는 시간 재계산

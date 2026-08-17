@@ -1,12 +1,8 @@
 import styled from 'styled-components';
 
-import backButtonImg from '../../assets/common/back-button.png';
+import backChevron from '../../assets/common/back-chevron.svg';
 
-/* 피그마 1034:2764 — 뒤로가기 버튼 48×48 */
-const BTN_SIZE = 48;
-/* PNG(88px) 안 원형이 ~65% → Figma 48px 원형에 맞춘 표시 크기 */
-const IMG_SIZE = 74;
-
+/** 뒤로가기 — 피그마 1863:3788, 48×48 원형 */
 function BackButton({ className, disabled, onClick, ...props }) {
   return (
     <Btn
@@ -17,25 +13,28 @@ function BackButton({ className, disabled, onClick, ...props }) {
       aria-label="뒤로가기"
       {...props}
     >
-      <BtnImg src={backButtonImg} alt="" />
+      <Icon src={backChevron} alt="" />
     </Btn>
   );
 }
 
-/* 클릭 영역 — 가로·세로 48 (피그마 1049:2943) */
+/* —— 원형 버튼: 48×48 흰 원 + 그림자 —— */
 const Btn = styled.button`
-  position: relative;
-  box-sizing: border-box;
-  width: ${BTN_SIZE}px;
-  height: ${BTN_SIZE}px;
-  min-width: ${BTN_SIZE}px;
-  min-height: ${BTN_SIZE}px;
-  border: none;
-  background: transparent;
-  padding: 0;
-  overflow: hidden;
-  cursor: pointer;
+  display: flex;
   flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
+  min-height: 48px;
+  padding: 0;
+  border: none;
+  border-radius: 1000px;
+  background: #fff;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
 
   &:disabled {
     opacity: 0.3;
@@ -43,15 +42,11 @@ const Btn = styled.button`
   }
 `;
 
-/* PNG 여백 제거 후 원형 버튼이 48px로 보이도록 확대·중앙 정렬 */
-const BtnImg = styled.img`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: ${IMG_SIZE}px;
-  height: ${IMG_SIZE}px;
-  transform: translate(-50%, -50%);
-  object-fit: cover;
+/* —— 화살표 아이콘: 24×24 정사각 —— */
+const Icon = styled.img`
+  display: block;
+  width: 24px;
+  height: 24px;
   pointer-events: none;
 `;
 

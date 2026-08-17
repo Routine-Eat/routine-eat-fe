@@ -101,7 +101,7 @@ const TypeButton = styled.button`
   background-color: white;
   border: none;
   padding: 1px;
-  color: ${({ $isSelect }) => ($isSelect ? '#ff6127' : '#8B8B8B')};
+  color: ${({ $isSelect }) => ($isSelect ? '#72D472' : '#8B8B8B')};
   font-family: 'Wanted Sans Variable';
   font-size: 15px;
   font-style: normal;

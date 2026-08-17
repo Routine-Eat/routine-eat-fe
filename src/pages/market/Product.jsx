@@ -60,7 +60,7 @@ const DiscountBar = styled.div`
   align-items: center;
 `;
 const DiscountRate = styled.div`
-  color: #ff6e42;
+  color: #72D472;
   font-family: 'Wanted Sans Variable';
   font-size: 19px;
   font-style: normal;

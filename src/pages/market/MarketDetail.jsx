@@ -138,7 +138,7 @@ const ButtonBar = styled.div`
   gap: 5px;
 `;
 const InfoTypeButton = styled.button`
-  color: ${({ $isSelect }) => ($isSelect ? '#ff6127' : '#8B8B8B')};
+  color: ${({ $isSelect }) => ($isSelect ? '#72D472' : '#8B8B8B')};
   font-family: 'Wanted Sans Variable';
   font-size: 14px;
   font-style: normal;
@@ -149,7 +149,7 @@ const InfoTypeButton = styled.button`
   justify-content: center;
   align-items: center;
   border: none;
-  border-bottom: ${({ $isSelect }) => ($isSelect ? '2px solid #FF6127' : 'none')};
+  border-bottom: ${({ $isSelect }) => ($isSelect ? '2px solid #72D472' : 'none')};
   background-color: white;
 `;
 const ProductImg = styled.img`
@@ -200,7 +200,7 @@ const DiscountBar = styled.div`
   align-items: center;
 `;
 const DiscountRate = styled.div`
-  color: #ff6e42;
+  color: #72D472;
   font-family: 'Wanted Sans Variable';
   font-size: 24px;
   font-style: normal;

@@ -4,6 +4,8 @@ import micIcon from "../../assets/icons/mic2.svg";
 import BackButton from "../../common/button/BackButton";
 import checkCircleIcon from "../../assets/icons/checkcircle.svg";
 import { DUMMY_COOKING_STEPS } from "../../constants/home/DummyHome.js";
+import { useUserStore } from "../../hooks/useUserStore";
+import { postStartCooking, getCurrentCookingRecord, getCurrentCookingStep, postNextCookingStep, postPrevCookingStep } from "../../api/cookingRecord";
 import styled, { keyframes } from "styled-components";
 import chevronNavIcon from "../../assets/icons/chevronNavIcon.svg";
 import forkKnifeImg from "../../assets/images/forkKnife.svg";
@@ -745,6 +747,9 @@ const CompleteActionButton = styled.button`
 export default function HomeCookingStep() {
   const navigate = useNavigate();
   const { mealId } = useParams();
+  const userLoginNumber = useUserStore((state) => state.userLoginNumber);
+  const [cookingRecordId, setCookingRecordId] = useState(null);
+  const [cookingStepData, setCookingStepData] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [direction, setDirection] = useState("next");
     const [detailStepKey, setDetailStepKey] = useState(null);
@@ -779,9 +784,9 @@ export default function HomeCookingStep() {
     if (localStorage.getItem(VOICE_TUTORIAL_KEY) !== "true") return "voice";
     return null;
   });
-  const currentStep = DUMMY_COOKING_STEPS[currentStepIndex];
-  const isFirstStep = currentStepIndex === 0;
-  const isLastStep = currentStepIndex === DUMMY_COOKING_STEPS.length - 1;
+  const currentStep = cookingStepData?.currentCookingStep;
+ const isFirstStep = !cookingStepData?.prevCookingStepLevel;
+ const isLastStep = !!cookingStepData && !cookingStepData?.nextCookingStepLevel;
 
   const handleMicPressStart = () => {
     longPressFiredRef.current = false;
@@ -896,7 +901,9 @@ export default function HomeCookingStep() {
     if (isFirstStep) {
       navigate(-1);
     } else {
-      setCurrentStepIndex((prev) => prev - 1);
+           postPrevCookingStep(cookingRecordId, userLoginNumber)
+       .then((res) => setCookingStepData(res.data))
+       .catch((err) => console.error("이전 단계 이동 실패:", err));
     }
   };
 
@@ -905,7 +912,9 @@ export default function HomeCookingStep() {
     if (isLastStep) {
       navigate(`/cooking/${mealId}/complete`);
     } else {
-      setCurrentStepIndex((prev) => prev + 1);
+           postNextCookingStep(cookingRecordId, userLoginNumber)
+       .then((res) => setCookingStepData(res.data))
+       .catch((err) => console.error("다음 단계 이동 실패:", err));
     }
   };
 
@@ -1006,18 +1015,39 @@ export default function HomeCookingStep() {
     }
   };
 
-  const totalSteps = DUMMY_COOKING_STEPS.length;
-  let windowStart = currentStepIndex - 1;
-  if (windowStart < 0) windowStart = 0;
-  if (windowStart + 3 > totalSteps) windowStart = Math.max(0, totalSteps - 3);
-  const windowEnd = Math.min(windowStart + 3, totalSteps);
-  const visibleIndices = [];
-  for (let i = windowStart; i < windowEnd; i++) visibleIndices.push(i);
-
-  const pagesBefore = currentStepIndex;
-  const pagesAfter = totalSteps - 1 - currentStepIndex;
-  const showUpHint = pagesBefore >= 2;
-  const showDownHint = pagesAfter >= 2;
+  const totalSteps = cookingStepData?.cookingStepCount ?? 0;
+  const startedRef = useRef(false);
+  
+  useEffect(() => {
+  if (!userLoginNumber || !mealId) return;
+     if (startedRef.current) return;
+   startedRef.current = true;
+  getCurrentCookingRecord(userLoginNumber)
+    .then((res) => {
+      // 진행 중인 세션이 있음 → 그 단계를 이어서 조회
+      const existingId = res.data.cookingRecordId;
+      return getCurrentCookingStep(existingId, userLoginNumber).then((stepRes) => {
+        console.log("진행 중인 요리 이어서 조회:", stepRes.data);
+        setCookingRecordId(existingId);
+        setCookingStepData(stepRes.data);
+      });
+    })
+    .catch((err) => {
+      // 진행 중인 세션이 없음(404) → 새로 시작
+      if (err.response?.status !== 404) {
+        console.error("진행 중 세션 조회 실패:", err);
+      }
+      postStartCooking(userLoginNumber, { recipeId: Number(mealId), servings: 2 })
+        .then((res) => {
+          console.log("요리 시작 응답:", res.data);
+          setCookingRecordId(res.data.cookingRecordId);
+          setCookingStepData(res.data);
+        })
+        .catch((startErr) => console.error("요리 시작 실패:", startErr));
+    });
+ }, [userLoginNumber, mealId]);
+   const showUpHint = !isFirstStep;
+ const showDownHint = !isLastStep;
 
   return (
     <PageContainer
@@ -1049,116 +1079,30 @@ export default function HomeCookingStep() {
       )}
 
       <CardStack $hasUpHint={showUpHint}>
-        {visibleIndices.map((idx) => {
-          if (idx === currentStepIndex) {
-            const step = DUMMY_COOKING_STEPS[idx];
-
-                        if (detailStepKey === idx && step.squidDetail) {
-              return (
-                <StepCard key={idx} $direction={direction}>
-                  <div className="detail-label">{step.link1}</div>
-                  <button
-                    className="detail-back"
-                    onClick={() => setDetailStepKey(null)}
-                  >
-                    <img src={chevronLeftSmallIcon} alt="" />
-                    레시피로 돌아가기
-                  </button>
-                  {step.squidDetail.sections.map((sec, i) => (
-                    <div className="detail-section" key={i}>
-                      <p className="detail-title">{sec.title}</p>
-                      <p className="detail-body">
-                        {sec.segments.map((seg, j) =>
-                          seg.bold ? (
-                            <strong key={j}>{seg.text}</strong>
-                          ) : (
-                            <span key={j}>{seg.text}</span>
-                          )
-                        )}
-                      </p>
-                      {sec.note && <p className="detail-note">{sec.note}</p>}
-                    </div>
-                  ))}
-                  <button
-                    className="example-toggle"
-                    onClick={() => setIsExampleImageOpen((prev) => !prev)}
-                  >
-                    <img
-                      className={`toggle-icon ${isExampleImageOpen ? "open" : ""}`}
-                      src={chevronToggleSmallIcon}
-                      alt=""
-                    />
-                    예시 이미지 보기
-                  </button>
-                  {isExampleImageOpen && (
-                    <img
-                      className="example-image"
-                      src={squidExampleImg}
-                      alt="오징어 써는 법 예시"
-                    />
-                  )}
-                </StepCard>
-              );
-            }
-            return (
-              <StepCard key={idx} $direction={direction}>
-                <div className="step-count">{idx + 1}/{totalSteps}</div>
-                <div className="title-row">
-                  <img className="check-icon" src={checkCircleIcon} alt="" />
-                  <span className="title">{step.title}</span>
-                </div>
-                <div className="body">
-                                   {step.bodySegments ? (
-                    <p className="segmented" style={{ margin: 0 }}>
-                      {step.bodySegments.map((seg, i) =>
-                        seg.bold ? (
-                          <strong key={i}>{seg.text}</strong>
-                        ) : (
-                          <span key={i}>{seg.text}</span>
-                        )
-                      )}
-                    </p>
-                  ) : (
-                    step.body.map((line, i) => (
-                      <p key={i} style={{ margin: 0 }}>{line}</p>
-                    ))
-                  )}
-                </div>
-                {step.tip && <p className="tip">{step.tip}</p>}
-                {step.link1 && (
-                  step.squidDetail ? (
-                    <button
-                      className="link"
-                      onClick={() => {
-                        setDetailStepKey(idx);
-                        setIsExampleImageOpen(false);
-                      }}
-                    >
-                      {step.link1}
-                    </button>
-                  ) : (
-                    <a className="link" href="#!">{step.link1}</a>
-                  )
-                )}
-                {step.body2 && <p className="body" style={{ marginTop: 20 }}>{step.body2}</p>}
-                {step.link2 && <a className="link" href="#!">{step.link2}</a>}
-                <div className="ingredient-tags">
-                  {step.ingredients.map((tag) => (
-                    <span className="tag" key={tag}>{tag}</span>
-                  ))}
-                </div>
-              </StepCard>
-            );
-          }
-          const distance = Math.abs(idx - currentStepIndex);
-          return (
-            <PreviewCard key={idx} $level={distance === 1 ? 1 : 2}>
-              <span className="count">{idx + 1}/{totalSteps}</span>
-              <span className="label">{DUMMY_COOKING_STEPS[idx].title}</span>
-            </PreviewCard>
-          );
-        })}
-        {isLastStep && (
+               {currentStep && (
+         <StepCard $direction={direction}>
+           <div className="step-count">{currentStep.level}/{totalSteps}</div>
+           <div className="title-row">
+             <img className="check-icon" src={checkCircleIcon} alt="" />
+             <span className="title">{currentStep.title}</span>
+           </div>
+           <div className="body">
+             <p style={{ margin: 0 }}>{currentStep.content}</p>
+           </div>
+           {currentStep.subContent && <p className="tip">{currentStep.subContent}</p>}
+           {currentStep.tips?.length > 0 && (
+             <p className="tip">{currentStep.tips[0].cookingTipTitle}: {currentStep.tips[0].cookingTipContent}</p>
+           )}
+           <div className="ingredient-tags">
+             {currentStep.foodIngredients?.map((ing) => (
+               <span className="tag" key={ing.cookingRecordFoodIngredientId}>
+                 {ing.name} {ing.primaryAmountValue}{ing.primaryUnit}
+               </span>
+             ))}
+           </div>
+         </StepCard>
+       )}
+        {cookingStepData && isLastStep && (
           <CompleteButton onClick={() => setIsCompleteModalOpen(true)}>
             <span className="left">
               <img className="icon" src={forkKnifeImg} alt="" />

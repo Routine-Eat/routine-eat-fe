@@ -35,15 +35,11 @@ function OnboardingGate() {
       navigate('/login', { replace: true });
       return;
     }
-    if (userSkillLevel === null && pathname !== '/onboarding') {
-      navigate('/onboarding', { replace: true });
-      return;
-    }
+    
   }, [navigate, pathname, userSkillLevel]);
 
   return null;
 }
-import MarketDetail from '@/pages/market/MarketDetail';
 
 
 function App() {

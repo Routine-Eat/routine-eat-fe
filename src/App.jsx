@@ -43,6 +43,8 @@ function OnboardingGate() {
 
   return null;
 }
+import MarketDetail from '@/pages/market/MarketDetail';
+
 
 function App() {
   return (
@@ -63,11 +65,11 @@ function App() {
           <Route path="/shopping-list" element={<ShoppingList />} />
           <Route path="/market" element={<Market />} />
           <Route path="/mypage" element={<Mypage />} />
+          <Route path="/diet-start/:mealId" element={<HomeDietStart />} />
         </Route>
 
         {/* 홈 → 요리 진행 관련 페이지 */}
         <Route path="/menu/:mealId" element={<HomeMenu />} />
-        <Route path="/diet-start/:mealId" element={<HomeDietStart />} />
         <Route path="/cooking/:mealId" element={<HomeCooking />} />
         <Route path="/cooking/:mealId/step" element={<HomeCookingStep />} />
         <Route path="/cooking/:mealId/complete" element={<CookingComplete />} />

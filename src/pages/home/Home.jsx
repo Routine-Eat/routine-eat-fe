@@ -1,4 +1,4 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import styled from "styled-components";
@@ -14,6 +14,7 @@ import fireIcon from "../../assets/icons/fire.svg";
 import cometIcon from "../../assets/icons/comet.svg";
 import checkBadgeIcon from "../../assets/icons/checkBadge.svg";
 import chevronDarkGrayIcon from "../../assets/icons/chevronDarkGray.svg";
+import { getAiRecommendedRecipe } from "../../api/home";
 
 
 const ENERGY_OPTIONS = ["의욕 없음", "보통", "의욕 넘침"];
@@ -72,12 +73,15 @@ text-align: center;
 const RecipeCardWrap = styled.div`
 margin: 28px auto 0;
 width: 216px;
-height: 288px;
+min-height: 288px;
 border-radius: 30px;
 position: relative;
 overflow: hidden;
 background: linear-gradient(148deg, #fff6b4 14%, #fffbe1 44%, #ffeca0 57%, #fff6b4 80%);
 box-shadow: 0px 0px 20px 0px rgba(72, 28, 0, 0.15), 0px 0px 10px 0px rgba(72, 28, 0, 0.04);
+display: flex;
+flex-direction: column;
+padding-bottom: 18px;
 
 &::after{
 content: "";
@@ -90,11 +94,9 @@ pointer-events: none;
 `;
 
 const RecipeThumbBox = styled.div`
-position: absolute;
-left: 12px;
-right: 12px;
-top: 11px;
+margin: 11px 12px 0;
 height: 153px;
+flex-shrink: 0;
 border-radius: 26px;
 background: white;
 box-shadow: 0px 0px 5px 0px rgba(107, 56, 0, 0.08), 0px 0px 40px 0px rgba(97, 51, 0, 0.05);
@@ -113,11 +115,7 @@ transform: scale(1.);
 `;
 
 const RecipeName = styled.p`
-position: absolute;
-left: 18px;
-top: 180px;
-margin: 0;
-width: 160px;
+margin: 12px 18px 0;
 color: #481c00;
 font-size: 20px;
 font-family: Wanted Sans Variable;
@@ -126,10 +124,7 @@ letter-spacing: -0.4px;
 `;
 
 const RecipeDesc = styled.div`
-position: absolute;
-left: 18px;
-top: 212px;
-width: 190px;
+margin: 6px 18px 0;
 color: #805200;
 font-size: 12px;
 font-family: Wanted Sans Variable;
@@ -799,7 +794,13 @@ export default function Home() {
     const carouselStartXRef = useRef(0);
   const carouselDraggingRef = useRef(false);
 
-  const recommendedDish = DUMMY_DISHES[0];
+    const [recommendedDish, setRecommendedDish] = useState(null);
+
+  useEffect(() => {
+    getAiRecommendedRecipe(1) // TODO: 로그인 붙으면 실제 userId로 교체
+      .then(setRecommendedDish)
+      .catch((err) => console.error("추천 레시피 조회 실패:", err));
+  }, []);
 
     const allIngredients = DUMMY_INGREDIENT_CATEGORIES.flatMap((c) => c.items);
   const selectedIngredientObjects = selectedIngredients
@@ -932,17 +933,21 @@ export default function Home() {
         <>
           <Title>오늘의 추천 레시피예요</Title>
           <Subtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</Subtitle>
-
+          
+{recommendedDish && (
           <RecipeCardWrap>
             <RecipeThumbBox>
-              <img src={recipeImg} alt={recommendedDish.name} />
+                            <img
+                src={recommendedDish.menuThumbnailUrl || recipeImg}
+                alt={recommendedDish.menuName}
+              />
             </RecipeThumbBox>
-            <RecipeName>{recommendedDish.name}</RecipeName>
+            <RecipeName>{recommendedDish.menuName}</RecipeName>
             <RecipeDesc>
-              <p>15분 안에 간단하게 요리할 수 있어요.</p>
-              <p>난이도가 낮아요. 있는 재료로만 요리할 수 있어요.</p>
+              <p>{recommendedDish.reason}</p>
             </RecipeDesc>
           </RecipeCardWrap>
+)}
         </>
       )}
 

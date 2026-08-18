@@ -1,6 +1,10 @@
 import { useEffect } from 'react';
 import { BrowserRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
+import { useUserStore } from '@/hooks/useUserStore';
+import Login from '@/pages/login/Login';
+import MarketDetail from '@/pages/market/MarketDetail';
+
 import Layout from './layout/Layout';
 import Feed from './pages/feed/Feed';
 import CookingComplete from './pages/home/CookingComplete';
@@ -18,35 +22,27 @@ import Onboarding from './pages/onboarding/Onboarding';
 import RecipeDetail from './pages/recipe/RecipeDetail';
 import SimilarRecipe from './pages/recipe/SimilarRecipe';
 import ShoppingList from './pages/shopping/ShoppingList';
-import { isOnboardingComplete } from './utils/onboarding';
 
 /** 온보딩은 앱 최초 1회만 — 미완료면 온보딩, 완료 후 /onboarding 재진입은 홈으로 */
 function OnboardingGate() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
+  const userId = useUserStore((state) => state.userId);
+  const userSkillLevel = useUserStore((state) => state.userSkillLevel);
 
   useEffect(() => {
-    const done = isOnboardingComplete();
-
-    if (!done && pathname !== '/onboarding') {
+    if (userId == 0 || userId == null) {
+      navigate('/login', { replace: true });
+      return;
+    }
+    if (userSkillLevel === null && pathname !== '/onboarding') {
       navigate('/onboarding', { replace: true });
       return;
     }
-
-    if (done && pathname === '/onboarding') {
-      navigate('/', { replace: true });
-    }
-  }, [navigate, pathname]);
+  }, [navigate, pathname, userSkillLevel]);
 
   return null;
 }
-import HomeDietStart from './pages/home/HomeDietStart';
-import HomeCooking from "./pages/home/HomeCooking";
-import HomeCookingStep from "./pages/home/HomeCookingStep";
-import CookingComplete from "./pages/home/CookingComplete";
-import CookingReview from "./pages/home/CookingReview";
-import MarketDetail from '@/pages/market/MarketDetail';
-
 
 function App() {
   return (
@@ -78,6 +74,7 @@ function App() {
         <Route path="/cooking/:mealId/review" element={<CookingReview />} />
         <Route path="/cooking/:mealId/review/ingredients" element={<CookingIngredientCheck />} />
         <Route path="/market/product/:productId" element={<MarketDetail />} />
+        <Route path="/login" element={<Login />} />
       </Routes>
     </BrowserRouter>
   );

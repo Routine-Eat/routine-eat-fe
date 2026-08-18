@@ -1,10 +1,41 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 import styled from 'styled-components';
 
+import { getUserByLoginNumber, postCreateUser } from '@/api/userApi';
+import { useUserStore } from '@/hooks/useUserStore';
+
 export default function Login() {
   const [password, setPassword] = useState('');
+  const userLogin = useUserStore((state) => state.login);
+  const navigate = useNavigate();
 
+  const onLogin = async (password) => {
+    if (password.length < 1) {
+      console.log('비밀번호를 입력해주세요.');
+      return;
+    }
+    let userData;
+    try {
+      userData = (await getUserByLoginNumber(password)).data;
+      userLogin(userData);
+      if (userData.userSkillLevel == null) {
+        navigate('/onboarding');
+      } else {
+        navigate('/');
+      }
+    } catch (error) {
+      console.log('로그인 실패하여 새로운 사용자 생성');
+      try {
+        userData = (await postCreateUser(password)).data;
+        userLogin(userData);
+        navigate('/onboarding');
+      } catch (error) {
+        console.log('새로운 사용자 생성 실패');
+      }
+    }
+  };
   return (
     <Contents>
       <Logo>Routine-Eat</Logo>
@@ -27,8 +58,12 @@ export default function Login() {
         </InputGroup>
       </PwBox>
       <BtnBox>
-        <ForgetBtn>비밀 번호를 잊어버렸어요</ForgetBtn>
-        <LoginBtn>로그인</LoginBtn>
+        <Explanation>
+            <p>
+          심사용 로그인은 <span style={{ fontWeight: 700 }}>0825</span>를 입력해주세요
+          </p>
+        </Explanation>
+        <LoginBtn onClick={() => onLogin(password)}>로그인</LoginBtn>
       </BtnBox>
     </Contents>
   );
@@ -39,7 +74,7 @@ const Contents = styled.div`
   flex-direction: column;
   height: 100%;
   align-items: center;
-  padding: 133px 0 200px 0;
+  padding: 133px 23px 200px 23px;
   justify-content: space-between;
 `;
 const Logo = styled.div`
@@ -70,28 +105,27 @@ const PwInput = styled.div`
   border-radius: 50%;
   border: ${({ $isInput }) => ($isInput ? '2px solid #FF9B44' : '2px solid #d9d9da')};
 `;
-const ForgetBtn = styled.button`
-  display: inline-flex;
-  height: 40px;
-  padding: 12px;
+const Explanation = styled.div`
+  display: flex;
+  width: 100%;
+  height: 52px;
   justify-content: center;
   align-items: center;
-  gap: 12px;
-  color: var(--400, #727272);
-  text-align: center;
+  gap: 10px;
+  border-radius: 12px;
+  border: 1px solid var(--100, #d9d9da);
+  background: #fff;
+  color: var(--500, #5a5a5b);
   font-family: 'Wanted Sans Variable';
-  font-size: 15px;
+  font-size: 16px;
   font-style: normal;
-  font-weight: 600;
-  line-height: 130%; /* 19.5px */
-  letter-spacing: -0.15px;
-  border-radius: 10px;
-  background: var(--50, #f5f5f6);
-  border: none;
+  font-weight: 500;
+  line-height: 130%; /* 20.8px */
+  letter-spacing: -0.16px;
 `;
 const LoginBtn = styled.button`
   display: flex;
-  width: 320px;
+  width: 100%;
   height: 52px;
   justify-content: center;
   align-items: center;
@@ -103,7 +137,7 @@ const LoginBtn = styled.button`
   font-family: 'Wanted Sans Variable';
   font-size: 18px;
   font-style: normal;
-  font-weight: 600;
+  font-weight: 500;
   border: none;
 `;
 const PwBox = styled.div`
@@ -114,9 +148,10 @@ const PwBox = styled.div`
 `;
 const BtnBox = styled.div`
   display: flex;
+  width: 100%;
   flex-direction: column;
   align-items: center;
-  gap: 40px;
+  gap: 12px;
 `;
 const InputGroup = styled.div`
   position: relative;

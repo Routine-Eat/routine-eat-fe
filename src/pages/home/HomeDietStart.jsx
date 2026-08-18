@@ -1,9 +1,12 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
 import { DUMMY_DIET_PROGRESS, THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
 import muscleIcon from "../../assets/icons/muscle.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
+import chefIcon from "../../assets/icons/chef.svg";
+import checkCircleWhiteIcon from "../../assets/icons/checkCircleWhite.svg";
+import forkKnifeIcon from "../../assets/images/forkKnife.svg";
 
 const PageContainer = styled.div`
   background: #fffefd;
@@ -58,7 +61,7 @@ const PageSubtitle = styled.p`
 `;
 
 const MealTabs = styled.div`
-  margin-top: 32px;
+  margin-top: 12px;
   display: flex;
   gap: 8px;
 `;
@@ -88,7 +91,7 @@ const RecipeListHeading = styled.p`
 `;
 
 const EmptyNotice = styled.p`
-  margin: 8px 0 0;
+  margin: 20px 0 0;
   color: #444;
   font-size: 16px;
   font-family: Wanted Sans Variable;
@@ -97,7 +100,7 @@ const EmptyNotice = styled.p`
 `;
 
 const MealList = styled.div`
-  margin-top: 16px;
+  margin-top: 12px;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -111,8 +114,11 @@ const MealRow = styled.div`
   display: flex;
   align-items: center;
   gap: 15px;
-  background: ${({ $isNext }) => ($isNext ? "#d6f3a1" : "#ffffff")};
-  border: ${({ $isNext }) => ($isNext ? "2px solid #c2ee73" : "none")};
+  cursor: ${({ $completed }) => ($completed ? "default" : "pointer")};
+  background: ${({ $completed, $isNext }) =>
+   $completed ? "#e9e9e9" : $isNext ? "#d6f3a1" : "#ffffff"};
+  border: ${({ $completed, $isNext }) =>
+    !$completed && $isNext ? "2px solid #c2ee73" : "none"}; 
   box-shadow: 0px 0px 8px 0px rgba(3, 3, 3, 0.05), 0px 0px 30px 0px rgba(3, 3, 3, 0.05);
 
   .thumb-box {
@@ -151,7 +157,8 @@ const MealRow = styled.div`
   }
 
   .meal-status {
-    color: ${({ $isNext }) => ($isNext ? "#006000" : "#bebebf")};
+      color: ${({ $completed, $isNext }) =>
+      $completed ? "#8b8b8b" : $isNext ? "#006000" : "#bebebf"};
     font-size: 15px;
     font-family: Wanted Sans Variable;
     font-weight: 500;
@@ -160,7 +167,8 @@ const MealRow = styled.div`
 
   .detail-link {
     flex-shrink: 0;
-    color: ${({ $isNext }) => ($isNext ? "#5a5a5b" : "#8b8b8b")};
+        color: ${({ $completed, $isNext }) =>
+      $completed ? "#8b8b8b" : $isNext ? "#5a5a5b" : "#8b8b8b"};
     font-size: 14px;
     font-family: Wanted Sans Variable;
     font-weight: 500;
@@ -226,6 +234,133 @@ const MissingActionButton = styled.button`
   cursor: pointer;
 `;
 
+const BoughtModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 3, 3, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+`;
+
+const BoughtModalBox = styled.div`
+  width: 100%;
+  max-width: 312px;
+  background: white;
+  border: 0.5px solid #d9d9da;
+  border-radius: 22px;
+  padding: 24px 28px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+`;
+
+const BoughtIconBox = styled.div`
+  width: 40px;
+  height: 40px;
+
+  img {
+    width: 40px;
+    height: 40px;
+    display: block;
+  }
+`;
+
+const BoughtTextBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  text-align: center;
+`;
+
+const BoughtTitle = styled.p`
+  margin: 0;
+  color: #1a1a1a;
+  font-size: 18px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.18px;
+  line-height: 1.3;
+`;
+
+const BoughtDesc = styled.div`
+  color: #8b8b8b;
+  font-size: 14px;
+  font-family: Wanted Sans Variable;
+  font-weight: 500;
+  letter-spacing: -0.14px;
+  line-height: 1.3;
+
+  p {
+    margin: 0;
+  }
+`;
+
+const BoughtActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const BoughtActionButton = styled.button`
+  width: 130px;
+  height: 48px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.16px;
+  background: ${({ $variant }) => ($variant === "confirm" ? "#72d472" : "#f5f5f6")};
+  color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
+`;
+
+const toastFade = `
+  @keyframes toastFade {
+    0% { opacity: 0; transform: translate(-50%, 8px); }
+    10% { opacity: 1; transform: translate(-50%, 0); }
+    85% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, 8px); }
+  }
+`;
+
+const Toast = styled.div`
+  ${toastFade}
+  position: fixed;
+  left: 50%;
+  bottom: 120px;
+  transform: translate(-50%, 0);
+  z-index: 300;
+  background: #727272;
+  border-radius: 10px;
+  padding: 12px 16px 12px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toastFade 2s ease forwards;
+  pointer-events: none;
+  max-width: calc(100% - 48px);
+
+  img {
+    width: 24px;
+    height: 24px;
+    display: block;
+    flex-shrink: 0;
+  }
+
+  span {
+    color: white;
+    font-size: 14px;
+    font-family: Wanted Sans Variable;
+    font-weight: 600;
+    letter-spacing: -0.14px;
+  }
+`;
+
 export default function HomeDietStart() {
   const navigate = useNavigate();
   const { mealId } = useParams();
@@ -233,16 +368,43 @@ export default function HomeDietStart() {
   const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
   const meals = DUMMY_DIET_PROGRESS.slice(0, 3);
   const completedCount = meals.filter((m) => m.completed).length;
-  const nextMealId = meals.find((m) => !m.completed)?.id;
+  const [selectedMealId, setSelectedMealId] = useState(
+    () => meals.find((m) => !m.completed)?.id
+  );
   const missingIngredients = MISSING_INGREDIENTS;
+  const [isBoughtModalOpen, setIsBoughtModalOpen] = useState(false);
+  const [isToastVisible, setIsToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [isStopModalOpen, setIsStopModalOpen] = useState(false);
+
+  const showToast = (message) => {
+    setToastMessage(message);
+    setIsToastVisible(true);
+  };
 
   const handleAddToShoppingList = () => {
-    navigate("/shopping-list");
+    showToast("재료를 장보기 목록에 추가했어요");
+  };
+
+  useEffect(() => {
+    if (!isToastVisible) return;
+    const timer = setTimeout(() => setIsToastVisible(false), 2000);
+    return () => clearTimeout(timer);
+  }, [isToastVisible]);
+
+  const handleRegisterIngredients = () => {
+    setIsBoughtModalOpen(false);
+    showToast("재료를 등록했어요. 상세수량은 my에서 수정할 수 있어요.");
+  };
+
+  const handleStopDiet = () => {
+    setIsStopModalOpen(false);
+    navigate("/");
   };
 
   return (
     <PageContainer>
-      <StopLink onClick={() => navigate("/")}>식단 중단하기 &gt;</StopLink>
+      <StopLink onClick={() => setIsStopModalOpen(true)}>식단 중단하기 &gt;</StopLink>
 
       <IconBox>
         <img src={muscleIcon} alt="" />
@@ -251,11 +413,11 @@ export default function HomeDietStart() {
       <PageTitle>{theme.title}을 진행 중이에요</PageTitle>
       <PageSubtitle>레시피 선택 후 시작하기 버튼을 통해 시작해보세요!</PageSubtitle>
 
-           <EmptyNotice>
+      <EmptyNotice>
         {completedCount === 0
           ? "아직 진행한 레시피가 없네요!"
-        : `${completedCount}끼 챙겨먹기에 성공했어요!`}
-     </EmptyNotice>
+          : `${completedCount}끼 챙겨먹기에 성공했어요!`}
+      </EmptyNotice>
 
       <MealTabs>
         {meals.map((meal, idx) => (
@@ -266,25 +428,32 @@ export default function HomeDietStart() {
       </MealTabs>
 
       <RecipeListHeading>{meals.length}끼 레시피</RecipeListHeading>
-            <EmptyNotice>
-        {completedCount === 0
-          ? "아직 진행한 레시피가 없네요!"
-          : `${completedCount}끼 챙겨먹기에 성공했어!`}
-      </EmptyNotice>
 
       <MealList>
         {meals.map((meal) => (
-          <MealRow key={meal.id} $isNext={meal.id === nextMealId}>
+          <MealRow
+            key={meal.id}
+            $isNext={meal.id === selectedMealId}
+            $completed={meal.completed}
+            onClick={() => {
+              if (!meal.completed) setSelectedMealId(meal.id);
+            }}
+          >
             <div className="thumb-box">
               <img className="thumb" src={meal.image} alt={meal.name} />
             </div>
             <div className="info">
               <span className="meal-name">{meal.name}</span>
-              <span className="meal-status">{meal.completed ? "완료" : "미완료"}</span>
+              <span className="meal-status">
+                {meal.completed ? `${meal.status} 완료` : "미완료"}
+              </span>
             </div>
             <button
               className="detail-link"
-              onClick={() => navigate(`/recipes/${meal.id}`)}
+              onClick={(e) => {
+                e.stopPropagation();
+                navigate(`/recipes/${meal.id}`);
+              }}
             >
               상세보기
             </button>
@@ -301,7 +470,7 @@ export default function HomeDietStart() {
             ))}
           </ChipRow>
           <MissingActions>
-            <MissingActionButton $variant="bought">
+            <MissingActionButton $variant="bought" onClick={() => setIsBoughtModalOpen(true)}>
               이미 구매했어요
             </MissingActionButton>
             <MissingActionButton $variant="add" onClick={handleAddToShoppingList}>
@@ -311,7 +480,70 @@ export default function HomeDietStart() {
         </MissingSection>
       )}
 
-            <BottomFixedButton variant="inline" onClick={() => navigate(`/cooking/${mealId}`)}>
+      {isBoughtModalOpen && (
+        <BoughtModalOverlay onClick={() => setIsBoughtModalOpen(false)}>
+          <BoughtModalBox onClick={(e) => e.stopPropagation()}>
+            <BoughtIconBox>
+              <img src={chefIcon} alt="" />
+            </BoughtIconBox>
+            <BoughtTextBox>
+              <BoughtTitle>구매하신 재료를 먼저 등록할까요?</BoughtTitle>
+              <BoughtDesc>
+                <p>재료를 등록하면 요리가 끝난 후</p>
+                <p>자동으로 사용량을 계산해드려요</p>
+              </BoughtDesc>
+            </BoughtTextBox>
+            <BoughtActions>
+              <BoughtActionButton
+                $variant="cancel"
+                onClick={() => setIsBoughtModalOpen(false)}
+              >
+                취소
+              </BoughtActionButton>
+              <BoughtActionButton $variant="confirm" onClick={handleRegisterIngredients}>
+                등록하기
+              </BoughtActionButton>
+            </BoughtActions>
+          </BoughtModalBox>
+        </BoughtModalOverlay>
+      )}
+
+      {isStopModalOpen && (
+        <BoughtModalOverlay onClick={() => setIsStopModalOpen(false)}>
+          <BoughtModalBox onClick={(e) => e.stopPropagation()}>
+            <BoughtIconBox>
+              <img src={forkKnifeIcon} alt="" />
+            </BoughtIconBox>
+            <BoughtTextBox>
+              <BoughtTitle>진행 중인 식단을 중단할까요?</BoughtTitle>
+              <BoughtDesc>
+                <p>식단을 완료하면</p>
+                <p>루틴 리포트를 제공해드려요!</p>
+              </BoughtDesc>
+            </BoughtTextBox>
+            <BoughtActions>
+              <BoughtActionButton
+                $variant="cancel"
+                onClick={() => setIsStopModalOpen(false)}
+              >
+                취소
+              </BoughtActionButton>
+              <BoughtActionButton $variant="confirm" onClick={handleStopDiet}>
+                중단하기
+              </BoughtActionButton>
+            </BoughtActions>
+          </BoughtModalBox>
+        </BoughtModalOverlay>
+      )}
+
+      {isToastVisible && (
+        <Toast>
+          <img src={checkCircleWhiteIcon} alt="" />
+          <span>{toastMessage}</span>
+        </Toast>
+      )}
+
+      <BottomFixedButton variant="inline" onClick={() => navigate(`/cooking/${mealId}`)}>
         식단 시작하기
       </BottomFixedButton>
     </PageContainer>

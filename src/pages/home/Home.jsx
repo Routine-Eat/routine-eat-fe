@@ -15,6 +15,7 @@ import cometIcon from "../../assets/icons/comet.svg";
 import checkBadgeIcon from "../../assets/icons/checkBadge.svg";
 import chevronDarkGrayIcon from "../../assets/icons/chevronDarkGray.svg";
 
+
 const ENERGY_OPTIONS = ["의욕 없음", "보통", "의욕 넘침"];
 
 function getParticle(word) {
@@ -769,13 +770,16 @@ const CarouselArrowButton = styled.button`
   }
 
   img {
-    width: 8px;
+        width: 8px;
     height: 14px;
     display: block;
+    margin: auto;
+    object-fit: contain;
   }
 
   &.left img {
-    transform: rotate(180deg);
+        transform: rotate(180deg);
+    transform-origin: center;
   }
 `;
 

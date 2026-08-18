@@ -1,0 +1,24 @@
+<svg preserveAspectRatio="none" overflow="visible" style="display: block;" width="76" height="76" viewBox="0 0 76 76" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g id="Frame 205" filter="url(#filter0_di_0_4)">
+<rect x="20" y="16" width="36" height="36" rx="18" fill="#72D472" shape-rendering="crispEdges"/>
+<path id="Vector" d="M45.7143 35.2857H39.2857V41.7143C39.2857 42.0553 39.1503 42.3823 38.9091 42.6234C38.668 42.8645 38.341 43 38 43C37.659 43 37.332 42.8645 37.0909 42.6234C36.8497 42.3823 36.7143 42.0553 36.7143 41.7143V35.2857H30.2857C29.9447 35.2857 29.6177 35.1503 29.3766 34.9091C29.1355 34.668 29 34.341 29 34C29 33.659 29.1355 33.332 29.3766 33.0909C29.6177 32.8497 29.9447 32.7143 30.2857 32.7143H36.7143V26.2857C36.7143 25.9447 36.8497 25.6177 37.0909 25.3766C37.332 25.1355 37.659 25 38 25C38.341 25 38.668 25.1355 38.9091 25.3766C39.1503 25.6177 39.2857 25.9447 39.2857 26.2857V32.7143H45.7143C46.0553 32.7143 46.3823 32.8497 46.6234 33.0909C46.8645 33.332 47 33.659 47 34C47 34.341 46.8645 34.668 46.6234 34.9091C46.3823 35.1503 46.0553 35.2857 45.7143 35.2857Z" fill="white"/>
+</g>
+<defs>
+<filter id="filter0_di_0_4" x="0" y="0" width="76" height="76" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feFlood flood-opacity="0" result="BackgroundImageFix"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset dy="4"/>
+<feGaussianBlur stdDeviation="10"/>
+<feComposite in2="hardAlpha" operator="out"/>
+<feColorMatrix type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0.1 0"/>
+<feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_4"/>
+<feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_4" result="shape"/>
+<feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"/>
+<feOffset/>
+<feGaussianBlur stdDeviation="2"/>
+<feComposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"/>
+<feColorMatrix type="matrix" values="0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0"/>
+<feBlend mode="normal" in2="shape" result="effect2_innerShadow_0_4"/>
+</filter>
+</defs>
+</svg>

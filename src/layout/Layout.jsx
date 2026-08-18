@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 
 import styled from 'styled-components';
@@ -7,26 +8,41 @@ import Header from './header/Header';
 
 function Layout() {
   const { pathname } = useLocation();
-  // 마이페이지는 전용 상단바를 쓰므로 공통 Header 숨김
-  // 마이페이지·레시피/유사요리/장보기 상세는 전용 상단바
+  const [feedSearchMode, setFeedSearchMode] = useState(false);
+
+  // 피드 검색 모드 — 다른 탭으로 나가면 해제
+  useEffect(() => {
+    if (pathname !== '/feed') setFeedSearchMode(false);
+  }, [pathname]);
+
+  // 마이페이지·레시피/유사요리/장보기·알림은 전용 상단바
   const hideHeader =
     pathname.startsWith('/mypage') ||
     pathname.startsWith('/recipes') ||
     pathname.startsWith('/similar-recipes') ||
-    pathname.startsWith('/shopping-list');
-  // 상세·유사·장보기는 하단 CTA만 사용
+    pathname.startsWith('/shopping-list') ||
+    pathname.startsWith('/notifications');
+  // 상세·유사·장보기·알림은 하단 CTA만 사용
   const hideBottomNav =
     pathname.startsWith('/recipes') ||
     pathname.startsWith('/similar-recipes') ||
-    pathname.startsWith('/shopping-list');
+    pathname.startsWith('/shopping-list') ||
+    pathname.startsWith('/notifications');
 
   return (
     <AppContainer>
-      {!hideHeader && <Header />}
+      {!hideHeader && (
+        <Header searchActive={feedSearchMode} onExitSearch={() => setFeedSearchMode(false)} />
+      )}
       <Main $noNav={hideBottomNav}>
-        <Outlet />
+        <Outlet context={{ feedSearchMode, setFeedSearchMode }} />
       </Main>
-      {!hideBottomNav && <BottomNav />}
+      {!hideBottomNav && (
+        <BottomNav
+          feedSearchActive={feedSearchMode}
+          onExitFeedSearch={() => setFeedSearchMode(false)}
+        />
+      )}
     </AppContainer>
   );
 }
@@ -47,7 +63,7 @@ const Main = styled.main`
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding-bottom: 56px; /* 하단 네비 높이 */
+  padding-bottom: ${({ $noNav }) => ($noNav ? 0 : '56px')};
 `;
 
 export default Layout;

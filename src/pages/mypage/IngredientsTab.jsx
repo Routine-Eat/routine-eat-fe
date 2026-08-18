@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 
 import styled from 'styled-components';
 
-import arrowIcon from '../../assets/mypage/arrow.svg';
-import cartIcon from '../../assets/mypage/cart.svg';
 import plusIcon from '../../assets/mypage/plus.svg';
 import resetIcon from '../../assets/mypage/reset.svg';
 import trashIcon from '../../assets/mypage/trash.svg';
+import marketIcon from '../../assets/shopping/market-icon.png';
+import RegisterMaterialModal from '../../common/modal/RegisterMaterialModal';
 import {
   CATEGORY_FILTERS,
   DUMMY_INGREDIENTS,
@@ -15,7 +15,6 @@ import {
 } from '../../constants/dummyIngredients';
 
 function IngredientIcon({ icon }) {
-  // 우유처럼 레이어가 2개인 아이콘 처리
   if (Array.isArray(icon)) {
     return (
       <IconFrame>
@@ -25,45 +24,65 @@ function IngredientIcon({ icon }) {
       </IconFrame>
     );
   }
-
   return <IconImg src={icon} alt="" />;
 }
 
+/** 마이페이지 재료 탭 — 피그마 1810:7375 / 편집 1812:7655 */
 function IngredientsTab({ isEditing, selectedIds, setSelectedIds }) {
   const navigate = useNavigate();
   const [items, setItems] = useState(DUMMY_INGREDIENTS);
   const [filter, setFilter] = useState('all');
+  const [modal, setModal] = useState(null); /* 'ingredient' | 'seasoning' | null */
 
-  // 필터에 맞는 섹션만 보여줌
-  const sections = useMemo(() => {
-    return SECTION_META.map((section) => ({
-      ...section,
-      items: items.filter((item) => {
-        if (item.category !== section.id) return false;
-        if (filter === 'all') return true;
-        return item.category === filter;
-      }),
-    })).filter((section) => section.items.length > 0);
-  }, [filter, items]);
+  const sections = useMemo(
+    () =>
+      SECTION_META.map((section) => ({
+        ...section,
+        items: items.filter((item) => {
+          if (item.category !== section.id) return false;
+          if (filter === 'all') return true;
+          return item.category === filter;
+        }),
+      })).filter(
+        (section) => section.items.length > 0 || filter === 'all' || filter === section.id
+      ),
+    [filter, items]
+  );
 
   const toggleSelect = (id) => {
     if (!isEditing) return;
-    setSelectedIds((prev) =>
-      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
-    );
+    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
   const resetSelection = () => setSelectedIds([]);
 
-  // 선택 삭제 (프론트 더미 상태만 갱신)
   const deleteSelected = () => {
     setItems((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
     setSelectedIds([]);
   };
 
+  const saveFromModal = (draft) => {
+    const category = modal === 'seasoning' ? 'seasoning' : 'ingredient';
+    setItems((prev) => {
+      const next = [...prev];
+      draft.forEach((d) => {
+        if (next.some((i) => i.id === d.id)) return;
+        next.push({
+          id: d.id,
+          name: d.name,
+          amount: d.qty || '1팩',
+          category,
+          icon: d.icon,
+        });
+      });
+      return next;
+    });
+  };
+
   return (
+    // 탭 루트 — 세로 full 직사각형
     <Wrap>
-      {/* 카테고리 필터 */}
+      {/* 필터 행: 전체 | 식재료 | 조미료 텍스트 */}
       <FilterRow>
         {CATEGORY_FILTERS.map((item) => (
           <FilterBtn
@@ -79,13 +98,14 @@ function IngredientsTab({ isEditing, selectedIds, setSelectedIds }) {
 
       <List>
         {sections.map((section) => (
+          /* 섹션: 제목 + 칩 줄바꿈 영역 */
           <Section key={section.id}>
             <SectionTitle>{section.label}</SectionTitle>
             <ChipRow>
               {section.items.map((item) => {
                 const selected = isEditing && selectedIds.includes(item.id);
-
                 return (
+                  /* 재료 칩: 흰 알약 / 선택 시 연두 알약 */
                   <Chip
                     key={item.id}
                     type="button"
@@ -93,22 +113,24 @@ function IngredientsTab({ isEditing, selectedIds, setSelectedIds }) {
                     $editing={isEditing}
                     onClick={() => toggleSelect(item.id)}
                   >
-                    {/* 아이콘 + 이름 묶음 — 피그마 gap 6 */}
                     <ChipLabel>
                       <IngredientIcon icon={item.icon} />
-                      <ChipName $selected={selected}>{item.name}</ChipName>
+                      <ChipName>{item.name}</ChipName>
                     </ChipLabel>
-                    <ChipAmount $selected={selected}>{item.amount}</ChipAmount>
+                    <ChipAmount>{item.amount}</ChipAmount>
                   </Chip>
                 );
               })}
 
-              {/* 추가 칩(+ 버튼) — 피그마 1056:2493 */}
-              <AddChip type="button">
+              {/* 추가 칩: + 알약 */}
+              <AddChip
+                type="button"
+                onClick={() => setModal(section.id === 'seasoning' ? 'seasoning' : 'ingredient')}
+              >
                 <ChipLabel>
-                  <PlusIconWrap>
+                  <PlusWrap>
                     <PlusIcon src={plusIcon} alt="" />
-                  </PlusIconWrap>
+                  </PlusWrap>
                   <AddName>추가</AddName>
                 </ChipLabel>
               </AddChip>
@@ -117,9 +139,10 @@ function IngredientsTab({ isEditing, selectedIds, setSelectedIds }) {
         ))}
       </List>
 
-      {/* 하단 액션 — 편집: 초기화·삭제 / 일반: CTA */}
+      {/* 하단 고정 바: 상단 둥근 흰 직사각형 */}
       <BottomBar>
         {isEditing ? (
+          /* 편집 모드: 초기화 | 삭제 가로 버튼 (1812:7655) */
           <ActionRow>
             <ResetBtn type="button" onClick={resetSelection}>
               <ResetIcon src={resetIcon} alt="" />
@@ -131,18 +154,27 @@ function IngredientsTab({ isEditing, selectedIds, setSelectedIds }) {
             </DeleteBtn>
           </ActionRow>
         ) : (
-          <ShopBtn type="button" onClick={() => navigate('/market')}>
-            <CartIcon src={cartIcon} alt="" />
-            필요한 재료 사러 갈까요?
-            <ArrowIcon src={arrowIcon} alt="" />
-          </ShopBtn>
+          /* 일반: 마켓 CTA 흰 테두리 둥근 직사각형 */
+          <MarketBtn type="button" onClick={() => navigate('/market')}>
+            <PlateImg src={marketIcon} alt="" />
+            마켓에서 재료 둘러보기
+          </MarketBtn>
         )}
       </BottomBar>
+
+      <RegisterMaterialModal
+        type={modal === 'seasoning' ? 'seasoning' : 'ingredient'}
+        open={!!modal}
+        onClose={() => setModal(null)}
+        onSave={saveFromModal}
+      />
     </Wrap>
   );
 }
 
-/* 재료 탭 전체 영역 */
+export default IngredientsTab;
+
+/* —— 탭 루트: 세로 full 직사각형 —— */
 const Wrap = styled.div`
   position: relative;
   display: flex;
@@ -152,140 +184,134 @@ const Wrap = styled.div`
   overflow: hidden;
 `;
 
-/* 상단 카테고리 필터 가로 줄 */
+/* —— 필터 행: 가로 텍스트 —— */
 const FilterRow = styled.div`
   display: flex;
   gap: 18px;
-  padding: 16px 20px 8px;
-  overflow-x: auto;
+  padding: 16px 24px 8px;
 `;
 
-/* 카테고리 텍스트 버튼 (전체/냉장 등) */
 const FilterBtn = styled.button`
+  padding: 0;
   border: none;
   background: transparent;
-  padding: 0;
   white-space: nowrap;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: ${({ $active }) => ($active ? 600 : 500)};
-  color: ${({ $active }) => ($active ? '#72d472' : '#616161')};
+  color: ${({ $active }) => ($active ? '#72d472' : '#adadad')};
   cursor: pointer;
 `;
 
-/* 재료 섹션 스크롤 리스트 — 피그마 좌우 20px, 섹션 간격 48px */
+/* —— 스크롤 리스트: 세로 직사각형 —— */
 const List = styled.div`
   display: flex;
+  flex: 1;
   flex-direction: column;
   gap: 48px;
-  flex: 1;
   padding: 12px 20px 140px;
   overflow-y: auto;
 `;
 
-/* 한 카테고리 섹션 (냉장식품 등) */
+/* —— 섹션: 세로 묶음 —— */
 const Section = styled.section`
   display: flex;
   flex-direction: column;
   gap: 12px;
 `;
 
-/* 섹션 제목 텍스트 */
 const SectionTitle = styled.h2`
   margin: 0;
   font-size: 14px;
   font-weight: 600;
-  color: #6d6d6d;
+  line-height: 1.3;
+  color: #727272;
 `;
 
-/* 재료 칩들이 나열되는 줄 */
+/* —— 칩 줄: 가로 wrap —— */
 const ChipRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 12px 4px;
+  max-width: 350px;
 `;
 
-/* 재료 칩 공통(흰 알약) — 피그마 shadow + inset */
-const ChipBase = styled.button`
-  position: relative;
+/* —— 재료 칩: 알약(둥근 직사각 height 36) —— */
+const Chip = styled.button`
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   gap: 8px;
   height: 36px;
-  padding: 0 12px;
-  border: none;
+  padding: 0 8px;
+  /* 미선택도 2px 투명 테두리 → 선택 시 크기 흔들림 방지 */
+  border: 2px solid ${({ $selected }) => ($selected ? '#c2ee73' : 'transparent')};
   border-radius: 30px;
-  background: #fff;
+  background: ${({ $selected }) => ($selected ? '#d6f3a1' : '#fff')};
   box-shadow:
-    0 0 7.9px -1px rgba(72, 28, 0, 0.08),
-    0 0 40px 0 rgba(17, 0, 0, 0.05),
-    inset 0 0 5px 0 #fff;
-`;
-
-/* 재료 칩 — 편집·선택 시 초록, 일반 모드는 클릭 불가 */
-const Chip = styled(ChipBase)`
-  background: ${({ $selected }) => ($selected ? '#72d472' : '#fff')};
-  box-shadow: ${({ $selected }) =>
-    $selected
-      ? '0 0 7.9px -1px rgba(50, 40, 0, 0.08), 0 0 40px 0 rgba(128, 83, 0, 0.05), inset 0 0 2.5px 0 #fff'
-      : '0 0 7.9px -1px rgba(72, 28, 0, 0.08), 0 0 40px 0 rgba(17, 0, 0, 0.05), inset 0 0 5px 0 #fff'};
+    0 0 8px rgba(3, 3, 3, 0.05),
+    0 0 30px rgba(3, 3, 3, 0.05);
   pointer-events: ${({ $editing }) => ($editing ? 'auto' : 'none')};
   cursor: ${({ $editing }) => ($editing ? 'pointer' : 'default')};
 `;
 
-/* 재료 추가 칩(+ 버튼) — 피그마 1056:2493 흰 알약 */
-const AddChip = styled(ChipBase)`
+/* —— 추가 칩: 알약 —— */
+const AddChip = styled.button`
+  display: flex;
+  align-items: center;
   justify-content: center;
+  gap: 8px;
+  height: 36px;
+  padding: 0 14px 0 8px;
+  border: none;
+  border-radius: 30px;
+  background: #fff;
+  box-shadow:
+    0 0 8px rgba(3, 3, 3, 0.05),
+    0 0 30px rgba(3, 3, 3, 0.05);
   cursor: pointer;
 `;
 
-/* + 아이콘 20×20 프레임 */
-const PlusIconWrap = styled.span`
+const ChipLabel = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const ChipName = styled.span`
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #2e2e2e;
+`;
+
+const ChipAmount = styled.span`
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  color: #adadad;
+`;
+
+const AddName = styled.span`
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #2e2e2e;
+`;
+
+const PlusWrap = styled.span`
   display: flex;
   align-items: center;
   justify-content: center;
   width: 20px;
   height: 20px;
-  flex-shrink: 0;
 `;
 
-/* + 아이콘 — 피그마 약 11×11 */
 const PlusIcon = styled.img`
   width: 11px;
   height: 11px;
   object-fit: contain;
 `;
 
-/* 추가 텍스트 — 피그마 14px SemiBold #2a2a2a */
-const AddName = styled.span`
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.14px;
-  color: #2a2a2a;
-`;
-
-/* 칩 안 아이콘+이름 묶음 */
-const ChipLabel = styled.span`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-`;
-
-/* 칩 안 재료 이름 — 피그마 14px SemiBold */
-const ChipName = styled.span`
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.14px;
-  color: ${({ $selected }) => ($selected ? '#fff' : '#2a2a2a')};
-`;
-
-/* 칩 안 수량 — 피그마 12px Medium #a9a9a9 */
-const ChipAmount = styled.span`
-  font-size: 12px;
-  font-weight: 500;
-  color: ${({ $selected }) => ($selected ? '#fff' : '#a9a9a9')};
-`;
-
-/* 겹친 아이콘용 정사각 프레임 */
 const IconFrame = styled.span`
   position: relative;
   width: 20px;
@@ -293,13 +319,11 @@ const IconFrame = styled.span`
   flex-shrink: 0;
 `;
 
-/* 재료/플러스 아이콘 이미지 */
 const IconImg = styled.img`
   display: block;
   width: 20px;
   height: 20px;
   object-fit: contain;
-
   ${IconFrame} & {
     position: absolute;
     inset: 0;
@@ -308,60 +332,54 @@ const IconImg = styled.img`
   }
 `;
 
-/* 하단 고정 바 (둥근 상단 패널) */
+/* —— 하단 바: 상단 둥근 흰 직사각형 —— */
 const BottomBar = styled.div`
   position: fixed;
   left: 50%;
   bottom: 56px;
   z-index: 15;
+  box-sizing: border-box;
   width: 100%;
   max-width: 390px;
+  padding: 34px 24px 20px;
   transform: translateX(-50%);
-  padding: 16px 20px 20px;
+  border-radius: 22px 22px 0 0;
   background: #fff;
   box-shadow: 0 -1px 14.6px 0 rgba(201, 201, 189, 0.25);
-  border-radius: 22px 22px 0 0;
 `;
 
-/* 초록 CTA 버튼 — 재료 사러가기 */
-const ShopBtn = styled.button`
+/* —— 마켓 CTA: 흰 테두리 둥근 직사각형 342×56 —— */
+const MarketBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 4px;
   width: 100%;
-  height: 48px;
-  border: none;
-  border-radius: 10px;
-  background: #72d472;
-  color: #fff;
+  height: 56px;
+  border: 1px solid #bebebf;
+  border-radius: 13px;
+  background: #fff;
   font-size: 16px;
   font-weight: 600;
+  line-height: 1.3;
+  color: #2e2e2e;
   cursor: pointer;
 `;
 
-/* CTA 오른쪽 화살표 아이콘 */
-const ArrowIcon = styled.img`
-  width: 16px;
-  height: 16px;
-  transform: rotate(90deg);
-`;
-
-/* CTA 왼쪽 장바구니 아이콘 */
-const CartIcon = styled.img`
-  width: 22px;
-  height: 22px;
+/* —— 접시 아이콘: 20×20 정사각 —— */
+const PlateImg = styled.img`
+  width: 20px;
+  height: 20px;
   object-fit: contain;
 `;
 
-/* 선택 모드 하단 버튼 가로 줄 — 피그마 160+160 */
 const ActionRow = styled.div`
   display: flex;
   justify-content: center;
   gap: 8px;
 `;
 
-/* 회색 초기화 버튼(둥근 사각형) */
+/* —— 초기화: 160×48 회색 둥근 직사각형 —— */
 const ResetBtn = styled.button`
   display: flex;
   align-items: center;
@@ -372,13 +390,13 @@ const ResetBtn = styled.button`
   border: none;
   border-radius: 10px;
   background: #e7e7e7;
-  color: #3e3e3e;
   font-size: 16px;
   font-weight: 600;
+  color: #3e3e3e;
   cursor: pointer;
 `;
 
-/* 초록 삭제 버튼(둥근 사각형) */
+/* —— 삭제: 160×48 초록 둥근 직사각형 —— */
 const DeleteBtn = styled.button`
   display: flex;
   align-items: center;
@@ -389,22 +407,18 @@ const DeleteBtn = styled.button`
   border: none;
   border-radius: 10px;
   background: #72d472;
-  color: #fff;
   font-size: 16px;
   font-weight: 600;
+  color: #fff;
   cursor: pointer;
 `;
 
-/* 초기화 아이콘 — 피그마 14×14 */
 const ResetIcon = styled.img`
   width: 14px;
   height: 14px;
 `;
 
-/* 삭제 아이콘 — 피그마 16×16 */
 const DeleteIcon = styled.img`
   width: 16px;
   height: 16px;
 `;
-
-export default IngredientsTab;

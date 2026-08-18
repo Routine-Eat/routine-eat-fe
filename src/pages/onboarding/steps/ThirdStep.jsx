@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import styled from 'styled-components';
 
-import { getCookingEquipments } from '@/api/cookingEquipmentApi';
+import { getCookingEquipments, postInitCookingEquipments } from '@/api/cookingEquipmentApi';
 
 import clearIcon from '../../../assets/onboarding/tools/clear.svg';
 import fireIcon from '../../../assets/onboarding/tools/fire.svg';
@@ -90,15 +90,19 @@ function ThirdStep({ selectedIds, onToggle }) {
   const [query, setQuery] = useState('');
   const [categories, setCategories] = useState(CATEGORIES);
 
-  /* 조리도구 전체 조회 API */
+  /* 조리도구 전체 조회 API — 목록이 없으면 세팅 후 재조회 */
   useEffect(() => {
     const fetchCookingEquipments = async () => {
       try {
-        const response = await getCookingEquipments();
+        let response = await getCookingEquipments();
+        const list = response.data ?? [];
 
-        const mappedCategories = makeCategories(response.data);
+        if (list.length === 0) {
+          await postInitCookingEquipments();
+          response = await getCookingEquipments();
+        }
 
-        setCategories(mappedCategories);
+        setCategories(makeCategories(response.data ?? []));
       } catch (error) {
         console.error('조리도구 조회 실패:', error);
       }

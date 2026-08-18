@@ -1,5 +1,8 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+
 import styled from 'styled-components';
+
+import { getExceptionFoodIngredients, postInitFoodIngredients } from '@/api/foodIngredientApi';
 
 import broccoli from '../../../assets/onboarding/allergies/broccoli.svg';
 import cheese from '../../../assets/onboarding/allergies/cheese.svg';
@@ -60,6 +63,20 @@ const EXTRA = [
 export const INGREDIENTS = [...RECOMMENDED, ...EXTRA];
 const ALL = INGREDIENTS;
 
+/* 제외 대표 식재료 → 화면용. SecondaryUnit / 수량은 사용하지 않음 */
+const mapExceptionIngredients = (data) =>
+  (data ?? []).map((item) => {
+    const dummyItem = INGREDIENTS.find(
+      (ingredient) => ingredient.name === item.foodIngredientName
+    );
+
+    return {
+      id: item.foodIngredientId,
+      name: item.foodIngredientName,
+      icon: dummyItem?.icon,
+    };
+  });
+
 /* 이름 길이순 → 같으면 한글 자음순 */
 const byLengthThenKo = (a, b) =>
   a.name.length - b.name.length || a.name.localeCompare(b.name, 'ko');
@@ -82,14 +99,40 @@ export function IngredientIcon({ icon }) {
 
 function SecondStep({ selectedIds, onToggle }) {
   const [query, setQuery] = useState('');
+  const [items, setItems] = useState(RECOMMENDED);
+
+  /* 제외 대표 식재료 조회 API — 목록이 없으면 세팅 후 재조회 */
+  useEffect(() => {
+    const fetchExceptionIngredients = async () => {
+      try {
+        let response = await getExceptionFoodIngredients();
+        let mapped = mapExceptionIngredients(response.data);
+
+        if (mapped.length === 0) {
+          await postInitFoodIngredients();
+          response = await getExceptionFoodIngredients();
+          mapped = mapExceptionIngredients(response.data);
+        }
+
+        if (mapped.length > 0) {
+          setItems(mapped);
+        }
+      } catch (error) {
+        console.error('제외 식재료 조회 실패:', error);
+      }
+    };
+
+    fetchExceptionIngredients();
+  }, []);
+
   const q = query.trim();
 
   const visible = useMemo(() => {
     if (!q) {
-      return [...RECOMMENDED].sort(byLengthThenKo);
+      return [...items].sort(byLengthThenKo);
     }
-    return ALL.filter((item) => item.name.includes(q)).sort(byLengthThenKo);
-  }, [q]);
+    return items.filter((item) => item.name.includes(q)).sort(byLengthThenKo);
+  }, [q, items]);
 
   return (
     /* 2단계 본문 세로 스크롤 영역 */
@@ -151,15 +194,34 @@ function SecondStep({ selectedIds, onToggle }) {
 
 /* 하단 선택 칩 목록(X + 아이콘 + 이름, 여러 줄) */
 export function SelectedChips({ selectedIds, onRemove }) {
-  const items = selectedIds
-    .map((id) => ALL.find((item) => item.id === id))
-    .filter(Boolean);
-  if (!items.length) return null;
+  const [items, setItems] = useState(ALL);
+
+  /* 선택된 ID와 이름을 연결하기 위해 실제 API 데이터 조회 */
+  useEffect(() => {
+    const fetchExceptionIngredients = async () => {
+      try {
+        const response = await getExceptionFoodIngredients();
+        const mapped = mapExceptionIngredients(response.data);
+
+        if (mapped.length > 0) {
+          setItems(mapped);
+        }
+      } catch (error) {
+        console.error('선택 제외 식재료 조회 실패:', error);
+      }
+    };
+
+    fetchExceptionIngredients();
+  }, []);
+
+  const selected = selectedIds.map((id) => items.find((item) => item.id === id)).filter(Boolean);
+
+  if (!selected.length) return null;
 
   return (
     /* 선택 칩 줄바꿈 행 */
     <SelectedRow>
-      {items.map((item) => (
+      {selected.map((item) => (
         /* 선택됨 알약 칩(X + 아이콘 + 이름) */
         <SelectedChip key={item.id} type="button" onClick={() => onRemove(item.id)}>
           {/* 제거 X 원형 아이콘(16×16) */}

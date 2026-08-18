@@ -9,16 +9,32 @@ const LINKS = [
   { to: '/mypage', label: '마이' },
 ];
 
-function BottomNav() {
+function BottomNav({ feedSearchActive = false, onExitFeedSearch }) {
   const { pathname } = useLocation();
 
   return (
     <Nav>
-      {LINKS.map((link) => (
-        <NavLink key={link.to} to={link.to} $active={pathname === link.to}>
-          {link.label}
-        </NavLink>
-      ))}
+      {LINKS.map((link) => {
+        const isFeed = link.to === '/feed';
+        const active = pathname === link.to;
+
+        return (
+          <NavLink
+            key={link.to}
+            to={link.to}
+            $active={active}
+            onClick={(e) => {
+              // 검색 중 피드 탭을 다시 누르면 검색만 닫고 피드로 복귀
+              if (isFeed && feedSearchActive && pathname === '/feed') {
+                e.preventDefault();
+                onExitFeedSearch?.();
+              }
+            }}
+          >
+            {link.label}
+          </NavLink>
+        );
+      })}
     </Nav>
   );
 }

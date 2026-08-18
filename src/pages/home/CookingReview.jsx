@@ -1,108 +1,89 @@
 import React, { useState } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
-import backArrowIcon from "../../assets/icons/backArrow.svg";
-import BottomNextButton from "../../common/button/BottomNextButton";
+import BackButton from "../../common/button/BackButton";
+import faceGoodIcon from "../../assets/icons/faceGood.svg";
+import faceNeutralIcon from "../../assets/icons/faceNeutral.svg";
+import faceBadIcon from "../../assets/icons/faceBad.svg";
+import BottomFixedButton from "../../common/button/BottomFixedButton";
 
 const PageContainer = styled.div`
-background: #e4e4e4;
-max-width: 390px;
-margin: 0 auto;
-min-height: 100vh;
-position: relative;
-display: flex;
-flex-direction: column;
-align-items: center;
-padding: 45px 20px 24px;
+  background: #fffefd;
+  max-width: 390px;
+  margin: 0 auto;
+  min-height: 100vh;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 60px 20px 24px;
 `;
 
 const TopRow = styled.div`
-display: flex;
-align-items: center;
-position: relative;
-justify-content: center;
-width: 100%;
-`;
+  display: flex;
+  align-items: center;
+  position: relative;
+  justify-content: center;
+  width: 100%;
 
-const BackArrow = styled.button`
-width: 18px;
-height: 36px;
-border: none;
-background: none;
-padding: 0;
-cursor: pointer;
-position: absolute;
-left: 0;
-display: flex;
-align-items: center;
-justify-content: center;
-
-img{
-width: 11px;
-height: 19px;
-}
-`;
-
-const ProgressBar = styled.div`
-display: flex;
-gap: 9px;
-`;
-
-const ProgressSegment = styled.div`
-width: 63px;
-height: 4px;
-background: ${({ $active }) => ($active ? "#616161" : "#b8b8b8")};
+  .back-button-wrap {
+    position: absolute;
+    left: 0;
+  }
 `;
 
 const Question = styled.p`
-margin: 96px 0 0;
-color: #000;
-font-size: 24px;
-font-family: Pretendard Variable;
-font-weight: 600;
-line-height: 1.48;
-text-align: center;
+  margin: 170px 0 0;
+  color: #030303;
+  font-size: 22px;
+  font-family: Wanted Sans Variable;
+  font-weight: 600;
+  letter-spacing: -0.44px;
+  text-align: center;
 `;
 
 const OptionList = styled.div`
-margin-top: 60px;
-display: flex;
-flex-direction: column;
-gap: 13px;
-width: 100%;
-max-width: 341px;
-margin-left: auto;
-margin-right: auto;
+  margin-top: 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  width: 100%;
+  max-width: 350px;
 `;
 
 const OptionButton = styled.button`
-height: 76px;
-border-radius: 50px;
-border: none;
-background: ${({ $selected }) => ($selected ? "#6ec280" : "white")};
-box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.06), 0px 0px 50px 0px rgba(0, 0, 0, 0.05);
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 6px;
-cursor: pointer;
+  height: 76px;
+  border-radius: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: ${({ $selected }) => ($selected ? "#d6f3a1" : "white")};
+  border: ${({ $selected }) => ($selected ? "3px solid #c2ee73" : "1px solid #d9d9da")};
+  box-shadow: ${({ $selected }) =>
+    $selected
+      ? "0px 0px 15px 0px rgba(3, 3, 3, 0.05), 0px 0px 4px 0px rgba(3, 3, 3, 0.05)"
+      : "none"};
 
-.emoji{
-font-size: 24px;
-}
+  img {
+    width: 32px;
+    height: 32px;
+    display: block;
+  }
 
-.label{
-color: #000;
-font-size: 20px;
-font-family: Pretendard Variable;
-font-weight: 500;
-}
+  .label {
+    color: #030303;
+    font-size: 18px;
+    font-family: Wanted Sans Variable;
+    font-weight: 600;
+  }
 `;
 
 const OPTIONS = [
-  { id: "good", emoji: "😃", label: "맛있어요" },
-  { id: "ok", emoji: "🙂", label: "적당했어요" },
-  { id: "bad", emoji: "😑", label: "별로예요" },
+  { id: "good", icon: faceGoodIcon, label: "쉬웠어요" },
+  { id: "ok", icon: faceNeutralIcon, label: "보통이었어요" },
+  { id: "bad", icon: faceBadIcon, label: "어려웠어요" },
 ];
 
 export default function CookingReview() {
@@ -113,17 +94,10 @@ export default function CookingReview() {
   return (
     <PageContainer>
       <TopRow>
-        <BackArrow onClick={() => navigate(-1)}>
-          <img src={backArrowIcon} alt="뒤로가기" />
-        </BackArrow>
-        <ProgressBar>
-          <ProgressSegment $active />
-          <ProgressSegment />
-          <ProgressSegment />
-        </ProgressBar>
+        <BackButton className="back-button-wrap" onClick={() => navigate(-1)} />
       </TopRow>
 
-      <Question>맛은 어땠나요?</Question>
+            <Question>이 레시피, 난이도는 어땠나요?</Question>
 
       <OptionList>
         {OPTIONS.map((option) => (
@@ -132,13 +106,14 @@ export default function CookingReview() {
             $selected={selected === option.id}
             onClick={() => setSelected(option.id)}
           >
-            <span className="emoji">{option.emoji}</span>
+            <img src={option.icon} alt="" />
             <span className="label">{option.label}</span>
           </OptionButton>
         ))}
       </OptionList>
-
-      <BottomNextButton onClick={() => navigate(`/cooking/${mealId}/review/2`)} />
+            <BottomFixedButton onClick={() => navigate(`/cooking/${mealId}/review/ingredients`)}>
+        완료
+      </BottomFixedButton>
     </PageContainer>
   );
 }

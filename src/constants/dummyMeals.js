@@ -1,51 +1,38 @@
-// 나중에 API로 교체할 더미 식단 데이터
-import mealImage from '../assets/mypage/meal-herb.png';
+// 마이페이지 식단 기록 더미 — 피그마 1804:10026
+import alarmIcon from '../assets/mypage/meal-record/alarm.svg';
+import chartIcon from '../assets/mypage/meal-record/chart.svg';
+import sparklesIcon from '../assets/mypage/meal-record/sparkles.svg';
+import weightlifterIcon from '../assets/mypage/meal-record/weightlifter.svg';
 
-export const DUMMY_MEALS = [
+export const DUMMY_MEAL_RECORDS = [
   {
-    id: 'm1',
-    title: '채소 식단',
-    description: '지난주 영양 밸런스를 반영한 채소 위주의 식단',
-    image: mealImage,
-    isSaved: true,
-    isRecord: false,
+    id: 'mr1',
+    icon: weightlifterIcon,
+    title: '한 가지 재료 털기',
+    date: '2026년 8월 16일 완료',
   },
   {
-    id: 'm2',
-    title: '채소 식단',
-    description: '지난주 영양 밸런스를 반영한 채소 위주의 식단',
-    image: mealImage,
-    isSaved: true,
-    isRecord: false,
+    id: 'mr2',
+    icon: alarmIcon,
+    title: '간편 요리 식단',
+    date: '2026년 8월 11일 완료',
   },
   {
-    id: 'm3',
-    title: '채소 식단',
-    description: '지난주 영양 밸런스를 반영한 채소 위주의 식단',
-    image: mealImage,
-    isSaved: true,
-    isRecord: true,
-    date: '7월 28일',
-    progress: '5/5끼',
+    id: 'mr3',
+    icon: chartIcon,
+    title: '요리 스킬 스텝업',
+    date: '2026년 2월 08일 완료',
   },
   {
-    id: 'm4',
-    title: '단백질 식단',
-    description: '고단백 위주로 구성한 한 끼 식단',
-    image: mealImage,
-    isSaved: false,
-    isRecord: true,
-    date: '7월 29일',
-    progress: '4/5끼',
+    id: 'mr4',
+    icon: weightlifterIcon,
+    title: '한 가지 재료 털기',
+    date: '2025년 12월 30일 완료',
   },
   {
-    id: 'm5',
-    title: '단백질 식단',
-    description: '고단백 위주로 구성한 한 끼 식단',
-    image: mealImage,
-    isSaved: true,
-    isRecord: true,
-    date: '7월 30일',
-    progress: '3/5끼',
+    id: 'mr5',
+    icon: sparklesIcon,
+    title: '재료 최대치 활용',
+    date: '2025년 9월 22일 완료',
   },
 ];

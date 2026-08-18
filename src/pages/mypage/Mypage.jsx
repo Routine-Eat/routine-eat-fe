@@ -7,6 +7,7 @@ import editIcon from '../../assets/mypage/edit.svg';
 import BackButton from '../../common/button/BackButton';
 import IngredientsTab from './IngredientsTab';
 import RecipeTab from './RecipeTab';
+import ToolsTab from './ToolsTab';
 
 const MAIN_TABS = [
   { id: 'recipe', label: '레시피•식단' },
@@ -19,7 +20,7 @@ function Mypage() {
   const [mainTab, setMainTab] = useState('recipe');
   const [selectedIds, setSelectedIds] = useState([]);
   const [isEditing, setIsEditing] = useState(false);
-  const isIngredientsTab = mainTab === 'ingredients';
+  const canEdit = mainTab === 'ingredients' || mainTab === 'tools';
 
   const finishEditing = () => {
     setIsEditing(false);
@@ -42,11 +43,11 @@ function Mypage() {
           </SideLeft>
           <Title>my</Title>
           <SideRight>
-            {isIngredientsTab && isEditing ? (
+            {canEdit && isEditing ? (
               <DoneBtn type="button" onClick={finishEditing}>
                 완료
               </DoneBtn>
-            ) : isIngredientsTab ? (
+            ) : canEdit ? (
               <IconBtn type="button" aria-label="편집" onClick={() => setIsEditing(true)}>
                 <EditImg src={editIcon} alt="" />
               </IconBtn>
@@ -77,7 +78,13 @@ function Mypage() {
           />
         )}
         {mainTab === 'recipe' && <RecipeTab />}
-        {mainTab === 'tools' && <Empty>도구 탭은 다음에 구현할게요.</Empty>}
+        {mainTab === 'tools' && (
+          <ToolsTab
+            isEditing={isEditing}
+            selectedIds={selectedIds}
+            setSelectedIds={setSelectedIds}
+          />
+        )}
       </Content>
     </Page>
   );
@@ -100,7 +107,7 @@ const TopBar = styled.header`
   top: 0;
   z-index: 10;
   /* 피그마 기준 상태바(시간 등) 영역 54px 확보 */
-  padding-top: max(54px, env(safe-area-inset-top));
+  padding-top: max(30px, env(safe-area-inset-top));
   background: #fff;
   box-shadow: 0 1px 14.6px -1px rgba(201, 201, 189, 0.32);
 `;
@@ -208,13 +215,6 @@ const Content = styled.div`
   flex: 1;
   min-height: 0;
   overflow: hidden;
-`;
-
-/* 아직 없는 탭용 빈 안내 문구 */
-const Empty = styled.p`
-  margin: 40px 20px;
-  color: #a2a2a2;
-  font-size: 14px;
 `;
 
 export default Mypage;

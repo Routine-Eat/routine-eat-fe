@@ -40,6 +40,13 @@ function OnboardingGate() {
 
   return null;
 }
+import HomeDietStart from './pages/home/HomeDietStart';
+import HomeCooking from "./pages/home/HomeCooking";
+import HomeCookingStep from "./pages/home/HomeCookingStep";
+import CookingComplete from "./pages/home/CookingComplete";
+import CookingReview from "./pages/home/CookingReview";
+import MarketDetail from '@/pages/market/MarketDetail';
+
 
 function App() {
   return (
@@ -70,6 +77,7 @@ function App() {
         <Route path="/cooking/:mealId/complete" element={<CookingComplete />} />
         <Route path="/cooking/:mealId/review" element={<CookingReview />} />
         <Route path="/cooking/:mealId/review/ingredients" element={<CookingIngredientCheck />} />
+        <Route path="/market/product/:productId" element={<MarketDetail />} />
       </Routes>
     </BrowserRouter>
   );

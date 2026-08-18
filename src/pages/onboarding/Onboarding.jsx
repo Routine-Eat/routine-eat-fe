@@ -3,11 +3,7 @@ import { useNavigate } from 'react-router-dom';
 
 import styled from 'styled-components';
 
-import {
-  getUserFoodIngredients,
-  postUserCookingEquipments,
-  postUserFoodIngredients,
-} from '@/api/userApi';
+import { postUserOnboarding } from '@/api/userApi';
 import { useUserStore } from '@/hooks/useUserStore';
 
 import BackButton from '../../common/button/BackButton';
@@ -19,11 +15,18 @@ import ThirdStep, { SelectedToolChips } from './steps/ThirdStep';
 
 const TOTAL_STEPS = 4;
 
+const SKILL_LEVEL_MAP = {
+  beginner: 'BEGINNER',
+  intermediate: 'AVERAGE',
+  expert: 'PRO',
+};
+
 function Onboarding() {
   const navigate = useNavigate();
 
   // 로그인할 때 Zustand에 저장된 현재 사용자 ID
   const userId = useUserStore((state) => state.userId);
+  const updateSkillLevel = useUserStore((state) => state.updateSkillLevel);
 
   const [step, setStep] = useState(1);
   const [cookingLevel, setCookingLevel] = useState(null);
@@ -62,7 +65,53 @@ function Onboarding() {
     return [...map.values()];
   };
 
-  const finish = () => {
+  const finish = async () => {
+    if (!userId) {
+      console.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    const skillLevel = SKILL_LEVEL_MAP[cookingLevel];
+
+    if (!skillLevel) {
+      console.error('요리 실력 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      const onboardingData = {
+        skillLevel,
+        cookingEquipmentIdList: toolIds,
+      };
+
+      if (dislikedIds.length > 0) {
+        onboardingData.exceptionIngredientList = {
+          relationType: 'EXCEPTION',
+          foodIngredientList: dislikedIds.map((id) => ({
+            foodIngredientId: id,
+          })),
+        };
+      }
+
+      const allFoodIngredients = [...ingredients, ...seasonings];
+
+      if (allFoodIngredients.length > 0) {
+        onboardingData.ownIngredientList = {
+          relationType: 'OWN',
+          foodIngredientList: allFoodIngredients.map((item) => ({
+            foodIngredientId: item.id,
+            primaryAmountValue: getPrimaryAmountValue(item.qty),
+          })),
+        };
+      }
+
+      await postUserOnboarding(userId, onboardingData);
+      updateSkillLevel(skillLevel);
+    } catch (error) {
+      console.error('온보딩 데이터 저장 실패:', error);
+      return;
+    }
+
     completeOnboarding();
     navigate('/', { replace: true });
   };
@@ -96,124 +145,6 @@ function Onboarding() {
     }
 
     /*
-     * 3단계
-     * 선택한 조리도구 서버 저장
-     */
-    if (step === 3) {
-      if (!userId) {
-        console.error('사용자 정보가 없습니다.');
-        return;
-      }
-
-      try {
-        await postUserCookingEquipments(userId, toolIds);
-
-        console.log('사용자 조리도구 저장 성공:', toolIds);
-      } catch (error) {
-        console.error('사용자 조리도구 저장 실패:', error);
-        return;
-      }
-    }
-
-    /*
-     * 4단계
-     * 식재료 + 조미료 저장
-     */
-    if (step === 4) {
-      if (!userId) {
-        console.error('사용자 정보가 없습니다.');
-        return;
-      }
-
-      /*
-       * 식재료와 조미료 모두
-       * food-ingredients API에서 관리되므로
-       * 하나의 배열로 합침
-       */
-      const allFoodIngredients = [...ingredients, ...seasonings];
-
-      /*
-       * 아무것도 등록하지 않았다면
-       * API 호출 없이 온보딩 종료
-       */
-      if (allFoodIngredients.length > 0) {
-        try {
-          /*
-           * 1.
-           * 이미 사용자가 보유하고 있는
-           * 식재료 조회
-           */
-          const response = await getUserFoodIngredients(userId, 'OWN');
-
-          const ownedIngredients = response.data?.foodIngredientList ?? [];
-
-          /*
-           * 현재 서버에 저장되어 있는
-           * 식재료 ID 목록
-           */
-          const ownedIds = ownedIngredients.map((item) => item.foodIngredientId);
-
-          /*
-           * 2.
-           * 사용자가 이번에 선택한 재료 중
-           * 이미 서버에 존재하는 것은 제외
-           */
-          const newFoodIngredients = allFoodIngredients.filter(
-            (item) => !ownedIds.includes(item.id)
-          );
-
-          /*
-           * 3.
-           * 새롭게 추가할 재료가 있는 경우에만
-           * POST 요청
-           */
-          if (newFoodIngredients.length > 0) {
-            const foodIngredientData = {
-              /*
-               * 온보딩에서 등록하는 재료는
-               * 사용자가 현재 보유한 재료
-               */
-              relationType: 'OWN',
-
-              foodIngredientList: newFoodIngredients.map((item) => ({
-                foodIngredientId: item.id,
-
-                /*
-                 * PrimaryUnit에 해당하는
-                 * 수량 값만 서버로 전송
-                 *
-                 * 예:
-                 * 감자 200G
-                 * -> primaryAmountValue: 200
-                 *
-                 * 수량 미입력
-                 * -> primaryAmountValue: null
-                 *
-                 * secondaryAmountValue는
-                 * 사용하지 않음
-                 */
-                primaryAmountValue: getPrimaryAmountValue(item.qty),
-              })),
-            };
-
-            await postUserFoodIngredients(userId, foodIngredientData);
-
-            console.log('사용자 식재료 저장 성공:', foodIngredientData);
-          } else {
-            /*
-             * 선택한 재료가 전부
-             * 이미 서버에 등록되어 있는 경우
-             */
-            console.log('새로 추가할 식재료가 없습니다.');
-          }
-        } catch (error) {
-          console.error('사용자 식재료 저장 실패:', error);
-          return;
-        }
-      }
-    }
-
-    /*
      * 아직 마지막 단계가 아니라면
      * 다음 단계로 이동
      */
@@ -224,8 +155,9 @@ function Onboarding() {
 
     /*
      * 4단계 완료
+     * 온보딩 데이터 일괄 저장
      */
-    finish();
+    await finish();
   };
 
   const handleSkip = () => {

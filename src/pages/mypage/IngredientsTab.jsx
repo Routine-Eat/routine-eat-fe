@@ -1,7 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import styled from 'styled-components';
+
+import {
+  deleteUserFoodIngredients,
+  getUserFoodIngredients,
+  postUserFoodIngredients,
+} from '@/api/userApi';
+import { useUserStore } from '@/hooks/useUserStore';
 
 import plusIcon from '../../assets/mypage/plus.svg';
 import resetIcon from '../../assets/mypage/reset.svg';
@@ -13,6 +20,7 @@ import {
   DUMMY_INGREDIENTS,
   SECTION_META,
 } from '../../constants/dummyIngredients';
+import { INGREDIENTS } from '../onboarding/steps/SecondStep';
 
 function IngredientIcon({ icon }) {
   if (Array.isArray(icon)) {
@@ -27,12 +35,58 @@ function IngredientIcon({ icon }) {
   return <IconImg src={icon} alt="" />;
 }
 
+/* "200G" -> 200. Secondary 수량·단위는 사용하지 않음 */
+const getPrimaryAmountValue = (qty) => {
+  if (!qty) return null;
+
+  const value = parseFloat(qty);
+
+  return Number.isNaN(value) ? null : value;
+};
+
+const mapUserFoodIngredients = (data) =>
+  (data?.foodIngredientList ?? []).map((item) => {
+    const dummyItem = INGREDIENTS.find(
+      (ingredient) => ingredient.name === item.foodIngredientName
+    );
+
+    const amount =
+      item.primaryAmountValue != null
+        ? `${item.primaryAmountValue}${item.foodIngredientPrimaryUnit ?? ''}`
+        : '';
+
+    return {
+      id: item.foodIngredientId,
+      name: item.foodIngredientName,
+      amount,
+      category: item.foodIngredientType === 'SEASONING' ? 'seasoning' : 'ingredient',
+      icon: dummyItem?.icon,
+    };
+  });
+
 /** 마이페이지 재료 탭 — 피그마 1810:7375 / 편집 1812:7655 */
 function IngredientsTab({ isEditing, selectedIds, setSelectedIds }) {
   const navigate = useNavigate();
+  const userId = useUserStore((state) => state.userId);
   const [items, setItems] = useState(DUMMY_INGREDIENTS);
   const [filter, setFilter] = useState('all');
   const [modal, setModal] = useState(null); /* 'ingredient' | 'seasoning' | null */
+
+  /* 사용자-식재료 목록 조회 API (보유) */
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchUserFoodIngredients = async () => {
+      try {
+        const response = await getUserFoodIngredients(userId, 'OWN');
+        setItems(mapUserFoodIngredients(response.data));
+      } catch (error) {
+        console.error('사용자 식재료 조회 실패:', error);
+      }
+    };
+
+    fetchUserFoodIngredients();
+  }, [userId]);
 
   const sections = useMemo(
     () =>
@@ -56,27 +110,60 @@ function IngredientsTab({ isEditing, selectedIds, setSelectedIds }) {
 
   const resetSelection = () => setSelectedIds([]);
 
-  const deleteSelected = () => {
-    setItems((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
-    setSelectedIds([]);
+  const deleteSelected = async () => {
+    if (!selectedIds.length) return;
+
+    if (!userId) {
+      console.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      await deleteUserFoodIngredients(userId, {
+        relationType: 'OWN',
+        foodIngredientList: selectedIds,
+      });
+
+      setItems((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
+      setSelectedIds([]);
+    } catch (error) {
+      console.error('사용자 식재료 삭제 실패:', error);
+    }
   };
 
-  const saveFromModal = (draft) => {
+  const saveFromModal = async (draft) => {
     const category = modal === 'seasoning' ? 'seasoning' : 'ingredient';
-    setItems((prev) => {
-      const next = [...prev];
-      draft.forEach((d) => {
-        if (next.some((i) => i.id === d.id)) return;
-        next.push({
+    const newDraft = draft.filter((d) => !items.some((i) => i.id === d.id));
+
+    if (!newDraft.length) return;
+
+    if (!userId) {
+      console.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      await postUserFoodIngredients(userId, {
+        relationType: 'OWN',
+        foodIngredientList: newDraft.map((item) => ({
+          foodIngredientId: item.id,
+          primaryAmountValue: getPrimaryAmountValue(item.qty),
+        })),
+      });
+
+      setItems((prev) => [
+        ...prev,
+        ...newDraft.map((d) => ({
           id: d.id,
           name: d.name,
           amount: d.qty || '1팩',
           category,
           icon: d.icon,
-        });
-      });
-      return next;
-    });
+        })),
+      ]);
+    } catch (error) {
+      console.error('사용자 식재료 생성 실패:', error);
+    }
   };
 
   return (

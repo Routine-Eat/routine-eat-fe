@@ -1,6 +1,11 @@
 import React, { useState } from "react";
-import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
+
+import styled from "styled-components";
+
+import { patchUserFoodIngredientAmount } from "@/api/userApi";
+import { useUserStore } from "@/hooks/useUserStore";
+
 import BackButton from "../../common/button/BackButton";
 import checkBadgeGreenIcon from "../../assets/icons/checkCircleWhite.svg";
 import arrowLeftIcon from "../../assets/icons/arrowLeft.svg";
@@ -496,9 +501,19 @@ const DetailConfirmButton = styled.button`
   letter-spacing: -0.18px;
 `;
 
+/* "200G" / "1" -> 200 / 1. Secondary 단위·수량은 사용하지 않음 */
+const getPrimaryAmountValue = (amount) => {
+  if (!amount) return null;
+
+  const value = parseFloat(amount);
+
+  return Number.isNaN(value) ? null : value;
+};
+
 export default function CookingIngredientCheck() {
   const navigate = useNavigate();
   const { mealId } = useParams();
+  const userId = useUserStore((state) => state.userId);
   const [isReflectedModalOpen, setIsReflectedModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [ingredients, setIngredients] = useState(INITIAL_INGREDIENTS);
@@ -510,7 +525,36 @@ export default function CookingIngredientCheck() {
     setIsEditModalOpen(true);
   };
 
-  const handleUsedAsIs = () => {
+  const saveOwnedIngredientAmounts = async (list) => {
+    if (!userId) {
+      console.error("사용자 정보가 없습니다.");
+      return false;
+    }
+
+    const foodIngredientList = list
+      .map((item) => ({
+        foodIngredientId: Number(item.id),
+        primaryAmountValue: getPrimaryAmountValue(item.amount),
+      }))
+      .filter(
+        (item) => Number.isFinite(item.foodIngredientId) && item.primaryAmountValue != null
+      );
+
+    if (foodIngredientList.length === 0) return true;
+
+    try {
+      await patchUserFoodIngredientAmount(userId, { foodIngredientList });
+      return true;
+    } catch (error) {
+      console.error("사용자 식재료 보유량 수정 실패:", error);
+      return false;
+    }
+  };
+
+  const handleUsedAsIs = async () => {
+    const saved = await saveOwnedIngredientAmounts(ingredients);
+    if (!saved) return;
+
     setIsReflectedModalOpen(true);
   };
 
@@ -552,7 +596,10 @@ export default function CookingIngredientCheck() {
     closeEditModal();
   };
 
-  const handleListConfirm = () => {
+  const handleListConfirm = async () => {
+    const saved = await saveOwnedIngredientAmounts(ingredients);
+    if (!saved) return;
+
     closeEditModal();
     setIsCompleteModalOpen(true);
   };

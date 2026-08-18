@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 import styled from 'styled-components';
 
+import { getCookingEquipments } from '@/api/cookingEquipmentApi';
 import { getFoodIngredients } from '@/api/foodIngredientApi';
 
 import backIcon from '../../assets/onboarding/register/back.svg';
@@ -36,6 +37,12 @@ const TOOL_MAP = Object.fromEntries(
   ])
 );
 
+const TOOL_TYPE_MAP = {
+  appliance: ['APPLIANCE'],
+  basic: ['UTENSIL', 'ETC'],
+  prep: ['PREP_TOOL'],
+};
+
 /**
  * 식재료/조미료/도구 등록 모달
  * type: 'ingredient' | 'seasoning' | 'appliance' | 'basic' | 'prep'
@@ -57,16 +64,20 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
 
   const isIngredient = type === 'ingredient';
   const isSeasoning = type === 'seasoning';
+  const isTool = Boolean(TOOL_TYPE_MAP[type]);
   const toolCfg = TOOL_MAP[type];
 
   /*
-   * 식재료 / 조미료 검색 API
+   * 식재료 / 조미료 / 조리도구 검색 API
    *
    * 식재료:
    * foodIngredientType !== 'SEASONING'
    *
    * 조미료:
    * foodIngredientType === 'SEASONING'
+   *
+   * 도구:
+   * GET /cooking-equipments?search=
    *
    * 단위는 foodIngredientPrimaryUnit만 사용한다.
    * foodIngredientSecondaryUnit은 사용하지 않는다.
@@ -82,11 +93,25 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
       return;
     }
 
-    // 식재료/조미료가 아닌 도구 모달은 기존 로직 사용
-    if (!isIngredient && !isSeasoning) return;
+    if (!isIngredient && !isSeasoning && !isTool) return;
 
-    const fetchFoodIngredients = async () => {
+    const fetchSearchResults = async () => {
       try {
+        if (isTool) {
+          const response = await getCookingEquipments(q);
+          const allowed = TOOL_TYPE_MAP[type] ?? [];
+
+          const filtered = (response.data ?? [])
+            .filter((item) => allowed.includes(item.cookingEquipmentType))
+            .map((item) => ({
+              id: item.cookingEquipmentId,
+              name: item.cookingEquipmentName,
+            }));
+
+          setApiResults(filtered);
+          return;
+        }
+
         const response = await getFoodIngredients(q);
 
         const filtered = response.data
@@ -130,13 +155,13 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
 
         setApiResults(filtered);
       } catch (error) {
-        console.error('식재료 검색 실패:', error);
+        console.error(isTool ? '조리도구 검색 실패:' : '식재료 검색 실패:', error);
         setApiResults([]);
       }
     };
 
-    fetchFoodIngredients();
-  }, [query, open, isIngredient, isSeasoning]);
+    fetchSearchResults();
+  }, [query, open, isIngredient, isSeasoning, isTool, type]);
 
   /*
    * 도구 등록 모달에서는 기존 더미 catalog 사용
@@ -166,18 +191,17 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
   /*
    * 검색 결과
    *
-   * 식재료/조미료 → 백엔드 API 결과
-   * 도구 → 기존 더미데이터 검색
+   * 식재료/조미료/도구 → 백엔드 API 결과
    */
   const results = useMemo(() => {
     if (!q) return [];
 
-    if (isIngredient || isSeasoning) {
+    if (isIngredient || isSeasoning || isTool) {
       return apiResults;
     }
 
     return catalog.filter((item) => item.name.includes(q));
-  }, [q, isIngredient, isSeasoning, apiResults, catalog]);
+  }, [q, isIngredient, isSeasoning, isTool, apiResults, catalog]);
 
   if (!open) return null;
 

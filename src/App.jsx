@@ -18,6 +18,8 @@ import Onboarding from './pages/onboarding/Onboarding';
 import RecipeDetail from './pages/recipe/RecipeDetail';
 import SimilarRecipe from './pages/recipe/SimilarRecipe';
 import ShoppingList from './pages/shopping/ShoppingList';
+import MarketDetail from '@/pages/market/MarketDetail';
+import Login from '@/pages/login/Login';
 import { isOnboardingComplete } from './utils/onboarding';
 
 /** 온보딩은 앱 최초 1회만 — 미완료면 온보딩, 완료 후 /onboarding 재진입은 홈으로 */
@@ -25,27 +27,21 @@ function OnboardingGate() {
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
-  useEffect(() => {
-    const done = isOnboardingComplete();
+  // useEffect(() => {
+  //   const done = isOnboardingComplete();
 
-    if (!done && pathname !== '/onboarding') {
-      navigate('/onboarding', { replace: true });
-      return;
-    }
+  //   if (!done && pathname !== '/onboarding') {
+  //     navigate('/onboarding', { replace: true });
+  //     return;
+  //   }
 
-    if (done && pathname === '/onboarding') {
-      navigate('/', { replace: true });
-    }
-  }, [navigate, pathname]);
+  //   if (done && pathname === '/onboarding') {
+  //     navigate('/', { replace: true });
+  //   }
+  // }, [navigate, pathname]);
 
   return null;
 }
-import HomeDietStart from './pages/home/HomeDietStart';
-import HomeCooking from "./pages/home/HomeCooking";
-import HomeCookingStep from "./pages/home/HomeCookingStep";
-import CookingComplete from "./pages/home/CookingComplete";
-import CookingReview from "./pages/home/CookingReview";
-import MarketDetail from '@/pages/market/MarketDetail';
 
 
 function App() {
@@ -78,6 +74,7 @@ function App() {
         <Route path="/cooking/:mealId/review" element={<CookingReview />} />
         <Route path="/cooking/:mealId/review/ingredients" element={<CookingIngredientCheck />} />
         <Route path="/market/product/:productId" element={<MarketDetail />} />
+        <Route path="/login" element={<Login />} />        
       </Routes>
     </BrowserRouter>
   );

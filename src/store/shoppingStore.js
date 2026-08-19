@@ -1,20 +1,15 @@
-import { OTHER_GROUP_ID, SHOPPING_GROUPS } from '../constants/dummyShoppingList';
+import { postUserFoodIngredients } from '../api/userApi';
+import { OTHER_GROUP_ID } from '../constants/dummyShoppingList';
+import { useUserStore } from '../hooks/useUserStore';
 
 const OTHER_GROUP = { id: OTHER_GROUP_ID, title: '기타', items: [] };
-
-function cloneGroups(list) {
-  return list.map((g) => ({
-    ...g,
-    items: g.items.map((i) => ({ ...i })),
-  }));
-}
 
 function ensureOtherGroup(list) {
   if (list.some((g) => g.id === OTHER_GROUP_ID)) return list;
   return [...list, { ...OTHER_GROUP, items: [] }];
 }
 
-let groups = ensureOtherGroup(cloneGroups(SHOPPING_GROUPS));
+let groups = [{ ...OTHER_GROUP, items: [] }];
 const listeners = new Set();
 let idSeq = 100;
 
@@ -50,17 +45,44 @@ export function setShoppingGroups(next) {
   emit();
 }
 
+const toFoodIngredientId = (item) => {
+  if (typeof item === 'string') return null;
+  const id = Number(item.id ?? item.foodIngredientId);
+  return Number.isFinite(id) ? id : null;
+};
+
+const reserveShoppingIngredients = (items) => {
+  const userId = useUserStore.getState().userId;
+  const foodIngredientList = items
+    .map((item) => Number(item.foodIngredientId))
+    .filter((id) => Number.isFinite(id))
+    .map((foodIngredientId) => ({ foodIngredientId }));
+
+  if (!userId || foodIngredientList.length === 0) return;
+
+  postUserFoodIngredients(userId, {
+    relationType: 'RESERVATION',
+    foodIngredientList,
+  }).catch((error) => {
+    console.error('장보기 예약 식재료 저장 실패:', error);
+  });
+};
+
 /** 레시피 재료를 장보기 그룹에 추가 (같은 레시피명이면 합침) */
 export function addItemsToShopping(title, items) {
   const normalized = items.map((item) => ({
     id: nextId(),
+    foodIngredientId: toFoodIngredientId(item),
     name: typeof item === 'string' ? item : item.name,
     amount: typeof item === 'string' ? '1개' : (item.amount ?? '1개'),
   }));
 
+  let added = normalized;
+
   setShoppingGroups((prev) => {
     const idx = prev.findIndex((g) => g.title === title);
     if (idx === -1) {
+      added = normalized;
       return [
         ...prev.filter((g) => g.id !== OTHER_GROUP_ID),
         {
@@ -75,12 +97,15 @@ export function addItemsToShopping(title, items) {
     const group = prev[idx];
     const names = new Set(group.items.map((i) => i.name));
     const toAdd = normalized.filter((i) => !names.has(i.name));
+    added = toAdd;
     if (!toAdd.length) return prev;
 
     const next = [...prev];
     next[idx] = { ...group, items: [...group.items, ...toAdd] };
     return next;
   });
+
+  reserveShoppingIngredients(added);
 }
 
 /** 기타 그룹에 항목 추가 */

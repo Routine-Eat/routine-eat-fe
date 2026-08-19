@@ -1,15 +1,18 @@
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import styled from 'styled-components';
 
+import checkCircleWhiteIcon from '../../assets/icons/checkCircleWhite.svg';
 import addItemIcon from '../../assets/shopping/add-item.svg';
 import checkOn from '../../assets/shopping/check-on.svg';
 import heartEmpty from '../../assets/shopping/heart-empty.svg';
 import heartFilled from '../../assets/shopping/heart-filled.svg';
 import marketIcon from '../../assets/shopping/market-icon.png';
+import { patchUserFoodIngredientStatus, postUserFoodIngredients } from '../../api/userApi';
 import BackButton from '../../common/button/BackButton';
 import { MARKET_PRODUCTS, OTHER_GROUP_ID } from '../../constants/dummyShoppingList';
+import { useUserStore } from '../../hooks/useUserStore';
 import {
   addOtherShoppingItem,
   getShoppingGroups,
@@ -22,11 +25,13 @@ import ShoppingDoneModal from './ShoppingDoneModal';
 /** 장보기 목록 — 피그마 1854:2899 */
 function ShoppingList() {
   const navigate = useNavigate();
+  const userId = useUserStore((state) => state.userId);
   const groups = useSyncExternalStore(subscribeShopping, getShoppingGroups);
   const [checked, setChecked] = useState(() => new Set());
   const [products, setProducts] = useState(MARKET_PRODUCTS);
-  const [modalStep, setModalStep] = useState(null); // null | 'confirm' | 'done'
+  const [modalStep, setModalStep] = useState(null); // null | 'confirm'
   const [addOpen, setAddOpen] = useState(false);
+  const [isToastVisible, setIsToastVisible] = useState(false);
   const hasChecked = checked.size > 0;
 
   const recipeGroups = groups.filter((g) => g.id !== OTHER_GROUP_ID);
@@ -76,10 +81,50 @@ function ShoppingList() {
     setChecked(new Set(allIds));
   };
 
-  const finishSelected = () => {
+  const finishSelected = async () => {
+    const foodIngredientList = groups
+      .flatMap((group) => group.items)
+      .filter((item) => checked.has(item.id))
+      .map((item) => Number(item.foodIngredientId))
+      .filter((id) => Number.isFinite(id));
+
+    if (foodIngredientList.length > 0) {
+      if (!userId) {
+        console.error('사용자 정보가 없습니다.');
+        return;
+      }
+
+      try {
+        await patchUserFoodIngredientStatus(userId, {
+          relationType: 'OWN',
+          foodIngredientList,
+        });
+      } catch (error) {
+        console.error('사용자 식재료 상태 변경 실패:', error);
+        try {
+          await postUserFoodIngredients(userId, {
+            relationType: 'OWN',
+            foodIngredientList: foodIngredientList.map((foodIngredientId) => ({
+              foodIngredientId,
+            })),
+          });
+        } catch (createError) {
+          console.error('사용자 식재료 보유 저장 실패:', createError);
+          return;
+        }
+      }
+    }
+
     clearCheckedItems();
-    setModalStep('done');
+    setModalStep(null);
+    setIsToastVisible(true);
   };
+
+  useEffect(() => {
+    if (!isToastVisible) return;
+    const timer = setTimeout(() => setIsToastVisible(false), 2000);
+    return () => clearTimeout(timer);
+  }, [isToastVisible]);
 
   const toggleLike = (id) => {
     setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, liked: !p.liked } : p)));
@@ -131,7 +176,7 @@ function ShoppingList() {
               disabled={!hasChecked}
               onClick={() => setModalStep('confirm')}
             >
-              장보기 완료
+              구매했어요
             </DoneBtn>
           </Actions>
         </ListCard>
@@ -173,8 +218,15 @@ function ShoppingList() {
         step={modalStep}
         onClose={() => setModalStep(null)}
         onConfirm={finishSelected}
-        onOk={() => setModalStep(null)}
+        count={checked.size}
       />
+
+      {isToastVisible && (
+        <Toast>
+          <img src={checkCircleWhiteIcon} alt="" />
+          <span>재료를 보유재료로 추가했어요</span>
+        </Toast>
+      )}
     </Page>
   );
 }
@@ -516,3 +568,47 @@ const PlateImg = styled.img`
   height: 20px;
   object-fit: contain;
 `;
+
+const toastFade = `
+  @keyframes toastFade {
+    0% { opacity: 0; transform: translate(-50%, 8px); }
+    10% { opacity: 1; transform: translate(-50%, 0); }
+    85% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, 8px); }
+  }
+`;
+
+const Toast = styled.div`
+  ${toastFade}
+  position: fixed;
+  left: 50%;
+  bottom: 120px;
+  transform: translate(-50%, 0);
+  z-index: 300;
+  background: #727272;
+  border-radius: 10px;
+  padding: 12px 16px 12px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toastFade 2s ease forwards;
+  pointer-events: none;
+  max-width: calc(100% - 48px);
+
+  img {
+    width: 24px;
+    height: 24px;
+    display: block;
+    flex-shrink: 0;
+  }
+
+  span {
+    color: white;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: -0.14px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+`;
+

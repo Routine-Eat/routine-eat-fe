@@ -1,14 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import styled from "styled-components";
-import { useNavigate } from "react-router-dom";
-import {useParams} from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import starFilledIcon from "../../assets/icons/StarFilled.svg";
-import { DUMMY_DISHES, THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
+import { THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
+import eggFoodImg from "../../assets/images/EggFood.svg";
 import BackButton from "../../common/button/BackButton";
 import shoppingCartIcon from "../../assets/icons/shoppingCart.svg";
 import dragHandleBar from "../../assets/icons/dragHandleBar.svg";
 import starEmptyIcon from "../../assets/icons/StarEmpty.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
+import { getAiMealPlanRecommendation, postUserMealPlan } from "../../api/mealPlanApi";
+import { useUserStore } from "../../hooks/useUserStore";
+
+const THEME_TO_AI_KEY = {
+  "skill-up": "practice",
+  quick: "simple",
+  "max-ingredient": "useAll",
+  "one-ingredient": "recycling",
+};
+
+const THEME_TO_TYPE = {
+  "skill-up": "PRACTICE",
+  quick: "SIMPLE",
+  "max-ingredient": "USEALL",
+  "one-ingredient": "RECYCLING",
+};
+
+const parseDifficulty = (value) => {
+  const level = Number(String(value ?? "").replace("LEVEL_", ""));
+  return Number.isFinite(level) ? level : 0;
+};
+
+const mapAiMenus = (menus) =>
+  (menus ?? []).map((item) => ({
+    id: item.menuId,
+    name: item.menuName ?? "",
+    time: `${item.timeRequired ?? 0}분 소요`,
+    cost: `예상 재료비 ${Number(item.price ?? 0).toLocaleString()}원`,
+    difficulty: parseDifficulty(item.difficultyLevel),
+    image: eggFoodImg,
+    matchRate: item.sameRate ?? null,
+  }));
 
 const PageContainer = styled.div`
 background: #fffdfc;
@@ -267,18 +299,62 @@ const StartModalButton = styled.button`
 
 export default function HomeMenu() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { mealId } = useParams();
+  const userId = useUserStore((state) => state.userId);
 
-   const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
-  const menuDishes = DUMMY_DISHES.slice(0, 3);
-    const [isStartModalOpen, setIsStartModalOpen] = useState(false);
+  const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
+  const [recommendation, setRecommendation] = useState(location.state?.recommendation ?? null);
+  const menuDishes = mapAiMenus(recommendation?.menus);
+  const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const missingIngredients = MISSING_INGREDIENTS;
+
+  useEffect(() => {
+    if (location.state?.recommendation) {
+      setRecommendation(location.state.recommendation);
+      return undefined;
+    }
+    if (!userId) return undefined;
+
+    const fetchRecommendation = async () => {
+      try {
+        const response = await getAiMealPlanRecommendation(userId);
+        const payload = response.data ?? response;
+        setRecommendation(payload?.[THEME_TO_AI_KEY[mealId]] ?? null);
+      } catch (error) {
+        console.error("AI 목적별 식단 추천 조회 실패:", error);
+      }
+    };
+
+    fetchRecommendation();
+  }, [location.state?.recommendation, userId, mealId]);
+
+  const startMealPlan = async () => {
+    if (!userId) {
+      console.error("사용자 정보가 없습니다.");
+      return;
+    }
+
+    try {
+      const response = await postUserMealPlan(userId, {
+        mealPlanType: recommendation?.type ?? THEME_TO_TYPE[mealId],
+        mealPlanStatus: "PROGRESS",
+        planMenuIdList: (recommendation?.menus ?? [])
+          .map((item) => item.menuId)
+          .filter((id) => id != null),
+      });
+      const payload = response.data ?? response;
+      navigate(`/diet-start/${payload.mealPlanId ?? mealId}`);
+    } catch (error) {
+      console.error("사용자 식단 저장 실패:", error);
+    }
+  };
 
   const handleStartClick = () => {
     if (missingIngredients.length > 0) {
       setIsStartModalOpen(true);
     } else {
-      navigate(`/diet-start/${mealId}`);
+      startMealPlan();
     }
   };
 
@@ -289,7 +365,7 @@ export default function HomeMenu() {
 
   const handleProceedWithoutAdding = () => {
     setIsStartModalOpen(false);
-    navigate(`/diet-start/${mealId}`);
+    startMealPlan();
   };
 
   return (
@@ -299,11 +375,11 @@ export default function HomeMenu() {
       </Header>
 
        <PageTitle>{theme.title}</PageTitle>
-      <PageSubtitle>{theme.desc.join("")}</PageSubtitle>
+      <PageSubtitle>{recommendation?.reason || theme.desc.join("")}</PageSubtitle>
 
       <RecipeList>
-        {menuDishes.map((recipe) => (
-          <RecipeCard key={recipe.id}>
+        {menuDishes.map((recipe, idx) => (
+          <RecipeCard key={recipe.id ?? idx}>
             <div className="thumb-box">
               <img className="thumb" src={recipe.image} alt={recipe.name} />
             </div>

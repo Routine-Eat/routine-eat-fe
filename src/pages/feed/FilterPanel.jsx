@@ -338,7 +338,7 @@ const ApplyBtn = styled.button`
   height: 48px;
   border: none;
   border-radius: 10px;
-  background: #72d472;
+  background: #96D960;
   font-family: 'Wanted Sans', sans-serif;
   font-size: 15px;
   font-weight: 500;

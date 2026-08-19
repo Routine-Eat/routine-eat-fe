@@ -36,10 +36,20 @@ const formatMealPlanDate = (value) => {
   return `${year}년 ${Number(month)}월 ${Number(day)}일 완료`;
 };
 
+const MEAL_PLAN_TITLES = {
+  PRACTICE: '요리 스킬 스텝업',
+  SIMPLE: '간편 요리 식단',
+  QUICK: '간편 요리 식단',
+  USEALL: '재료 최대치 활용',
+  MAX_INGREDIENT: '재료 최대치 활용',
+  RECYCLING: '한 가지 재료 털기',
+  ONE_INGREDIENT: '한 가지 재료 털기',
+};
+
 const mapMealPlans = (content) =>
   (content ?? []).map((item, index) => ({
     id: item.mealPlanId ?? item.id,
-    title: item.mealPlanName ?? item.name ?? item.title ?? '',
+    title: MEAL_PLAN_TITLES[item.mealPlanType] ?? item.mealPlanName ?? item.name ?? item.title ?? '',
     date: formatMealPlanDate(item.completedAt ?? item.updatedAt ?? item.createdAt),
     icon: DUMMY_MEAL_RECORDS[index % DUMMY_MEAL_RECORDS.length].icon,
   }));
@@ -143,10 +153,9 @@ function RecipeTab() {
 
     const fetchMealPlans = async () => {
       try {
-        const response = await getUserMealPlans(userId);
+        const response = await getUserMealPlans(userId, 'DONE');
         const payload = response.data ?? response;
         const list = payload.content ?? payload.mealPlanList ?? (Array.isArray(payload) ? payload : []);
-        if (!list.length) return;
         setMealRecords(mapMealPlans(list));
       } catch (error) {
         console.error('사용자 식단 조회 실패:', error);
@@ -248,7 +257,10 @@ function RecipeTab() {
         <RecordGrid>
           {mealRecords.map((meal) => (
             /* 식단 기록 카드: 168×128 둥근 직사각형 */
-            <MealCard key={meal.id}>
+            <MealCard
+              key={meal.id}
+              onClick={() => navigate(`/diet-start/${meal.id}`)}
+            >
               <DeleteMealBtn
                 type="button"
                 aria-label="식단 기록 삭제"
@@ -378,6 +390,7 @@ const MealCard = styled.article`
   padding: 18px 16px 16px;
   border-radius: 15px;
   background: #fff;
+  cursor: pointer;
   box-shadow:
     0 0 10px 0 rgba(3, 3, 3, 0.03),
     0 0 40px 0 rgba(3, 3, 3, 0.05);
@@ -468,7 +481,7 @@ const ShopBtn = styled.button`
   height: 48px;
   border: none;
   border-radius: 10px;
-  background: #72d472;
+  background: #96D960;
   color: #fff;
   font-size: 16px;
   font-weight: 600;

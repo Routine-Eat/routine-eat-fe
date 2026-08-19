@@ -167,7 +167,7 @@ const OkBtn = styled.button`
   height: 48px;
   border: none;
   border-radius: 12px;
-  background: #72d472;
+  background: #96D960;
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.16px;
@@ -184,7 +184,7 @@ const FullOkBtn = styled.button`
   height: 48px;
   border: none;
   border-radius: 12px;
-  background: #72d472;
+  background: #96D960;
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.16px;

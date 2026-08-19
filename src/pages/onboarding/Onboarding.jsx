@@ -196,26 +196,29 @@ function Onboarding() {
         )}
       </TopBar>
 
-      {/* 1단계 */}
-      {step === 1 && <FirstStep selected={cookingLevel} onSelect={setCookingLevel} />}
+      {/* 단계 본문 — 상단바·하단 확인 버튼 사이 남은 영역 */}
+      <Body>
+        {/* 1단계 */}
+        {step === 1 && <FirstStep selected={cookingLevel} onSelect={setCookingLevel} />}
 
-      {/* 2단계 */}
-      {step === 2 && <SecondStep selectedIds={dislikedIds} onToggle={toggleDislike} />}
+        {/* 2단계 */}
+        {step === 2 && <SecondStep selectedIds={dislikedIds} onToggle={toggleDislike} />}
 
-      {/* 3단계 */}
-      {step === 3 && <ThirdStep selectedIds={toolIds} onToggle={toggleTool} />}
+        {/* 3단계 */}
+        {step === 3 && <ThirdStep selectedIds={toolIds} onToggle={toggleTool} />}
 
-      {/* 4단계 */}
-      {step === 4 && (
-        <FourthStep
-          ingredients={ingredients}
-          seasonings={seasonings}
-          onSaveIngredients={(items) => setIngredients((prev) => mergeById(prev, items))}
-          onSaveSeasonings={(items) => setSeasonings((prev) => mergeById(prev, items))}
-        />
-      )}
+        {/* 4단계 */}
+        {step === 4 && (
+          <FourthStep
+            ingredients={ingredients}
+            seasonings={seasonings}
+            onSaveIngredients={(items) => setIngredients((prev) => mergeById(prev, items))}
+            onSaveSeasonings={(items) => setSeasonings((prev) => mergeById(prev, items))}
+          />
+        )}
+      </Body>
 
-      {/* 하단 */}
+      {/* 하단 확인 버튼 — 화면 하단에 고정 */}
       <Footer $tall={showSelected}>
         {step === 2 && <SelectedChips selectedIds={dislikedIds} onRemove={toggleDislike} />}
 
@@ -240,7 +243,7 @@ const Page = styled.div`
   display: flex;
   flex-direction: column;
   width: 100%;
-  height: 100%;
+  height: 100dvh;
   background: #fffefd;
   overflow: hidden;
 `;
@@ -249,8 +252,17 @@ const TopBar = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
   width: 346px;
-  margin: 60px 0 0 22px;
+  margin: 30px 0 0 22px;
+`;
+
+const Body = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 `;
 
 const Progress = styled.div`
@@ -280,13 +292,9 @@ const SkipBtn = styled.button`
 `;
 
 const Footer = styled.div`
-  position: absolute;
-  left: 50%;
-  bottom: 0;
+  flex-shrink: 0;
   z-index: 10;
   width: 100%;
-  max-width: 390px;
-  transform: translateX(-50%);
   padding: ${({ $tall }) => ($tall ? '20px 20px 32px' : '28px 20px 32px')};
   background: #fff;
   border-radius: 36px 36px 0 0;

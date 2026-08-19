@@ -39,7 +39,7 @@ const Case = styled.button`
   gap: 6px;
   border-radius: 30px;
   background: ${({ $isSelected }) => ($isSelected ? '#D6F3A1' : 'white')};
-  border: ${({ $isSelected }) => ($isSelected ? '2px solid #C2EE73' : 'none')};
+  border: ${({ $isSelected }) => ($isSelected ? '2px solid #C2EE73' : '2px solid transparent')};
 
   /* 온보딩그림자 */
   box-shadow:

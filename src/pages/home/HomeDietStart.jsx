@@ -47,7 +47,7 @@ const PageContainer = styled.div`
 
 const StopLink = styled.button`
   position: absolute;
-  right: 24px;
+  right: 8px;
   top: 24px;
   background: none;
   border: none;

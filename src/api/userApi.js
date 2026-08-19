@@ -40,6 +40,14 @@ export const patchUser = (userId, userData) =>
 export const patchUserFoodIngredientAmount = (userId, foodIngredientData) =>
   APIService.public.patch(`/users/${userId}/food-ingredients/amount`, foodIngredientData);
 
+/* /api/v1/users/{userId}/food-ingredients/status 사용자-식재료 상태 변경 */
+export const patchUserFoodIngredientStatus = (userId, foodIngredientData) =>
+  APIService.public.patch(`/users/${userId}/food-ingredients/status`, foodIngredientData);
+
+/* /api/v1/users/{userId}/statistics/{statisticsId} 사용자 세끼 리포트 조회 */
+export const getUserStatistics = (userId, statisticsId) =>
+  APIService.public.get(`/users/${userId}/statistics/${statisticsId}`);
+
 /* /api/v1/users/{userId}/onboarding 사용자 온보딩 데이터 저장 */
 export const postUserOnboarding = (userId, onboardingData) =>
   APIService.public.post(`/users/${userId}/onboarding`, onboardingData);

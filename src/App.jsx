@@ -16,6 +16,7 @@ import HomeCookingStep from './pages/home/HomeCookingStep';
 import HomeDietStart from './pages/home/HomeDietStart';
 import HomeMenu from './pages/home/HomeMenu';
 import Market from './pages/market/Market';
+import CookingRecordDetail from './pages/mypage/CookingRecordDetail';
 import Mypage from './pages/mypage/Mypage';
 import Notification from './pages/notification/Notification';
 import Onboarding from './pages/onboarding/Onboarding';
@@ -61,6 +62,7 @@ function App() {
           <Route path="/shopping-list" element={<ShoppingList />} />
           <Route path="/market" element={<Market />} />
           <Route path="/mypage" element={<Mypage />} />
+          <Route path="/cooking-records/:cookingRecordId" element={<CookingRecordDetail />} />
           <Route path="/diet-start/:mealId" element={<HomeDietStart />} />
         </Route>
 

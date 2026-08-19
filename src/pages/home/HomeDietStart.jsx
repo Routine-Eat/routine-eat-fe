@@ -47,7 +47,7 @@ const PageContainer = styled.div`
 
 const StopLink = styled.button`
   position: absolute;
-  right: 24px;
+  right:8px;
   top: 24px;
   background: none;
   border: none;
@@ -116,6 +116,12 @@ const RecipeListHeading = styled.p`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.36px;
+`;
+
+const StartButtonWrap = styled.div`
+  & > button {
+    margin-top: 24px !important;
+  }
 `;
 
 const EmptyNotice = styled.p`
@@ -209,7 +215,8 @@ const MealRow = styled.div`
 `;
 
 const MissingSection = styled.div`
-  margin-top: 40px;
+  margin-top: 64px;
+  margin-bottom: 71px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -529,6 +536,11 @@ export default function HomeDietStart() {
           </MealRow>
         ))}
       </MealList>
+      <StartButtonWrap>
+           <BottomFixedButton variant="inline" onClick={handleStartCooking}>
+       식단 시작하기
+     </BottomFixedButton>
+     </StartButtonWrap>
 
       {missingIngredients.length > 0 && (
         <MissingSection>
@@ -611,10 +623,6 @@ export default function HomeDietStart() {
           <span>{toastMessage}</span>
         </Toast>
       )}
-
-      <BottomFixedButton variant="inline" onClick={handleStartCooking}>
-        식단 시작하기
-      </BottomFixedButton>
     </PageContainer>
   );
 }

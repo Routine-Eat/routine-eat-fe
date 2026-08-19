@@ -3,12 +3,12 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 
 import { getCookingEquipments, postInitCookingEquipments } from '@/api/cookingEquipmentApi';
+import PillButton from '@/common/PillButton';
 
 import clearIcon from '../../../assets/onboarding/tools/clear.svg';
 import fireIcon from '../../../assets/onboarding/tools/fire.svg';
 import knifeIcon from '../../../assets/onboarding/tools/knife.svg';
 import panIcon from '../../../assets/onboarding/tools/pan.svg';
-import removeIcon from '../../../assets/onboarding/tools/remove.svg';
 import searchIcon from '../../../assets/onboarding/tools/search.svg';
 
 /* API 호출 실패 시 보여줄 기존 더미데이터 */
@@ -18,11 +18,11 @@ const CATEGORIES = [
     title: '조리기기',
     icon: fireIcon,
     items: [
-      { id: 'gas', name: '가스레인지' },
-      { id: 'microwave', name: '전자레인지' },
-      { id: 'oven', name: '오븐' },
-      { id: 'ricecooker', name: '밥솥' },
-      { id: 'airfryer', name: '에어프라이어' },
+      { id: 'gas', name: '가스레인지', type: 'APPLIANCE' },
+      { id: 'microwave', name: '전자레인지', type: 'APPLIANCE' },
+      { id: 'oven', name: '오븐', type: 'APPLIANCE' },
+      { id: 'ricecooker', name: '밥솥', type: 'APPLIANCE' },
+      { id: 'airfryer', name: '에어프라이어', type: 'APPLIANCE' },
     ],
   },
   {
@@ -30,9 +30,9 @@ const CATEGORIES = [
     title: '기본 조리도구',
     icon: panIcon,
     items: [
-      { id: 'pan', name: '프라이팬' },
-      { id: 'pot', name: '냄비' },
-      { id: 'blender', name: '믹서기' },
+      { id: 'pan', name: '프라이팬', type: 'UTENSIL' },
+      { id: 'pot', name: '냄비', type: 'UTENSIL' },
+      { id: 'blender', name: '믹서기', type: 'UTENSIL' },
     ],
   },
   {
@@ -40,9 +40,9 @@ const CATEGORIES = [
     title: '준비·손질 도구',
     icon: knifeIcon,
     items: [
-      { id: 'board', name: '도마' },
-      { id: 'knife', name: '칼/가위' },
-      { id: 'sieve', name: '채망' },
+      { id: 'board', name: '도마', type: 'PREP_TOOL' },
+      { id: 'knife', name: '칼/가위', type: 'PREP_TOOL' },
+      { id: 'sieve', name: '채망', type: 'PREP_TOOL' },
     ],
   },
 ];
@@ -58,6 +58,7 @@ const makeCategories = (data) => [
       .map((item) => ({
         id: item.cookingEquipmentId,
         name: item.cookingEquipmentName,
+        type: item.cookingEquipmentType,
       })),
   },
   {
@@ -71,6 +72,7 @@ const makeCategories = (data) => [
       .map((item) => ({
         id: item.cookingEquipmentId,
         name: item.cookingEquipmentName,
+        type: item.cookingEquipmentType,
       })),
   },
   {
@@ -82,6 +84,7 @@ const makeCategories = (data) => [
       .map((item) => ({
         id: item.cookingEquipmentId,
         name: item.cookingEquipmentName,
+        type: item.cookingEquipmentType,
       })),
   },
 ];
@@ -129,7 +132,7 @@ function ThirdStep({ selectedIds, onToggle }) {
     <Wrap>
       {/* 제목·부제 텍스트 블록 */}
       <Header>
-        <Title>조리 환경을 알려주세요</Title>
+        <Title>사용할 수 있는 도구를 알려주세요</Title>
         <Subtitle>
           사용할 수 있는 조리 도구에 맞춰
           <br />
@@ -144,7 +147,7 @@ function ThirdStep({ selectedIds, onToggle }) {
         <SearchInput
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="추천에 없다면 검색을 통해 찾아보세요"
+          placeholder="도구 이름 검색"
           aria-label="조리 도구 검색"
         />
 
@@ -165,20 +168,16 @@ function ThirdStep({ selectedIds, onToggle }) {
             </SectionLabel>
 
             <ChipRow>
-              {cat.items.map((item) => {
-                const active = selectedIds.includes(item.id);
-
-                return (
-                  <Chip
-                    key={item.id}
-                    type="button"
-                    $active={active}
-                    onClick={() => onToggle(item.id)}
-                  >
-                    {item.name}
-                  </Chip>
-                );
-              })}
+              {cat.items.map((item) => (
+                <PillButton
+                  key={item.id}
+                  kind="EQUIPMENT"
+                  detailType={item.type}
+                  name={item.name}
+                  isSelected={selectedIds.includes(item.id)}
+                  onClick={() => onToggle(item.id)}
+                />
+              ))}
             </ChipRow>
           </Section>
         ))}
@@ -200,6 +199,7 @@ export function SelectedToolChips({ selectedIds, onRemove }) {
         const allTools = response.data.map((item) => ({
           id: item.cookingEquipmentId,
           name: item.cookingEquipmentName,
+          type: item.cookingEquipmentType,
         }));
 
         setTools(allTools);
@@ -218,10 +218,14 @@ export function SelectedToolChips({ selectedIds, onRemove }) {
   return (
     <SelectedRow>
       {items.map((item) => (
-        <SelectedChip key={item.id} type="button" onClick={() => onRemove(item.id)}>
-          <RemoveImg src={removeIcon} alt="" />
-          {item.name}
-        </SelectedChip>
+        <PillButton
+          key={item.id}
+          kind="EQUIPMENT"
+          detailType={item.type}
+          name={item.name}
+          deleteAvailable
+          onClick={() => onRemove(item.id)}
+        />
       ))}
     </SelectedRow>
   );
@@ -234,7 +238,7 @@ const Wrap = styled.div`
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 40px 20px 180px;
+  padding: 40px 20px 16px;
   overflow-y: auto;
 `;
 
@@ -266,6 +270,7 @@ const SearchBox = styled.div`
   position: relative;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   width: 100%;
   max-width: 340px;
   height: 48px;
@@ -355,57 +360,12 @@ const ChipRow = styled.div`
   gap: 12px 4px;
 `;
 
-const Chip = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 36px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 30px;
-  background: ${({ $active }) => ($active ? '#d6f3a1' : '#fff')};
-  box-shadow:
-    0 0 4px rgba(3, 3, 3, 0.05),
-    0 0 15px rgba(3, 3, 3, 0.05);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #1a1a1a;
-  white-space: nowrap;
-  cursor: pointer;
-`;
-
 const SelectedRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   width: 100%;
   margin-bottom: 24px;
-`;
-
-const SelectedChip = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 15px;
-  border: none;
-  border-radius: 30px;
-  background: #fff;
-  box-shadow:
-    0 0 8px rgba(3, 3, 3, 0.05),
-    0 0 30px rgba(3, 3, 3, 0.05);
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #1a1a1a;
-  white-space: nowrap;
-  cursor: pointer;
-`;
-
-const RemoveImg = styled.img`
-  width: 16px;
-  height: 16px;
 `;
 
 export default ThirdStep;

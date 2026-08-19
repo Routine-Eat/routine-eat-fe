@@ -4,27 +4,27 @@ import styled from 'styled-components';
 
 import { getCookingEquipments } from '@/api/cookingEquipmentApi';
 import { getFoodIngredients } from '@/api/foodIngredientApi';
+import PillButton from '@/common/PillButton';
 
 import backIcon from '../../assets/onboarding/register/back.svg';
 import checkIcon from '../../assets/onboarding/register/check.svg';
 import clearIcon from '../../assets/onboarding/register/clear.svg';
-import sauceIcon from '../../assets/onboarding/register/sauce.svg';
 import searchIcon from '../../assets/onboarding/register/search.svg';
 import { TOOL_MODAL, TOOL_SECTIONS } from '../../constants/dummyTools';
-import { INGREDIENTS, IngredientIcon } from '../../pages/onboarding/steps/SecondStep';
+import { INGREDIENTS } from '../../pages/onboarding/steps/SecondStep';
 
 /* 조미료 목록 — 도구 모달 등 기존 구조 호환용 */
 const SEASONINGS = [
-  { id: 'salt', name: '소금', icon: sauceIcon },
-  { id: 'sesameSalt', name: '깨소금', icon: sauceIcon },
-  { id: 'gochujang', name: '고추장', icon: sauceIcon },
-  { id: 'soySauce', name: '간장', icon: sauceIcon },
-  { id: 'doenjang', name: '된장', icon: sauceIcon },
-  { id: 'sugar', name: '설탕', icon: sauceIcon },
-  { id: 'oil', name: '식용유', icon: sauceIcon },
-  { id: 'sesameOil', name: '참기름', icon: sauceIcon },
-  { id: 'vinegar', name: '식초', icon: sauceIcon },
-  { id: 'pepper', name: '후추', icon: sauceIcon },
+  { id: 'salt', name: '소금', type: 'SEASONING' },
+  { id: 'sesameSalt', name: '깨소금', type: 'SEASONING' },
+  { id: 'gochujang', name: '고추장', type: 'SEASONING' },
+  { id: 'soySauce', name: '간장', type: 'SEASONING' },
+  { id: 'doenjang', name: '된장', type: 'SEASONING' },
+  { id: 'sugar', name: '설탕', type: 'SEASONING' },
+  { id: 'oil', name: '식용유', type: 'SEASONING' },
+  { id: 'sesameOil', name: '참기름', type: 'SEASONING' },
+  { id: 'vinegar', name: '식초', type: 'SEASONING' },
+  { id: 'pepper', name: '후추', type: 'SEASONING' },
 ];
 
 const TOOL_MAP = Object.fromEntries(
@@ -106,6 +106,7 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
             .map((item) => ({
               id: item.cookingEquipmentId,
               name: item.cookingEquipmentName,
+              type: item.cookingEquipmentType,
             }));
 
           setApiResults(filtered);
@@ -124,34 +125,23 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
             // 식재료 모달
             return item.foodIngredientType !== 'SEASONING';
           })
-          .map((item) => {
+          .map((item) => ({
+            id: item.foodIngredientId,
+            name: item.foodIngredientName,
+            type: item.foodIngredientType,
+
             /*
-             * 기존 식재료 아이콘과 이름이 같은 경우
-             * 기존 아이콘을 찾아서 사용
+             * 중요!
+             * 수량 단위는 PrimaryUnit만 사용한다.
+             *
+             * 예:
+             * G
+             * ML
+             *
+             * SecondaryUnit은 저장하지 않고 사용하지 않는다.
              */
-            const dummyItem = INGREDIENTS.find(
-              (ingredient) => ingredient.name === item.foodIngredientName
-            );
-
-            return {
-              id: item.foodIngredientId,
-              name: item.foodIngredientName,
-
-              /*
-               * 중요!
-               * 수량 단위는 PrimaryUnit만 사용한다.
-               *
-               * 예:
-               * G
-               * ML
-               *
-               * SecondaryUnit은 저장하지 않고 사용하지 않는다.
-               */
-              unit: item.foodIngredientPrimaryUnit,
-
-              icon: isSeasoning ? sauceIcon : dummyItem?.icon,
-            };
-          });
+            unit: item.foodIngredientPrimaryUnit,
+          }));
 
         setApiResults(filtered);
       } catch (error) {
@@ -278,20 +268,25 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
 
   return (
     <Overlay onClick={close}>
-      <Card onClick={(e) => e.stopPropagation()}>
+      <Sheet onClick={(e) => e.stopPropagation()}>
+        <Handle />
         {qtyTarget ? (
           <>
             {/* 수량 입력 화면 뒤로가기 */}
             <BackBtn type="button" onClick={() => setQtyTarget(null)}>
               <BackImg src={backIcon} alt="" />
-              뒤로가기
+              재료 다시 선택
             </BackBtn>
 
             {/* 현재 선택한 식재료 */}
-            <ActiveChip>
-              <IngredientIcon icon={qtyTarget.icon} />
-              <ChipText>{qtyTarget.name}</ChipText>
-            </ActiveChip>
+            <ActiveChipWrap>
+              <PillButton
+                kind="INGREDIENT"
+                detailType={qtyTarget.type}
+                name={qtyTarget.name}
+                isSelected
+              />
+            </ActiveChipWrap>
 
             <Title>재료 수량을 입력해주세요</Title>
 
@@ -351,6 +346,8 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
                   <br />
                   검색을 통해 추가해주세요
                 </Empty>
+              ) : results.length === 0 ? (
+                <Empty>찾는 재료가 없어요</Empty>
               ) : (
                 <ResultRow>
                   {results.map((item) => {
@@ -359,20 +356,15 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
                     const draftItem = draft.find((d) => d.id === item.id);
 
                     return (
-                      <PickChip
+                      <PillButton
                         key={item.id}
-                        type="button"
-                        $active={selected}
+                        kind={isTool ? 'EQUIPMENT' : 'INGREDIENT'}
+                        detailType={item.type}
+                        name={item.name}
+                        amountValue={draftItem?.qty}
+                        isSelected={selected}
                         onClick={() => (isIngredient ? pickIngredient(item) : toggleItem(item))}
-                      >
-                        {isIngredient && <IngredientIcon icon={item.icon} />}
-
-                        {isSeasoning && <SauceImg src={item.icon} alt="" />}
-
-                        <ChipText>{item.name}</ChipText>
-
-                        {draftItem?.qty && <QtyText>{draftItem.qty}</QtyText>}
-                      </PickChip>
+                      />
                     );
                   })}
                 </ResultRow>
@@ -389,7 +381,7 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
             </ConfirmBtn>
           </>
         )}
-      </Card>
+      </Sheet>
     </Overlay>
   );
 }
@@ -404,21 +396,23 @@ const Overlay = styled.div`
   left: 50%;
   z-index: 40;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
   width: 100%;
   max-width: 390px;
   transform: translateX(-50%);
+  padding-bottom: 20px;
   background: rgba(0, 0, 0, 0.2);
 `;
 
-/* —— 모달 카드 —— */
-const Card = styled.div`
+/* —— 바텀시트 —— */
+const Sheet = styled.div`
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
   box-sizing: border-box;
-  width: 350px;
+  width: 360px;
   height: 412px;
   padding: 32px 28px 28px;
   overflow: hidden;
@@ -427,8 +421,20 @@ const Card = styled.div`
   background: #fff;
 `;
 
+const Handle = styled.div`
+  position: absolute;
+  top: 7.5px;
+  left: 50%;
+  width: 48px;
+  height: 4px;
+  transform: translateX(-50%);
+  border-radius: 34px;
+  background: #d9d9da;
+`;
+
 /* —— 제목 —— */
 const Title = styled.p`
+  flex-shrink: 0;
   margin: 0 0 12px;
   font-size: 20px;
   font-weight: 600;
@@ -442,6 +448,7 @@ const Search = styled.div`
   position: relative;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   width: 296px;
   height: 48px;
   border-radius: 12px;
@@ -499,6 +506,7 @@ const Body = styled.div`
   width: 100%;
   min-height: 0;
   margin-top: 16px;
+  overflow-y: auto;
 `;
 
 const Empty = styled.p`
@@ -513,60 +521,15 @@ const Empty = styled.p`
 const ResultRow = styled.div`
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
   gap: 8px 4px;
   width: 100%;
-  max-width: 284px;
-  align-content: flex-start;
-`;
-
-const PickChip = styled.button`
+  padding: 16px 12px 24px;
   box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 16px;
-  border: 2px solid ${({ $active }) => ($active ? '#c2ee73' : 'transparent')};
-  border-radius: 30px;
-  background: ${({ $active }) => ($active ? '#d6f3a1' : '#fff')};
-  box-shadow:
-    0 0 8px rgba(3, 3, 3, 0.05),
-    0 0 30px rgba(3, 3, 3, 0.05);
-  cursor: pointer;
 `;
 
-const ActiveChip = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
+const ActiveChipWrap = styled.div`
   margin: 24px 0 20px;
-  padding: 0 16px;
-  border: 2px solid #c2ee73;
-  border-radius: 30px;
-  background: #d6f3a1;
-  box-shadow:
-    0 0 8px rgba(3, 3, 3, 0.05),
-    0 0 30px rgba(3, 3, 3, 0.05);
-`;
-
-const SauceImg = styled.img`
-  width: 19px;
-  height: 19px;
-  object-fit: contain;
-`;
-
-const ChipText = styled.span`
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #1a1a1a;
-`;
-
-const QtyText = styled.span`
-  font-size: 12px;
-  font-weight: 500;
-  color: #5a5a5b;
 `;
 
 /* —— 확인 버튼 —— */
@@ -574,6 +537,7 @@ const ConfirmBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
+  flex-shrink: 0;
   width: 296px;
   height: 52px;
   margin-top: auto;
@@ -598,6 +562,7 @@ const BackBtn = styled.button`
   background: transparent;
   font-size: 16px;
   font-weight: 500;
+  line-height: 1.2;
   color: #5a5a5b;
   cursor: pointer;
 `;
@@ -605,6 +570,7 @@ const BackBtn = styled.button`
 const BackImg = styled.img`
   width: 10px;
   height: 20px;
+  transform: scaleX(-1);
 `;
 
 const QtyRow = styled.div`

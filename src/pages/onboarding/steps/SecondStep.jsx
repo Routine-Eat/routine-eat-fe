@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import styled from 'styled-components';
 
 import { getExceptionFoodIngredients, postInitFoodIngredients } from '@/api/foodIngredientApi';
+import PillButton from '@/common/PillButton';
 
 import broccoli from '../../../assets/onboarding/allergies/broccoli.svg';
 import cheese from '../../../assets/onboarding/allergies/cheese.svg';
@@ -18,7 +19,6 @@ import nuts from '../../../assets/onboarding/allergies/nuts.svg';
 import onion from '../../../assets/onboarding/allergies/onion.svg';
 import peach from '../../../assets/onboarding/allergies/peach.svg';
 import peanut from '../../../assets/onboarding/allergies/peanut.svg';
-import removeIcon from '../../../assets/onboarding/allergies/remove.svg';
 import searchIcon from '../../../assets/onboarding/allergies/search.svg';
 import shellfish1 from '../../../assets/onboarding/allergies/shellfish-1.svg';
 import shellfish2 from '../../../assets/onboarding/allergies/shellfish-2.svg';
@@ -32,32 +32,32 @@ import wheat3 from '../../../assets/onboarding/allergies/wheat-3.svg';
 
 /* 추천 재료 목록(아이콘 + 이름) */
 const RECOMMENDED = [
-  { id: 'milk', name: '우유', icon: milk },
-  { id: 'cheese', name: '치즈', icon: cheese },
-  { id: 'wheat', name: '밀', icon: [wheat1, wheat2, wheat3] },
-  { id: 'egg', name: '달걀', icon: egg },
-  { id: 'shrimp', name: '새우', icon: shrimp },
-  { id: 'crab', name: '게', icon: crab },
-  { id: 'soy', name: '대두', icon: soy },
-  { id: 'squid', name: '오징어', icon: squid },
-  { id: 'gluten', name: '글루텐', icon: gluten },
-  { id: 'peanut', name: '땅콩', icon: peanut },
-  { id: 'nuts', name: '견과류', icon: nuts },
-  { id: 'fish', name: '생선', icon: fish },
-  { id: 'buckwheat', name: '메밀', icon: [wheat1, wheat2, wheat3] },
-  { id: 'sesame', name: '참깨', icon: peanut },
-  { id: 'cucumber', name: '오이', icon: cucumber },
-  { id: 'tomato', name: '토마토', icon: tomato },
-  { id: 'peach', name: '복숭아', icon: peach },
-  { id: 'shellfish', name: '조개류', icon: [shellfish1, shellfish2] },
+  { id: 'milk', name: '우유', icon: milk, type: 'MILK' },
+  { id: 'cheese', name: '치즈', icon: cheese, type: 'MILK' },
+  { id: 'wheat', name: '밀', icon: [wheat1, wheat2, wheat3], type: 'GRAIN' },
+  { id: 'egg', name: '달걀', icon: egg, type: 'EGG' },
+  { id: 'shrimp', name: '새우', icon: shrimp, type: 'FISH_AND_OTHER_SEAFOOD' },
+  { id: 'crab', name: '게', icon: crab, type: 'CRAB' },
+  { id: 'soy', name: '대두', icon: soy, type: 'LEGUME' },
+  { id: 'squid', name: '오징어', icon: squid, type: 'CEPHALOPOD' },
+  { id: 'gluten', name: '글루텐', icon: gluten, type: 'GRAIN' },
+  { id: 'peanut', name: '땅콩', icon: peanut, type: 'NUT_AND_SEED' },
+  { id: 'nuts', name: '견과류', icon: nuts, type: 'NUT_AND_SEED' },
+  { id: 'fish', name: '생선', icon: fish, type: 'FISH_AND_OTHER_SEAFOOD' },
+  { id: 'buckwheat', name: '메밀', icon: [wheat1, wheat2, wheat3], type: 'GRAIN' },
+  { id: 'sesame', name: '참깨', icon: peanut, type: 'NUT_AND_SEED' },
+  { id: 'cucumber', name: '오이', icon: cucumber, type: 'VEGETABLE' },
+  { id: 'tomato', name: '토마토', icon: tomato, type: 'VEGETABLE' },
+  { id: 'peach', name: '복숭아', icon: peach, type: 'FRUIT' },
+  { id: 'shellfish', name: '조개류', icon: [shellfish1, shellfish2], type: 'SHELLFISH' },
 ];
 
 /* 검색으로만 나오는 추가 재료 */
 const EXTRA = [
-  { id: 'yang', name: '양', icon: onion },
-  { id: 'onion', name: '양파', icon: garlic },
-  { id: 'lamb', name: '양고기', icon: cucumber },
-  { id: 'broccoli', name: '브로콜리', icon: broccoli },
+  { id: 'yang', name: '양', icon: onion, type: 'MEAT' },
+  { id: 'onion', name: '양파', icon: garlic, type: 'VEGETABLE' },
+  { id: 'lamb', name: '양고기', icon: cucumber, type: 'MEAT' },
+  { id: 'broccoli', name: '브로콜리', icon: broccoli, type: 'VEGETABLE' },
 ];
 
 export const INGREDIENTS = [...RECOMMENDED, ...EXTRA];
@@ -73,6 +73,7 @@ const mapExceptionIngredients = (data) =>
     return {
       id: item.foodIngredientId,
       name: item.foodIngredientName,
+      type: item.foodIngredientType,
       icon: dummyItem?.icon,
     };
   });
@@ -143,7 +144,7 @@ function SecondStep({ selectedIds, onToggle }) {
         <Title>피하고 싶은 재료가 있나요?</Title>
         {/* 부제 텍스트(2줄) */}
         <Subtitle>
-          알레르기나 싫어하는 재료를 고르면
+          알레르기가 있거나 싫어하는 재료를 고르면
           <br />
           추천에서 제외해드릴게요.
         </Subtitle>
@@ -157,7 +158,7 @@ function SecondStep({ selectedIds, onToggle }) {
         <SearchInput
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="추천에 없다면 검색을 통해 찾아보세요"
+          placeholder="피하고 싶은 재료 검색"
           aria-label="재료 검색"
         />
         {q && (
@@ -171,22 +172,16 @@ function SecondStep({ selectedIds, onToggle }) {
 
       {/* 재료 선택 알약 칩 줄(줄바꿈) */}
       <ChipRow>
-        {visible.map((item) => {
-          const active = selectedIds.includes(item.id);
-          return (
-            /* 재료 선택 알약 칩(흰/연두) */
-            <Chip
-              key={item.id}
-              type="button"
-              $active={active}
-              onClick={() => onToggle(item.id)}
-            >
-              <IngredientIcon icon={item.icon} />
-              {/* 재료 이름 텍스트 */}
-              <ChipName>{item.name}</ChipName>
-            </Chip>
-          );
-        })}
+        {visible.map((item) => (
+          <PillButton
+            key={item.id}
+            kind="INGREDIENT"
+            detailType={item.type}
+            name={item.name}
+            isSelected={selectedIds.includes(item.id)}
+            onClick={() => onToggle(item.id)}
+          />
+        ))}
       </ChipRow>
     </Wrap>
   );
@@ -222,13 +217,14 @@ export function SelectedChips({ selectedIds, onRemove }) {
     /* 선택 칩 줄바꿈 행 */
     <SelectedRow>
       {selected.map((item) => (
-        /* 선택됨 알약 칩(X + 아이콘 + 이름) */
-        <SelectedChip key={item.id} type="button" onClick={() => onRemove(item.id)}>
-          {/* 제거 X 원형 아이콘(16×16) */}
-          <RemoveImg src={removeIcon} alt="" />
-          <IngredientIcon icon={item.icon} />
-          <ChipName>{item.name}</ChipName>
-        </SelectedChip>
+        <PillButton
+          key={item.id}
+          kind="INGREDIENT"
+          detailType={item.type}
+          name={item.name}
+          deleteAvailable
+          onClick={() => onRemove(item.id)}
+        />
       ))}
     </SelectedRow>
   );
@@ -236,20 +232,21 @@ export function SelectedChips({ selectedIds, onRemove }) {
 
 /* ——— 레이아웃 ——— */
 
-/* 2단계 본문 세로 스크롤 영역(패딩 포함 직사각) */
+/* 2단계 본문 — 제목·검색은 고정, 재료 목록만 스크롤 */
 const Wrap = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 40px 20px 180px;
-  overflow-y: auto;
+  padding: 40px 20px 0;
+  overflow: hidden;
 `;
 
 /* 제목·부제 세로 스택 */
 const Header = styled.div`
   display: flex;
   flex-direction: column;
+  flex-shrink: 0;
   gap: 8px;
   padding: 0 12px;
 `;
@@ -279,6 +276,7 @@ const SearchBox = styled.div`
   position: relative;
   display: flex;
   align-items: center;
+  flex-shrink: 0;
   width: 100%;
   max-width: 340px;
   height: 48px;
@@ -332,36 +330,17 @@ const ClearImg = styled.img`
   height: 16px;
 `;
 
-/* 재료 칩 래핑 줄(줄바꿈 flex) */
+/* 재료 칩 래핑 줄(검색·확인 버튼 사이 세로 스크롤) */
 const ChipRow = styled.div`
   display: flex;
   flex-wrap: wrap;
+  align-content: flex-start;
+  flex: 1;
+  min-height: 0;
   gap: 12px 4px;
   margin-top: 28px;
-`;
-
-/* 재료 선택 알약 칩(완전 둥근 타원, 흰/연두) */
-const Chip = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 1000px;
-  background: ${({ $active }) => ($active ? '#d6f3a1' : '#fff')};
-  box-shadow:
-    0 0 8px rgba(3, 3, 3, 0.05),
-    0 0 30px rgba(3, 3, 3, 0.05);
-  cursor: pointer;
-`;
-
-/* 재료 이름 텍스트 */
-const ChipName = styled.span`
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #1a1a1a;
+  padding: 16px 12px 24px;
+  overflow-y: auto;
 `;
 
 /* 겹친 아이콘용 정사각 프레임(19×19) */
@@ -394,29 +373,6 @@ const SelectedRow = styled.div`
   gap: 8px;
   width: 100%;
   margin-bottom: 24px;
-`;
-
-/* 선택됨 알약 칩(X + 아이콘 + 이름, radius 30) */
-const SelectedChip = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  height: 36px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 30px;
-  background: #fff;
-  box-shadow:
-    0 0 8px rgba(3, 3, 3, 0.05),
-    0 0 30px rgba(3, 3, 3, 0.05);
-  white-space: nowrap;
-  cursor: pointer;
-`;
-
-/* 제거 X 원형 아이콘(16×16) */
-const RemoveImg = styled.img`
-  width: 16px;
-  height: 16px;
 `;
 
 export default SecondStep;

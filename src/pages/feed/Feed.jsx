@@ -255,7 +255,7 @@ function Feed() {
           <SearchInput
             ref={inputRef}
             type="search"
-            placeholder="재료, 레시피명으로 검색해보세요"
+            placeholder="재료나 요리 이름을 검색해 보세요"
             value={query}
             onFocus={enterSearch}
             onChange={(e) => {

@@ -19,6 +19,20 @@ import { EMPTY_RECIPE, mapRecipeDetail } from './mapRecipeDetail';
 
 const SERVINGS = ['1인분', '2인분', '3인분'];
 
+const pickMissingIngredientNames = (payload = {}) => {
+  const list =
+    payload.missingFoodIngredients ??
+    payload.missingIngredients ??
+    payload.lackingFoodIngredients ??
+    [];
+
+  return (Array.isArray(list) ? list : [])
+    .map((item) =>
+      typeof item === 'string' ? item : item?.name ?? item?.foodIngredientName ?? ''
+    )
+    .filter(Boolean);
+};
+
 function RecipeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -29,6 +43,7 @@ function RecipeDetail() {
   const [open, setOpen] = useState(false);
   const [cookOpen, setCookOpen] = useState(false);
   const [canCook, setCanCook] = useState(true);
+  const [missingIngredients, setMissingIngredients] = useState([]);
   const servingRef = useRef(null);
 
   useEffect(() => {
@@ -73,6 +88,7 @@ function RecipeDetail() {
       });
       const payload = response.data ?? response;
       setCanCook(Boolean(payload.canCook));
+      setMissingIngredients(pickMissingIngredientNames(payload));
       setCookOpen(true);
     } catch (error) {
       console.error('요리 가능 여부 조회 실패:', error);
@@ -167,7 +183,7 @@ function RecipeDetail() {
 
         {/* 추천 재료 — 제목 + 칩 + 장보기 버튼 */}
         <Tips>
-          <TipsTitle>이런 재료가 있으면 두 배 맛있어져요</TipsTitle>
+          <TipsTitle>이런 재료가 있으면 더 맛있어져요</TipsTitle>
           <Chips>
             {recipe.additionalIngredients.map((item) => (
               <Chip key={item.id ?? item.name}>{item.name}</Chip>
@@ -250,6 +266,7 @@ function RecipeDetail() {
         title={recipe.title}
         open={cookOpen}
         canCook={canCook}
+        missingIngredients={missingIngredients}
         onClose={() => setCookOpen(false)}
         onStart={() => {
           setCookOpen(false);
@@ -274,7 +291,7 @@ const Page = styled.div`
 /* —— 원형 뒤로가기: 좌상단 절대 배치 —— */
 const Back = styled(BackButton)`
   position: absolute;
-  top: 12px;
+  top: 30px;
   left: 20px;
   z-index: 2;
 `;
@@ -284,7 +301,7 @@ const Scroll = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 72px 24px 132px;
+  padding: 95px 24px 132px;
 `;
 
 /* —— 히어로: 둥근 회색 사각(15) —— */

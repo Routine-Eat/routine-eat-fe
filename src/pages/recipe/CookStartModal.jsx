@@ -3,9 +3,53 @@ import styled from 'styled-components';
 import chefIcon from '../../assets/recipe/chef.svg';
 import missingIcon from '../../assets/recipe/missing-ingredients.svg';
 
-/** 요리 시작 확인 모달 — 피그마 1378:6893 / 부족 시 1382:7344 */
-function CookStartModal({ title, open, onClose, onStart, canCook = true }) {
+/** 요리 시작 확인 — 가능: 피그마 1378:6893 / 부족: 피그마 2060:15461 */
+function CookStartModal({
+  title,
+  open,
+  onClose,
+  onStart,
+  canCook = true,
+  missingIngredients = [],
+}) {
   if (!open) return null;
+
+  if (!canCook) {
+    return (
+      // 딤 오버레이: 화면 전체 반투명 사각 — 바텀시트용
+      <SheetOverlay onClick={onClose}>
+        {/* 바텀시트: 가로 350 둥근 사각(24), 하단 근처 */}
+        <Sheet onClick={(e) => e.stopPropagation()}>
+          <Handle />
+          <SheetBody>
+            <SheetHeader>
+              <CartIcon src={missingIcon} alt="" />
+              <SheetTitle>
+                해당 재료가 부족해요
+                <br />
+                그래도 레시피를 시작할까요?
+              </SheetTitle>
+            </SheetHeader>
+            {missingIngredients.length > 0 && (
+              <ChipWrap>
+                {missingIngredients.map((name) => (
+                  <Chip key={name}>{name}</Chip>
+                ))}
+              </ChipWrap>
+            )}
+          </SheetBody>
+          <SheetActions>
+            <HaveBtn type="button" onClick={onStart}>
+              재료가 모두 있어요
+            </HaveBtn>
+            <WithoutBtn type="button" onClick={onStart}>
+              재료 없이 시작할게요
+            </WithoutBtn>
+          </SheetActions>
+        </Sheet>
+      </SheetOverlay>
+    );
+  }
 
   return (
     // 딤 오버레이: 화면 전체를 덮는 반투명 직사각형(고정 레이어)
@@ -14,26 +58,18 @@ function CookStartModal({ title, open, onClose, onStart, canCook = true }) {
       <Card onClick={(e) => e.stopPropagation()}>
         {/* 본문 묶음: 아이콘·텍스트를 세로로 쌓은 직사각형 영역 */}
         <Body>
-          {/* 아이콘: 40×40 외곽 / 가능=셰프, 부족=장바구니 */}
+          {/* 아이콘: 40×40 외곽 / 셰프 */}
           <ChefWrap>
-            <Chef src={canCook ? chefIcon : missingIcon} alt="" $missing={!canCook} />
+            <Chef src={chefIcon} alt="" />
           </ChefWrap>
           {/* 텍스트 묶음: 제목·설명을 세로로 쌓은 직사각형 */}
           <Texts>
             {/* 제목: 두 줄 텍스트 블록(직사각형 텍스트 영역) */}
-            {canCook ? (
-              <Title>
-                ‘{title}’
-                <br />
-                요리모드를 시작할까요?
-              </Title>
-            ) : (
-              <Title>
-                부족한 재료가 있어요.
-                <br />
-                그래도 요리를 시작할까요?
-              </Title>
-            )}
+            <Title>
+              ‘{title}’
+              <br />
+              요리모드를 시작할까요?
+            </Title>
             {/* 보조 설명: 한 줄 텍스트 블록 */}
             <Desc>중간에 이탈하면 기록으로 남지 않아요</Desc>
           </Texts>
@@ -100,11 +136,11 @@ const ChefWrap = styled.span`
   overflow: hidden;
 `;
 
-/* —— 아이콘 leaf: 가능 28×35 / 부족 32×32 —— */
+/* —— 아이콘 leaf: 28×35 —— */
 const Chef = styled.img`
   display: block;
-  width: ${({ $missing }) => ($missing ? '32px' : '28px')};
-  height: ${({ $missing }) => ($missing ? '32px' : '35px')};
+  width: 28px;
+  height: 35px;
   object-fit: contain;
 `;
 
@@ -172,10 +208,147 @@ const StartBtn = styled.button`
   height: 48px;
   border: none;
   border-radius: 12px;
-  background: #96D960;
+  background: #96d960;
   font-size: 16px;
   font-weight: 600;
   letter-spacing: -0.16px;
   color: #fff;
+  cursor: pointer;
+`;
+
+/* —— 부족 재료 딤: 하단 정렬 —— */
+const SheetOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 0 20px 28px;
+  background: rgba(3, 3, 3, 0.15);
+`;
+
+/* —— 부족 재료 바텀시트: 가로 350 둥근 사각(24) —— */
+const Sheet = styled.div`
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 350px;
+  padding: 40px 20px 28px;
+  overflow: hidden;
+  border-radius: 24px;
+  background: #fff;
+  box-shadow:
+    0 0 10px 0 rgba(3, 3, 3, 0.06),
+    0 0 40px 0 rgba(3, 3, 3, 0.08);
+`;
+
+/* —— 핸들: 가로 둥근 막대 —— */
+const Handle = styled.div`
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  width: 48px;
+  height: 4px;
+  border-radius: 34px;
+  background: #d9d9da;
+  transform: translateX(-50%);
+`;
+
+const SheetBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+  width: 100%;
+`;
+
+const SheetHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+`;
+
+const CartIcon = styled.img`
+  display: block;
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+`;
+
+const SheetTitle = styled.p`
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.18px;
+  color: #2e2e2e;
+  text-align: center;
+`;
+
+const ChipWrap = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+`;
+
+const Chip = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 36px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: #f5f5f6;
+  font-size: 15px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #727272;
+`;
+
+const SheetActions = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+`;
+
+const HaveBtn = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: #f5f5f6;
+  box-shadow: inset 0 0 3px 0 #fff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: #444;
+  cursor: pointer;
+`;
+
+const WithoutBtn = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 48px;
+  border: none;
+  border-radius: 12px;
+  background: #d6f3a1;
+  box-shadow: inset 0 0 3px 0 #fff;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  color: #444;
   cursor: pointer;
 `;

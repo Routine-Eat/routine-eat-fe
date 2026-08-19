@@ -3,58 +3,40 @@ import styled from 'styled-components';
 import modalCheck from '../../assets/shopping/modal-check.svg';
 
 /**
- * 장보기 완료 모달
- * step: 'confirm' 1382:8277 | 'done' 1382:8420
+ * 장보기 완료 확인 모달
+ * step: 'confirm'
  */
-function ShoppingDoneModal({ step, onClose, onConfirm, onOk }) {
-  if (!step) return null;
-
-  const isConfirm = step === 'confirm';
+function ShoppingDoneModal({ step, onClose, onConfirm, count = 0 }) {
+  if (step !== 'confirm') return null;
 
   return (
     // 딤: 화면 full 반투명 직사각형
-    <Overlay onClick={isConfirm ? onClose : undefined}>
+    <Overlay onClick={onClose}>
       {/* 모달 카드: 가로 312 둥근 직사각형(radius 22) */}
-      <Card $done={!isConfirm} onClick={(e) => e.stopPropagation()}>
+      <Card onClick={(e) => e.stopPropagation()}>
         <Body>
           {/* 체크 아이콘: 40×40 둥근 정사각 */}
           <Icon src={modalCheck} alt="" />
           <Texts>
-            {isConfirm ? (
-              <>
-                {/* 제목: 두 줄 텍스트 블록 */}
-                <Title>
-                  선택한 재료를
-                  <br />
-                  장보기 완료 처리할까요?
-                </Title>
-                <Desc>장보기 완료시 식재료가 자동으로 등록돼요</Desc>
-              </>
-            ) : (
-              <>
-                <Title>장보기 처리되었어요</Title>
-                <Desc>등록된 식재료는 마이에서 확인할 수 있어요</Desc>
-              </>
-            )}
+            {/* 제목: 두 줄 텍스트 블록 */}
+            <Title>
+              구매한 재료를
+              <br />
+              보유재료에 추가할까요?
+            </Title>
+            <Desc>선택한 재료 {count}개를 보유 재료에 추가해요</Desc>
           </Texts>
         </Body>
 
-        {isConfirm ? (
-          /* 버튼 행: 가로 나란한 둥근 직사각형 두 개 */
-          <Actions>
-            <CancelBtn type="button" onClick={onClose}>
-              취소
-            </CancelBtn>
-            <OkBtn type="button" onClick={onConfirm}>
-              완료
-            </OkBtn>
-          </Actions>
-        ) : (
-          /* 확인: 가로 full 초록 둥근 직사각형 268×48 */
-          <FullOkBtn type="button" onClick={onOk}>
-            확인
-          </FullOkBtn>
-        )}
+        {/* 버튼 행: 가로 나란한 둥근 직사각형 두 개 */}
+        <Actions>
+          <CancelBtn type="button" onClick={onClose}>
+            취소
+          </CancelBtn>
+          <OkBtn type="button" onClick={onConfirm}>
+            냉장고에 넣기
+          </OkBtn>
+        </Actions>
       </Card>
     </Overlay>
   );
@@ -77,11 +59,11 @@ const Overlay = styled.div`
 const Card = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${({ $done }) => ($done ? '46px' : '24px')};
+  gap: 24px;
   align-items: center;
   box-sizing: border-box;
   width: 312px;
-  padding: ${({ $done }) => ($done ? '28px 28px 20px' : '24px 28px 20px')};
+  padding: 24px 28px 20px;
   overflow: hidden;
   border: 0.5px solid #d9d9da;
   border-radius: 22px;
@@ -164,23 +146,6 @@ const OkBtn = styled.button`
   align-items: center;
   justify-content: center;
   width: 130px;
-  height: 48px;
-  border: none;
-  border-radius: 12px;
-  background: #96D960;
-  font-size: 16px;
-  font-weight: 600;
-  letter-spacing: -0.16px;
-  color: #fff;
-  cursor: pointer;
-`;
-
-/* —— 확인: 268×48 초록 둥근 직사각형 —— */
-const FullOkBtn = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 268px;
   height: 48px;
   border: none;
   border-radius: 12px;

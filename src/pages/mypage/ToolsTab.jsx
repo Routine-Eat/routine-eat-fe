@@ -1,7 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import styled from 'styled-components';
+
+import {
+  deleteUserCookingEquipments,
+  getUserCookingEquipments,
+  postUserCookingEquipments,
+} from '@/api/userApi';
+import { useUserStore } from '@/hooks/useUserStore';
 
 import plusIcon from '../../assets/mypage/plus.svg';
 import resetIcon from '../../assets/mypage/reset.svg';
@@ -10,12 +17,45 @@ import marketIcon from '../../assets/shopping/market-icon.png';
 import RegisterMaterialModal from '../../common/modal/RegisterMaterialModal';
 import { TOOL_SECTIONS } from '../../constants/dummyTools';
 
+const TYPE_TO_CATEGORY = {
+  APPLIANCE: 'appliance',
+  UTENSIL: 'basic',
+  ETC: 'basic',
+  PREP_TOOL: 'prep',
+};
+
+const mapUserCookingEquipments = (data) =>
+  (data ?? [])
+    .map((item) => ({
+      id: item.cookingEquipmentId,
+      name: item.cookingEquipmentName,
+      category: TYPE_TO_CATEGORY[item.cookingEquipmentType],
+    }))
+    .filter((item) => item.category);
+
 /** 마이페이지 도구 탭 — 피그마 1822:9158 / 편집 1699:7343 */
 function ToolsTab({ isEditing, selectedIds, setSelectedIds }) {
   const navigate = useNavigate();
+  const userId = useUserStore((state) => state.userId);
   /* 등록완료한 도구만 저장 — 초기 목록 없음 */
   const [items, setItems] = useState([]);
   const [modal, setModal] = useState(null); /* appliance | basic | prep | null */
+
+  /* 사용자-조리도구 목록 조회 API */
+  useEffect(() => {
+    if (!userId) return;
+
+    const fetchUserCookingEquipments = async () => {
+      try {
+        const response = await getUserCookingEquipments(userId);
+        setItems(mapUserCookingEquipments(response.data));
+      } catch (error) {
+        console.error('사용자 조리도구 조회 실패:', error);
+      }
+    };
+
+    fetchUserCookingEquipments();
+  }, [userId]);
 
   const sections = useMemo(
     () =>
@@ -33,21 +73,49 @@ function ToolsTab({ isEditing, selectedIds, setSelectedIds }) {
 
   const resetSelection = () => setSelectedIds([]);
 
-  const deleteSelected = () => {
-    setItems((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
-    setSelectedIds([]);
+  const deleteSelected = async () => {
+    if (!selectedIds.length) return;
+
+    if (!userId) {
+      console.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      await deleteUserCookingEquipments(userId, selectedIds);
+
+      setItems((prev) => prev.filter((item) => !selectedIds.includes(item.id)));
+      setSelectedIds([]);
+    } catch (error) {
+      console.error('사용자 조리도구 삭제 실패:', error);
+    }
   };
 
-  const saveFromModal = (draft) => {
+  const saveFromModal = async (draft) => {
     if (!modal) return;
-    setItems((prev) => {
-      const next = [...prev];
-      draft.forEach((d) => {
-        if (next.some((i) => i.id === d.id)) return;
-        next.push({ id: d.id, name: d.name, category: modal });
-      });
-      return next;
-    });
+
+    const newDraft = draft.filter((d) => !items.some((i) => i.id === d.id));
+
+    if (!newDraft.length) return;
+
+    if (!userId) {
+      console.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      await postUserCookingEquipments(
+        userId,
+        newDraft.map((item) => item.id)
+      );
+
+      setItems((prev) => [
+        ...prev,
+        ...newDraft.map((d) => ({ id: d.id, name: d.name, category: modal })),
+      ]);
+    } catch (error) {
+      console.error('사용자 조리도구 생성 실패:', error);
+    }
   };
 
   return (

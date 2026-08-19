@@ -543,7 +543,7 @@ export default function HomeDietStart() {
         </Toast>
       )}
 
-      <BottomFixedButton variant="inline" onClick={() => navigate(`/cooking/${mealId}`)}>
+      <BottomFixedButton variant="inline" onClick={() => navigate(`/cooking/${selectedMealId}`)}>
         식단 시작하기
       </BottomFixedButton>
     </PageContainer>

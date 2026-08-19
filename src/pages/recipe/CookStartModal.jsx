@@ -1,9 +1,10 @@
 import styled from 'styled-components';
 
 import chefIcon from '../../assets/recipe/chef.svg';
+import missingIcon from '../../assets/recipe/missing-ingredients.svg';
 
-/** 요리 시작 확인 모달 — 피그마 1378:6893 */
-function CookStartModal({ title, open, onClose, onStart }) {
+/** 요리 시작 확인 모달 — 피그마 1378:6893 / 부족 시 1382:7344 */
+function CookStartModal({ title, open, onClose, onStart, canCook = true }) {
   if (!open) return null;
 
   return (
@@ -13,18 +14,26 @@ function CookStartModal({ title, open, onClose, onStart }) {
       <Card onClick={(e) => e.stopPropagation()}>
         {/* 본문 묶음: 아이콘·텍스트를 세로로 쌓은 직사각형 영역 */}
         <Body>
-          {/* 요리사 아이콘: 40×40 외곽 / 28×35 leaf SVG */}
+          {/* 아이콘: 40×40 외곽 / 가능=셰프, 부족=장바구니 */}
           <ChefWrap>
-            <Chef src={chefIcon} alt="" />
+            <Chef src={canCook ? chefIcon : missingIcon} alt="" $missing={!canCook} />
           </ChefWrap>
           {/* 텍스트 묶음: 제목·설명을 세로로 쌓은 직사각형 */}
           <Texts>
             {/* 제목: 두 줄 텍스트 블록(직사각형 텍스트 영역) */}
-            <Title>
-              ‘{title}’
-              <br />
-              요리모드를 시작할까요?
-            </Title>
+            {canCook ? (
+              <Title>
+                ‘{title}’
+                <br />
+                요리모드를 시작할까요?
+              </Title>
+            ) : (
+              <Title>
+                부족한 재료가 있어요.
+                <br />
+                그래도 요리를 시작할까요?
+              </Title>
+            )}
             {/* 보조 설명: 한 줄 텍스트 블록 */}
             <Desc>중간에 이탈하면 기록으로 남지 않아요</Desc>
           </Texts>
@@ -91,11 +100,11 @@ const ChefWrap = styled.span`
   overflow: hidden;
 `;
 
-/* —— 요리사 leaf: 28×35 SVG —— */
+/* —— 아이콘 leaf: 가능 28×35 / 부족 32×32 —— */
 const Chef = styled.img`
   display: block;
-  width: 28px;
-  height: 35px;
+  width: ${({ $missing }) => ($missing ? '32px' : '28px')};
+  height: ${({ $missing }) => ($missing ? '32px' : '35px')};
   object-fit: contain;
 `;
 

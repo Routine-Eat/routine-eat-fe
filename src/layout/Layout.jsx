@@ -20,12 +20,14 @@ function Layout() {
     pathname.startsWith('/mypage') ||
     pathname.startsWith('/recipes') ||
     pathname.startsWith('/similar-recipes') ||
+    pathname.startsWith('/cooking-records') ||
     pathname.startsWith('/shopping-list') ||
     pathname.startsWith('/notifications');
   // 상세·유사·장보기·알림은 하단 CTA만 사용
   const hideBottomNav =
     pathname.startsWith('/recipes') ||
     pathname.startsWith('/similar-recipes') ||
+    pathname.startsWith('/cooking-records') ||
     pathname.startsWith('/shopping-list') ||
     pathname.startsWith('/notifications');
 

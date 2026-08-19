@@ -9,27 +9,26 @@ import starEmpty from '../../assets/feed/star-empty.svg';
 import starFilled from '../../assets/feed/star-filled.svg';
 import chevronDown from '../../assets/recipe/chevron-down.svg';
 import bagIcon from '../../assets/recipe/shopping-bag.svg';
+import { deleteFavoriteRecipe, postFavoriteRecipe } from '../../api/favoriteRecipe';
+import { getCanCookRecipe, getRecipeDetail } from '../../api/recipe';
 import BackButton from '../../common/button/BackButton';
-import {
-  RECIPE_INGREDIENTS,
-  RECIPE_SEASONINGS,
-  RECIPE_TIPS,
-} from '../../constants/dummyRecipeDetail';
-import { DUMMY_RECIPES } from '../../constants/dummyRecipes';
-import { SIMILAR_RECIPES } from '../../constants/dummySimilarRecipes';
+import { useUserStore } from '../../hooks/useUserStore';
 import { addItemsToShopping } from '../../store/shoppingStore';
 import CookStartModal from './CookStartModal';
+import { EMPTY_RECIPE, mapRecipeDetail } from './mapRecipeDetail';
 
 const SERVINGS = ['1인분', '2인분', '3인분'];
 
 function RecipeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const recipe = DUMMY_RECIPES.find((r) => r.id === id) ?? DUMMY_RECIPES[0];
-  const [similar, setSimilar] = useState(SIMILAR_RECIPES);
+  const { userLoginNumber } = useUserStore();
+  const [recipe, setRecipe] = useState(EMPTY_RECIPE);
+  const [similar, setSimilar] = useState([]);
   const [serving, setServing] = useState(SERVINGS[0]);
   const [open, setOpen] = useState(false);
   const [cookOpen, setCookOpen] = useState(false);
+  const [canCook, setCanCook] = useState(true);
   const servingRef = useRef(null);
 
   useEffect(() => {
@@ -40,6 +39,45 @@ function RecipeDetail() {
     document.addEventListener('pointerdown', close);
     return () => document.removeEventListener('pointerdown', close);
   }, [open]);
+
+  useEffect(() => {
+    if (!id || !userLoginNumber) return undefined;
+
+    const fetchRecipeDetail = async () => {
+      try {
+        const response = await getRecipeDetail(id, {
+          userNumber: userLoginNumber,
+          servings: Number.parseInt(serving, 10) || 1,
+        });
+        const mapped = mapRecipeDetail(response.data ?? response);
+        setRecipe(mapped);
+        setSimilar(mapped.similar);
+      } catch (error) {
+        console.error('레시피 상세 조회 실패:', error);
+      }
+    };
+
+    fetchRecipeDetail();
+  }, [id, userLoginNumber, serving]);
+
+  const handleStartCooking = async () => {
+    if (!id || !userLoginNumber) {
+      console.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    try {
+      const response = await getCanCookRecipe(id, {
+        userNumber: userLoginNumber,
+        servings: Number.parseInt(serving, 10) || 1,
+      });
+      const payload = response.data ?? response;
+      setCanCook(Boolean(payload.canCook));
+      setCookOpen(true);
+    } catch (error) {
+      console.error('요리 가능 여부 조회 실패:', error);
+    }
+  };
 
   return (
     // 페이지 루트 — 세로 full 사각
@@ -96,9 +134,9 @@ function RecipeDetail() {
           </MetaItem>
           <MetaItem>
             <Muted>재료비</Muted>
-            <Muted>약 3,500원</Muted>
+            <Muted>{recipe.cost}</Muted>
           </MetaItem>
-          <Muted>재료 활용률 72%</Muted>
+          <Muted>{recipe.utilization}</Muted>
         </Meta>
 
         {/* 식재료·조미료 카드 묶음 */}
@@ -106,8 +144,8 @@ function RecipeDetail() {
           <Box>
             <BoxTitle>식재료</BoxTitle>
             <Rows>
-              {RECIPE_INGREDIENTS.map((item) => (
-                <Row key={item.name}>
+              {recipe.ingredients.map((item) => (
+                <Row key={item.id ?? item.name}>
                   <span>{item.name}</span>
                   <span>{item.amount}</span>
                 </Row>
@@ -117,8 +155,8 @@ function RecipeDetail() {
           <Box>
             <BoxTitle>조미료</BoxTitle>
             <Rows>
-              {RECIPE_SEASONINGS.map((item) => (
-                <Row key={item.name}>
+              {recipe.seasonings.map((item) => (
+                <Row key={item.id ?? item.name}>
                   <span>{item.name}</span>
                   <span>{item.amount}</span>
                 </Row>
@@ -131,14 +169,14 @@ function RecipeDetail() {
         <Tips>
           <TipsTitle>이런 재료가 있으면 두 배 맛있어져요</TipsTitle>
           <Chips>
-            {RECIPE_TIPS.map((tip) => (
-              <Chip key={tip}>{tip}</Chip>
+            {recipe.additionalIngredients.map((item) => (
+              <Chip key={item.id ?? item.name}>{item.name}</Chip>
             ))}
           </Chips>
           <BagBtn
             type="button"
             onClick={() => {
-              addItemsToShopping(recipe.title, RECIPE_TIPS);
+              addItemsToShopping(recipe.title, recipe.additionalIngredients);
               navigate('/shopping-list');
             }}
           >
@@ -156,11 +194,39 @@ function RecipeDetail() {
                 <Heart
                   type="button"
                   aria-label="저장"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
-                    setSimilar((prev) =>
-                      prev.map((s) => (s.id === item.id ? { ...s, isSaved: !s.isSaved } : s))
-                    );
+                    if (!userLoginNumber) {
+                      console.error('사용자 정보가 없습니다.');
+                      return;
+                    }
+
+                    if (item.isSaved) {
+                      try {
+                        await deleteFavoriteRecipe(item.id, userLoginNumber);
+                        setSimilar((prev) =>
+                          prev.map((s) => (s.id === item.id ? { ...s, isSaved: false } : s))
+                        );
+                      } catch (error) {
+                        console.error('레시피 찜 해제 실패:', error);
+                      }
+                      return;
+                    }
+
+                    try {
+                      await postFavoriteRecipe(item.id, userLoginNumber);
+                      setSimilar((prev) =>
+                        prev.map((s) => (s.id === item.id ? { ...s, isSaved: true } : s))
+                      );
+                    } catch (error) {
+                      if (error.response?.status === 409) {
+                        setSimilar((prev) =>
+                          prev.map((s) => (s.id === item.id ? { ...s, isSaved: true } : s))
+                        );
+                        return;
+                      }
+                      console.error('레시피 찜 등록 실패:', error);
+                    }
                   }}
                 >
                   <HeartImg src={item.isSaved ? heartFilled : heartEmpty} alt="" />
@@ -175,7 +241,7 @@ function RecipeDetail() {
 
       {/* 하단 고정 바 — 둥근 상단 흰 사각 + CTA */}
       <Footer>
-        <StartBtn type="button" onClick={() => setCookOpen(true)}>
+        <StartBtn type="button" onClick={handleStartCooking}>
           요리 시작하기
         </StartBtn>
       </Footer>
@@ -183,6 +249,7 @@ function RecipeDetail() {
       <CookStartModal
         title={recipe.title}
         open={cookOpen}
+        canCook={canCook}
         onClose={() => setCookOpen(false)}
         onStart={() => setCookOpen(false)}
       />

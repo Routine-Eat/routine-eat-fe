@@ -1,15 +1,16 @@
 import React, { useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 
 import styled from "styled-components";
 
 import { patchUserFoodIngredientAmount } from "@/api/userApi";
 import { useUserStore } from "@/hooks/useUserStore";
+import { useCookingStore } from "../../hooks/useCookingStore";
+import { patchCookingResult } from "../../api/cookingRecord";
 
 import BackButton from "../../common/button/BackButton";
 import checkBadgeGreenIcon from "../../assets/icons/checkCircleWhite.svg";
 import arrowLeftIcon from "../../assets/icons/arrowLeft.svg";
-import { INITIAL_INGREDIENTS } from "../../constants/home/DummyHome.js";
 import forkKnifeImg from "../../assets/images/forkKnife.svg";
 
 const PageContainer = styled.div`
@@ -513,13 +514,32 @@ const getPrimaryAmountValue = (amount) => {
 export default function CookingIngredientCheck() {
   const navigate = useNavigate();
   const { mealId } = useParams();
+  const location = useLocation();
   const userId = useUserStore((state) => state.userId);
+    const userLoginNumber = useUserStore((state) => state.userLoginNumber);
+  const cookingRecordId = useCookingStore((state) => state.cookingRecordId);
+  const photoFile = useCookingStore((state) => state.photoFile);
+  const clearCookingSession = useCookingStore((state) => state.clearCookingSession);
+
+  // CookingReview.jsx에서 navigate state로 넘겨준 값
+  const { difficultyLevel, foodIngredients: apiFoodIngredients } = location.state ?? {};
+
+  // API 응답을 화면에서 쓰는 형태로 변환
+  const mapApiIngredientsToState = (raw) =>
+    (raw?.foodIngredients ?? []).map((item) => ({
+      id: item.cookingRecordFoodIngredientId,
+      foodIngredientId: item.foodIngredientId,
+      name: item.name,
+      amount: item.currentPrimaryAmountValue ?? 0,
+      unit: item.primaryUnit,
+    }));
   const [isReflectedModalOpen, setIsReflectedModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [ingredients, setIngredients] = useState(INITIAL_INGREDIENTS);
+const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(apiFoodIngredients));
   const [editingId, setEditingId] = useState(null); // null이면 목록 화면, id가 있으면 상세 입력 화면
   const [editingAmount, setEditingAmount] = useState("");
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleUsedDifferently = () => {
     setIsEditModalOpen(true);
@@ -533,7 +553,7 @@ export default function CookingIngredientCheck() {
 
     const foodIngredientList = list
       .map((item) => ({
-        foodIngredientId: Number(item.id),
+        foodIngredientId: Number(item.foodIngredientId),
         primaryAmountValue: getPrimaryAmountValue(item.amount),
       }))
       .filter(
@@ -551,9 +571,42 @@ export default function CookingIngredientCheck() {
     }
   };
 
+    // 요리 결과 최종 저장 (맛 평가/난이도/팁/실제 사용량/사진)
+  const saveCookingResult = async (list) => {
+    if (!userLoginNumber) {
+      console.error("userLoginNumber가 없습니다.");
+      return false;
+    }
+
+    const modifiedCookingRecordFoodIngredients = list
+      .map((item) => ({
+        cookingRecordFoodIngredientId: item.id,
+        usedPrimaryAmountValue: getPrimaryAmountValue(item.amount),
+        usedSecondaryAmountValue: null,
+      }))
+      .filter((item) => item.usedPrimaryAmountValue != null);
+
+    try {
+      await patchCookingResult(userLoginNumber, {
+        tasteRating: "LEVEL_1",
+        difficultyLevel: difficultyLevel ?? "LEVEL_1",
+        cookingTip: "",
+        modifiedCookingRecordFoodIngredients,
+        image: photoFile,
+      });
+      return true;
+    } catch (error) {
+      console.error("요리 결과 저장 실패:", error);
+      return false;
+    }
+  };
   const handleUsedAsIs = async () => {
+    setIsSaving(true);
     const saved = await saveOwnedIngredientAmounts(ingredients);
-    if (!saved) return;
+    if (!saved) { setIsSaving(false); return; }
+        const resultSaved = await saveCookingResult(ingredients);
+    setIsSaving(false);
+    if (!resultSaved) return;
 
     setIsReflectedModalOpen(true);
   };
@@ -565,6 +618,7 @@ export default function CookingIngredientCheck() {
 
     const handleFinalComplete = () => {
     setIsCompleteModalOpen(false);
+    clearCookingSession();
     navigate(`/diet-start/${mealId}`);
   };
 
@@ -597,8 +651,13 @@ export default function CookingIngredientCheck() {
   };
 
   const handleListConfirm = async () => {
+    setIsSaving(true);
     const saved = await saveOwnedIngredientAmounts(ingredients);
-    if (!saved) return;
+    if (!saved) { setIsSaving(false); return; }
+
+        const resultSaved = await saveCookingResult(ingredients);
+    setIsSaving(false);
+    if (!resultSaved) return;
 
     closeEditModal();
     setIsCompleteModalOpen(true);

@@ -9,13 +9,14 @@ import closeIcon from "../../assets/icons/x.svg";
 import checkIcon from "../../assets/icons/check.svg";
 import recipeImg from "../../assets/images/recipeImg.svg";
 import { DUMMY_INGREDIENT_CATEGORIES, THEME_CARDS } from "../../constants/home/DummyHome.js";
+import { getUserFoodIngredients } from "@/api/userApi";
 import chevronBrownIcon from "../../assets/icons/chevronBrown.svg";
 import chevronGrayIcon from "../../assets/icons/chevronGray.svg";
 import fireIcon from "../../assets/icons/fire.svg";
 import cometIcon from "../../assets/icons/comet.svg";
 import checkBadgeIcon from "../../assets/icons/checkBadge.svg";
 import chevronDarkGrayIcon from "../../assets/icons/chevronDarkGray.svg";
-import { getAiRecommendedRecipe, getAiRecipeRecommendThree } from "../../api/recipe";
+import { getAiRecommendedRecipe, postAiRecipeRecommendAgain } from "../../api/recipe";
 
 const ENERGY_OPTIONS = ["의욕 없음", "보통", "의욕 넘침"];
 
@@ -797,6 +798,8 @@ export default function Home() {
   const carouselDraggingRef = useRef(false);
 
     const [recommendedDish, setRecommendedDish] = useState(null);
+    const [ownedIngredients, setOwnedIngredients] = useState([]); // 실제 보유 재료 목록
+
 
   useEffect(() => {
         if (!userId) return; // 로그인 안 된 상태면 호출하지 않음
@@ -808,7 +811,26 @@ export default function Home() {
       .catch((err) => console.error("추천 레시피 조회 실패:", err));
   }, [userId]);
 
-    const allIngredients = DUMMY_INGREDIENT_CATEGORIES.flatMap((c) => c.items);
+    useEffect(() => {
+    if (!userId) return;
+    getUserFoodIngredients(userId, "OWN")
+      .then((res) => {
+        const list = res.data?.foodIngredientList ?? [];
+        setOwnedIngredients(
+          list.map((item) => ({
+            id: item.foodIngredientId,       // 서버가 이해하는 진짜 숫자 ID
+            name: item.foodIngredientName,
+            qty: item.primaryAmountValue != null
+              ? `${item.primaryAmountValue}${item.foodIngredientPrimaryUnit}`
+              : "",
+            icon: null, // 서버가 아이콘을 안 주므로 일단 비워둠 (필요하면 종류별 아이콘 매핑 추가 가능)
+          }))
+        );
+      })
+      .catch((err) => console.error("보유 식재료 조회 실패:", err));
+  }, [userId]);
+
+    const allIngredients = ownedIngredients;
   const selectedIngredientObjects = selectedIngredients
     .map((id) => allIngredients.find((item) => item.id === id))
     .filter(Boolean);
@@ -834,7 +856,7 @@ export default function Home() {
         const difficultyMap = ["LEVEL_1", "LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "LEVEL_5"];
     const energyToTimeFilter = { "의욕 없음": "QUICK", "보통": "MEDIUM", "의욕 넘침": "LONG" };
 
-    getAiRecipeRecommendThree(userId, {
+    postAiRecipeRecommendAgain(userId, {
       difficultyLevel: difficultyMap[difficulty],
       timeFilter: energyToTimeFilter[energy],
       desiredIngredientIds: selectedIngredients,
@@ -1081,27 +1103,25 @@ export default function Home() {
             <div className="modal-subtitle">보유한 재료 중 최대 3개까지 선택가능</div>
 
             {DUMMY_INGREDIENT_CATEGORIES.map((category) => (
-              <div className="ingredient-category" key={category.title}>
-                <div className="category-title">{category.title}</div>
-                <div className="chip-wrap">
-                  {category.items.map((item) => (
-                    <IngredientChip
-                      key={item.id}
-                      $selected={selectedIngredients.includes(item.id)}
-                      onClick={() => toggleIngredient(item.id)}
-                    >
-                      {item.icon && (
-                        <span className="chip-icon">
-                          <img src={item.icon} alt="" />
-                        </span>
-                      )}
-                      <span className="chip-name">{item.name}</span>
-                      <span className="chip-qty">{item.qty}</span>
-                    </IngredientChip>
-                  ))}
-                </div>
-              </div>
+                           null
             ))}
+            <div className="ingredient-category">
+              <div className="chip-wrap">
+                {ownedIngredients.map((item) => (
+                  <IngredientChip
+                    key={item.id}
+                    $selected={selectedIngredients.includes(item.id)}
+                    onClick={() => toggleIngredient(item.id)}
+                  >
+                    <span className="chip-name">{item.name}</span>
+                   <span className="chip-qty">{item.qty}</span>
+                  </IngredientChip>
+                ))}
+                {ownedIngredients.length === 0 && (
+                  <p style={{ color: "#a9a9a9", fontSize: 14 }}>보유한 재료가 없어요</p>
+                )}
+              </div>
+            </div>
 
             <div className="modal-actions">
               <ModalButton $variant="cancel" onClick={handleCancel}>

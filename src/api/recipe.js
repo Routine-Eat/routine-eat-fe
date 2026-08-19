@@ -4,16 +4,16 @@ import { APIService } from '@/api/api';
 export const getAiRecommendedRecipe = (userId) =>
   APIService.public.get(`/recipes/ai-recommend/${userId}`);
 
-// AI 레시피 재추천 (조건부)
-export const getAiRecipeRecommendThree = (userId, options = {}) => {
-  const { difficultyLevel, timeFilter, desiredIngredientIds, previousRecipeId } = options;
-  const params = {};
-  if (difficultyLevel) params.difficultyLevel = difficultyLevel;
-  if (timeFilter) params.timeFilter = timeFilter;
-  if (desiredIngredientIds?.length) params.desiredIngredientIds = desiredIngredientIds;
-  if (previousRecipeId) params.previousRecipeId = previousRecipeId;
-  return APIService.public.get(`/recipes/ai-recommend/again/${userId}`, { params });
-};
+ // AI 레시피 재추천 (조건부)
+ export const postAiRecipeRecommendAgain = (userId, options = {}) => {
+   const { difficultyLevel, timeFilter, desiredIngredientIds, previousRecipeId } = options;
+   const body = {};
+   if (difficultyLevel) body.difficultyLevel = difficultyLevel;
+   if (timeFilter) body.timeFilter = timeFilter;
+   if (desiredIngredientIds?.length) body.desiredIngredientIds = desiredIngredientIds;
+   if (previousRecipeId) body.previousRecipeId = previousRecipeId;
+   return APIService.public.post(`/recipes/ai-recommend/again/${userId}`, body);
+ };
 
 // 전체 레시피 목록 조회 (보유 재료/필터 기준, 유형별 그룹 조회)
 export const getRecipes = ({ userNumber, cursor = 1, size = 10, timeRequired, difficultyLevel, category, sortType = "DEFAULT" }) => {

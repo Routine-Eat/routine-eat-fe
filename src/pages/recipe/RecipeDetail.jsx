@@ -251,7 +251,10 @@ function RecipeDetail() {
         open={cookOpen}
         canCook={canCook}
         onClose={() => setCookOpen(false)}
-        onStart={() => setCookOpen(false)}
+        onStart={() => {
+          setCookOpen(false);
+          navigate(`/cooking/${id}`);
+        }}
       />
     </Page>
   );
@@ -657,7 +660,7 @@ const StartBtn = styled.button`
   height: 52px;
   border: none;
   border-radius: 12px;
-  background: #f4bf4c;
+  background: #96D960;
   font-size: 18px;
   font-weight: 600;
   letter-spacing: -0.18px;

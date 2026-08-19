@@ -131,7 +131,7 @@ const LoginBtn = styled.button`
   align-items: center;
   gap: 10px;
   border-radius: 12px;
-  background: #ff9b44;
+  background: #96D960;
   color: #fff;
   text-align: center;
   font-family: 'Wanted Sans Variable';

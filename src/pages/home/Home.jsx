@@ -17,8 +17,16 @@ import cometIcon from "../../assets/icons/comet.svg";
 import checkBadgeIcon from "../../assets/icons/checkBadge.svg";
 import chevronDarkGrayIcon from "../../assets/icons/chevronDarkGray.svg";
 import { getAiRecommendedRecipe, postAiRecipeRecommendAgain } from "../../api/recipe";
+import { getAiMealPlanRecommendation } from "../../api/mealPlanApi";
 
 const ENERGY_OPTIONS = ["의욕 없음", "보통", "의욕 넘침"];
+
+const THEME_TO_AI_KEY = {
+  "skill-up": "practice",
+  quick: "simple",
+  "max-ingredient": "useAll",
+  "one-ingredient": "recycling",
+};
 
 function getParticle(word) {
   if (!word) return "가";
@@ -517,7 +525,7 @@ padding: 0 8px;
 border-radius: 30px;
 border: none;
 cursor: pointer;
-background: ${({ $selected }) => ($selected ? "#72d472" : "#ffffff")};
+background: ${({ $selected }) => ($selected ? "#96D960" : "#ffffff")};
 box-shadow: 0px 0px 8px -1px rgba(72, 28, 0, 0.08), 0px 0px 40px 0px rgba(17, 0, 0, 0.05);
 
 .chip-icon{
@@ -560,7 +568,7 @@ gap: 4px;
 font-size: 16px;
 font-family: Pretendard Variable;
 font-weight: 600;
-background: ${({ $variant }) => ($variant === "apply" ? "#72d472" : "#e7e7e7")};
+background: ${({ $variant }) => ($variant === "apply" ? "#96D960" : "#e7e7e7")};
 color: ${({ $variant }) => ($variant === "apply" ? "#ffffff" : "#3e3e3e")};
 `;
 
@@ -631,7 +639,7 @@ const ConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.16px;
-  background: ${({ $variant }) => ($variant === "confirm" ? "#72d472" : "#f5f5f6")};
+  background: ${({ $variant }) => ($variant === "confirm" ? "#96D960" : "#f5f5f6")};
   color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
 `;
 
@@ -799,6 +807,7 @@ export default function Home() {
 
     const [recommendedDish, setRecommendedDish] = useState(null);
     const [ownedIngredients, setOwnedIngredients] = useState([]); // 실제 보유 재료 목록
+  const [mealPlanRecommendations, setMealPlanRecommendations] = useState(null);
 
 
   useEffect(() => {
@@ -809,6 +818,16 @@ export default function Home() {
        setRecommendedDish(res.data);
      })
       .catch((err) => console.error("추천 레시피 조회 실패:", err));
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    getAiMealPlanRecommendation(userId)
+      .then((res) => {
+        setMealPlanRecommendations(res.data ?? res);
+      })
+      .catch((err) => console.error("AI 목적별 식단 추천 조회 실패:", err));
   }, [userId]);
 
     useEffect(() => {
@@ -1083,17 +1102,31 @@ export default function Home() {
       <ThemeSectionSubtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</ThemeSectionSubtitle>
 
       <ThemeGrid>
-        {THEME_CARDS.map((theme) => (
-           <ThemeCard key={theme.id} onClick={() => navigate(`/menu/${theme.id}`)}>
-            <img className="icon" src={theme.icon} alt="" />
-            <span className="title">{theme.title}</span>
-            <div className="desc">
-              {theme.desc.map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
-            </div>
-          </ThemeCard>
-        ))}
+        {THEME_CARDS.map((theme) => {
+          const recommendation = mealPlanRecommendations?.[THEME_TO_AI_KEY[theme.id]] ?? null;
+          if (theme.id === "max-ingredient" && !recommendation) return null;
+
+          const desc = recommendation?.reason ? [recommendation.reason] : theme.desc;
+
+          return (
+            <ThemeCard
+              key={theme.id}
+              onClick={() =>
+                navigate(`/menu/${theme.id}`, {
+                  state: { recommendation },
+                })
+              }
+            >
+              <img className="icon" src={theme.icon} alt="" />
+              <span className="title">{theme.title}</span>
+              <div className="desc">
+                {desc.map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            </ThemeCard>
+          );
+        })}
       </ThemeGrid>
 
       {isIngredientModalOpen && (

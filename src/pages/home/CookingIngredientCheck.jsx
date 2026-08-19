@@ -7,6 +7,7 @@ import { patchUserFoodIngredientAmount } from "@/api/userApi";
 import { useUserStore } from "@/hooks/useUserStore";
 import { useCookingStore } from "../../hooks/useCookingStore";
 import { patchCookingResult } from "../../api/cookingRecord";
+import { patchPlanMenuCompleted } from "../../api/mealPlanApi";
 
 import BackButton from "../../common/button/BackButton";
 import checkBadgeGreenIcon from "../../assets/icons/checkCircleWhite.svg";
@@ -114,7 +115,7 @@ const ActionButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.18px;
-  background: ${({ $variant }) => ($variant === "primary" ? "#72d472" : "#e9e9e9")};
+  background: ${({ $variant }) => ($variant === "primary" ? "#96D960" : "#e9e9e9")};
   color: ${({ $variant }) => ($variant === "primary" ? "#ffffff" : "#5a5a5b")};
 `;
 
@@ -189,7 +190,7 @@ const ReflectedConfirmButton = styled.button`
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  background: #72d472;
+  background: #96D960;
   color: white;
   font-size: 16px;
   font-family: Wanted Sans Variable;
@@ -270,7 +271,7 @@ const CompleteConfirmButton = styled.button`
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  background: #72d472;
+  background: #96D960;
   color: white;
   font-size: 16px;
   font-family: Wanted Sans Variable;
@@ -389,7 +390,7 @@ const SheetConfirmButton = styled.button`
   border-radius: 10px;
   border: none;
   cursor: pointer;
-  background: #72d472;
+  background: #96D960;
   color: white;
   font-size: 18px;
   font-family: Wanted Sans Variable;
@@ -494,7 +495,7 @@ const DetailConfirmButton = styled.button`
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  background: #72d472;
+  background: #96D960;
   color: white;
   font-size: 18px;
   font-family: Wanted Sans Variable;
@@ -519,6 +520,8 @@ export default function CookingIngredientCheck() {
     const userLoginNumber = useUserStore((state) => state.userLoginNumber);
   const cookingRecordId = useCookingStore((state) => state.cookingRecordId);
   const photoFile = useCookingStore((state) => state.photoFile);
+  const mealPlanId = useCookingStore((state) => state.mealPlanId);
+  const planMenuId = useCookingStore((state) => state.planMenuId);
   const clearCookingSession = useCookingStore((state) => state.clearCookingSession);
 
   // CookingReview.jsx에서 navigate state로 넘겨준 값
@@ -616,10 +619,18 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
     setIsCompleteModalOpen(true);
   };
 
-    const handleFinalComplete = () => {
+    const handleFinalComplete = async () => {
     setIsCompleteModalOpen(false);
+    const nextDietId = mealPlanId ?? mealId;
+    if (userId && planMenuId) {
+      try {
+        await patchPlanMenuCompleted(userId, planMenuId, true);
+      } catch (error) {
+        console.error("식단 메뉴 완료 여부 수정 실패:", error);
+      }
+    }
     clearCookingSession();
-    navigate(`/diet-start/${mealId}`);
+    navigate(`/diet-start/${nextDietId}`);
   };
 
   const closeEditModal = () => {

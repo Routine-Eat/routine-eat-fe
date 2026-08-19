@@ -303,7 +303,7 @@ const ConfirmBtn = styled.button`
   height: 52px;
   border: none;
   border-radius: 12px;
-  background: ${({ $orange }) => ($orange ? '#ff9b44' : '#72d472')};
+  background: #96D960;
   color: #fff;
   font-size: 18px;
   font-weight: 600;

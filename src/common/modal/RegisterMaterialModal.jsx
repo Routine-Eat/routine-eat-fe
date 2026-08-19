@@ -579,7 +579,7 @@ const ConfirmBtn = styled.button`
   margin-top: auto;
   border: none;
   border-radius: 12px;
-  background: ${({ $disabled }) => ($disabled ? '#bebebf' : '#72d472')};
+  background: ${({ $disabled }) => ($disabled ? '#bebebf' : '#96D960')};
   color: ${({ $disabled }) => ($disabled ? '#f5f5f6' : '#fff')};
   font-size: 18px;
   font-weight: 600;

@@ -119,7 +119,9 @@ function RecipeDetail() {
       const canStartImmediately = Boolean(payload.canCook);
 
       if (canStartImmediately) {
-        navigate(`/cooking/${id}`);
+        navigate(`/cooking/${id}`, {
+          state: { servings: Number.parseInt(serving, 10) || 1 },
+        });
         return;
       }
 
@@ -307,7 +309,9 @@ function RecipeDetail() {
         onClose={() => setCookOpen(false)}
         onStart={() => {
           setCookOpen(false);
-          navigate(`/cooking/${id}`);
+          navigate(`/cooking/${id}`, {
+            state: { servings: Number.parseInt(serving, 10) || 1 },
+          });
         }}
       />
 

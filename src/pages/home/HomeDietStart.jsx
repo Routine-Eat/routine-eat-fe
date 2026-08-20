@@ -548,7 +548,7 @@ export default function HomeDietStart() {
     if (isMealPlanId && selectedMeal?.planMenuId) {
       setMealPlanContext({ mealPlanId: mealId, planMenuId: selectedMeal.planMenuId });
     }
-    navigate(`/cooking/${selectedMealId}`);
+    navigate(`/cooking/${selectedMealId}`, { state: { servings: 1 } });
   };
 
   const handleStopDiet = async () => {

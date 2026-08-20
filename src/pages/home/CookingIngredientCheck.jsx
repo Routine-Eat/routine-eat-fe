@@ -602,6 +602,13 @@ const getPrimaryAmountValue = (amount) => {
 const pickAmount = (...values) =>
   values.find((value) => value != null && Number(value) !== 0) ?? 0;
 
+const getUsedPrimaryAmount = (item) => {
+  const prev = Number(item?.prevPrimaryAmountValue);
+  const current = Number(item?.currentPrimaryAmountValue);
+  if (!Number.isFinite(prev) || !Number.isFinite(current)) return null;
+  return Math.max(prev - current, 0);
+};
+
 export default function CookingIngredientCheck() {
   const navigate = useNavigate();
   const { mealId } = useParams();
@@ -623,11 +630,10 @@ export default function CookingIngredientCheck() {
       id: item.cookingRecordFoodIngredientId,
       foodIngredientId: item.foodIngredientId,
       name: item.name,
-      amount: pickAmount(
+      amount: getUsedPrimaryAmount(item) ?? pickAmount(
         item.primaryNeedAmountValue,
         item.primaryAmountValue,
-        item.primaryUsedAmountValue,
-        item.currentPrimaryAmountValue
+        item.primaryUsedAmountValue
       ),
       unit: item.primaryUnit,
     }));

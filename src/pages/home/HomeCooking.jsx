@@ -1,5 +1,5 @@
   import React, { useRef, useState, useEffect } from "react";
-    import { useNavigate, useParams } from "react-router-dom";
+    import { useNavigate, useParams, useLocation } from "react-router-dom";
     import chevronUpIcon from "../../assets/icons/chevronup.svg";
     import { DUMMY_DISHES } from "../../constants/home/DummyHome.js";
     import BackButton from "../../common/button/BackButton";
@@ -110,7 +110,9 @@ import { getRecipeDetail } from "@/api/recipe";
 
     export default function HomeCooking() {
     const navigate = useNavigate();
+    const location = useLocation();
     const { mealId } = useParams();
+    const servings = Number(location.state?.servings) || 1;
     const userLoginNumber = useUserStore((state) => state.userLoginNumber);
     const touchStartY = useRef(null);
     const [isLeaving, setIsLeaving] = useState(false);
@@ -135,7 +137,7 @@ import { getRecipeDetail } from "@/api/recipe";
            try {
                const response = await getRecipeDetail(mealId, {
                    userNumber: userLoginNumber,
-                   servings: 1,
+                   servings,
                });
                const payload = response.data ?? response;
 
@@ -161,13 +163,13 @@ import { getRecipeDetail } from "@/api/recipe";
        return () => {
            isMounted = false;
        };
-   }, [mealId, userLoginNumber]);
+       }, [mealId, userLoginNumber, servings]);
 
     const handleStartSwipe = () => {
              if (isLeaving) return; // 중복 트리거 방지
      setIsLeaving(true);
      setTimeout(() => {
-        navigate(`/cooking/${mealId}/step`, { replace: true });
+        navigate(`/cooking/${mealId}/step`, { replace: true, state: { servings } });
         }, 200);
     };
 

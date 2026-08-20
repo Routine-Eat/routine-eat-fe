@@ -135,22 +135,17 @@ export default function CookingReview() {
       .then(([res, recipeRes]) => {
         console.log("이번 요리 사용 재료 조회:", res.data);
         const recordPayload = res.data ?? res;
-        const recipePayload = recipeRes?.data ?? recipeRes;
-        const recipeAmounts = new Map(
-          (recipePayload?.foodIngredients ?? []).map((item) => [
-            String(item.foodIngredientId ?? item.id),
-            item.primaryNeedAmountValue ?? item.primaryAmountValue,
-          ])
-        );
         const foodIngredients = {
           ...recordPayload,
           foodIngredients: (recordPayload.foodIngredients ?? []).map((item) => {
-            const recipeAmount = recipeAmounts.get(String(item.foodIngredientId));
-            if (recipeAmount == null || Number(recipeAmount) === 0) return item;
+            const prev = Number(item.prevPrimaryAmountValue);
+            const current = Number(item.currentPrimaryAmountValue);
+            if (!Number.isFinite(prev) || !Number.isFinite(current)) return item;
+            const used = Math.max(prev - current, 0);
             return {
               ...item,
-              primaryNeedAmountValue: recipeAmount,
-              primaryAmountValue: recipeAmount,
+              primaryNeedAmountValue: used,
+              primaryAmountValue: used,
             };
           }),
         };

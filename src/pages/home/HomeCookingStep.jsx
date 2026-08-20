@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
 import micIcon from "../../assets/icons/mic2.svg";
 import BackButton from "../../common/button/BackButton";
 import checkCircleIcon from "../../assets/icons/checkcircle.svg";
@@ -883,7 +883,9 @@ const CompleteActionButton = styled.button`
 
 export default function HomeCookingStep() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { mealId } = useParams();
+  const servings = Number(location.state?.servings) || 1;
   const userLoginNumber = useUserStore((state) => state.userLoginNumber);
  const setGlobalCookingRecordId = useCookingStore((state) => state.setCookingRecordId);
   const [cookingRecordId, setCookingRecordId] = useState(null);
@@ -1568,7 +1570,7 @@ const parseMultipartAiResponse = (res) => {
       if (err.response?.status !== 404) {
         console.error("진행 중 세션 조회 실패:", err);
       }
-      postStartCooking(userLoginNumber, { recipeId: Number(mealId), servings: 2 })
+      postStartCooking(userLoginNumber, { recipeId: Number(mealId), servings })
         .then((res) => {
           console.log("요리 시작 응답:", res.data);
           setCookingRecordId(res.data.cookingRecordId);
@@ -1585,7 +1587,7 @@ const parseMultipartAiResponse = (res) => {
     })
    .catch((err) => console.error("전체 단계 제목 조회 실패:", err));
 
- }, [userLoginNumber, mealId]);
+ }, [userLoginNumber, mealId, servings]);
    const showUpHint = !isFirstStep;
  const showDownHint = !isLastStep;
 

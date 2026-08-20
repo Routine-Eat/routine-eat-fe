@@ -12,6 +12,7 @@ import BottomFixedButton from "../../common/button/BottomFixedButton";
 import { getAiMealPlanRecommendation, postUserMealPlan } from "../../api/mealPlanApi";
 import { useUserStore } from "../../hooks/useUserStore";
 import { useCookingStore } from "../../hooks/useCookingStore";
+import loaderIcon from "@/common/loader.svg";
 
 const THEME_TO_AI_KEY = {
   "skill-up": "practice",
@@ -353,6 +354,21 @@ const StartButtonPress = styled.div`
   }
 `;
 
+const LoadingOverlay = styled.div`
+   position: fixed;
+   inset: 0;
+   background: rgba(255, 255, 255, 0.7);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   z-index: 400;
+ `;
+
+ const LoadingSpinner = styled.img`
+   width: 40px;
+   height: 40px;
+ `;
+
 export default function HomeMenu() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -363,6 +379,7 @@ export default function HomeMenu() {
 
   const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
   const [recommendation, setRecommendation] = useState(location.state?.recommendation ?? null);
+  const [isLoading, setIsLoading] = useState(!location.state?.recommendation);
   const menuDishes = mapAiMenus(recommendation?.menus);
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
@@ -381,11 +398,13 @@ export default function HomeMenu() {
   useEffect(() => {
     if (location.state?.recommendation) {
       setRecommendation(location.state.recommendation);
+      setIsLoading(false);
       return undefined;
     }
     if (!userId) return undefined;
 
     const fetchRecommendation = async () => {
+      setIsLoading(true);
       try {
         const response = await getAiMealPlanRecommendation(userId);
         const payload = response.data ?? response;
@@ -393,7 +412,9 @@ export default function HomeMenu() {
         setRecommendation(payload?.[THEME_TO_AI_KEY[mealId]] ?? null);
       } catch (error) {
         console.error("AI 목적별 식단 추천 조회 실패:", error);
-      }
+           } finally {
+       setIsLoading(false);
+     }
     };
 
     fetchRecommendation();
@@ -524,6 +545,11 @@ export default function HomeMenu() {
           </StartModalSheet>
         </StartModalOverlay>
       )}
+           {isLoading && (
+       <LoadingOverlay>
+         <LoadingSpinner src={loaderIcon} alt="로딩 중" />
+       </LoadingOverlay>
+     )}
     </PageContainer>
   );
 }

@@ -6,6 +6,7 @@
      import styled, { keyframes } from "styled-components";
 import { getRecipeDetail } from "@/api/recipe";
    import { useUserStore } from "../../hooks/useUserStore";
+   import loaderIcon from "@/common/loader.svg";
 
  const fadeOutUp = keyframes`
    from { opacity: 1; transform: translateY(0); }
@@ -91,6 +92,21 @@ import { getRecipeDetail } from "@/api/recipe";
     height: 16px;
     }
     `;
+
+       const LoadingOverlay = styled.div`
+   position: fixed;
+   inset: 0;
+   background: rgba(255, 255, 255, 0.7);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   z-index: 400;
+   `;
+
+   const LoadingSpinner = styled.img`
+   width: 40px;
+   height: 40px;
+   `;
 
     export default function HomeCooking() {
     const navigate = useNavigate();
@@ -232,6 +248,11 @@ import { getRecipeDetail } from "@/api/recipe";
             <img src={chevronUpIcon} alt="" />
             <img src={chevronUpIcon} alt="" />
         </ChevronStack>
+               {isLeaving && (
+         <LoadingOverlay>
+           <LoadingSpinner src={loaderIcon} alt="로딩 중" />
+         </LoadingOverlay>
+       )}
         </PageContainer>
     );
     }

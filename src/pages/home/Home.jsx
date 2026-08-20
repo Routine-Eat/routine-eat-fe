@@ -23,6 +23,7 @@ import { getAiMealPlanRecommendation } from "../../api/mealPlanApi";
 import carouselArrowIcon from "../../assets/icons/carouselArrow.svg";
 import { getIngredientIcon } from "@/constants/iconsMap";
 import arrowRightIcon from "../../assets/icons/arrowRight.svg";
+import loaderIcon from "@/common/loader.svg";
 
 const ENERGY_OPTIONS = ["의욕 없음", "보통", "의욕 넘침"];
 
@@ -1009,6 +1010,23 @@ const CarouselArrowButton = styled.button`
    }
  `;
 
+  const LoadingOverlay = styled.div`
+   position: fixed;
+   inset: 0;
+   background: rgba(255, 255, 255, 0.7);
+   display: flex;
+   flex-direction: column;
+   align-items: center;
+   justify-content: center;
+   gap: 16px;
+   z-index: 400;
+ `;
+
+ const LoadingSpinner = styled.img`
+   width: 40px;
+   height: 40px;
+ `;
+
 export default function Home() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1022,6 +1040,7 @@ export default function Home() {
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [applyPressed, setApplyPressed] = useState(false);
   const [confirmPressed, setConfirmPressed] = useState(false);
+   const [isRecommendLoading, setIsRecommendLoading] = useState(false);
     const [isRecommended, setIsRecommended] = useState(false);
   const [recommendedDishes, setRecommendedDishes] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -1123,6 +1142,7 @@ useEffect(() => {
 
     const handleConfirmRecommend = () => {
     setIsConfirmModalOpen(false);
+    setIsRecommendLoading(true);
 
         const difficultyMap = ["LEVEL_1", "LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "LEVEL_5"];
     const energyToTimeFilter = { "의욕 없음": "QUICK", "보통": "MEDIUM", "의욕 넘침": "LONG" };
@@ -1138,7 +1158,8 @@ useEffect(() => {
        setCarouselIndex(Math.floor(res.data.length / 2));
        setIsRecommended(true);
      })
-      .catch((err) => console.error("레시피 재추천 실패:", err));
+            .catch((err) => console.error("레시피 재추천 실패:", err))
+      .finally(() => setIsRecommendLoading(false));
   };
 
     const goToCarouselIndex = (nextIndex) => {
@@ -1551,6 +1572,11 @@ useEffect(() => {
          <span>{toastMessage}</span>
        </Toast>
      )}
+         {isRecommendLoading && (
+      <LoadingOverlay>
+        <LoadingSpinner src={loaderIcon} alt="로딩 중" />
+      </LoadingOverlay>
+    )}
     </HomeContainer>
   );
 }

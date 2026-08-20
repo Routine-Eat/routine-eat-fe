@@ -126,6 +126,7 @@ const Explanation = styled.div`
   font-weight: 500;
   line-height: 130%; /* 20.8px */
   letter-spacing: -0.16px;
+  padding: 0 21px;
 `;
 const LoginBtn = styled.button`
   display: flex;

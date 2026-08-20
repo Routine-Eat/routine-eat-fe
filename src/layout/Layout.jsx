@@ -15,8 +15,9 @@ function Layout() {
     if (pathname !== '/feed') setFeedSearchMode(false);
   }, [pathname]);
 
-  // 마이페이지·마켓·레시피/유사요리·장보기·알림은 전용 상단바
+  // 피드는 페이지 헤더(검색·기본순)와 한 덩어리로 움직임
   const hideHeader =
+    pathname.startsWith('/feed') ||
     pathname.startsWith('/mypage') ||
     pathname.startsWith('/market') ||
     pathname.startsWith('/recipes') ||
@@ -26,6 +27,7 @@ function Layout() {
     pathname.startsWith('/notifications');
   // 상세·유사·장보기·알림은 하단 CTA만 사용
   const hideBottomNav =
+    pathname.startsWith('/mypage') ||
     pathname.startsWith('/recipes') ||
     pathname.startsWith('/similar-recipes') ||
     pathname.startsWith('/cooking-records') ||
@@ -35,7 +37,7 @@ function Layout() {
   return (
     <AppContainer>
       {!hideHeader && (
-        <Header searchActive={feedSearchMode} onExitSearch={() => setFeedSearchMode(false)} />
+        <Header />
       )}
       <Main $noNav={hideBottomNav}>
         <Outlet context={{ feedSearchMode, setFeedSearchMode }} />

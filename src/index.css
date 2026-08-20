@@ -27,8 +27,8 @@ body {
 }
 
 #root {
-  width: 100%;
-  max-width: 390px;
+  width: 100dvw;
+  max-width: 500px;
   min-height: 100dvh;
   background-color: #ffffff;
 }

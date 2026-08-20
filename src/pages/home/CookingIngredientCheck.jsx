@@ -3,7 +3,7 @@ import { useNavigate, useParams, useLocation } from "react-router-dom";
 
 import styled from "styled-components";
 
-import { patchUserFoodIngredientAmount } from "@/api/userApi";
+import { getUserFoodIngredients, patchUserFoodIngredientAmount } from "@/api/userApi";
 import { useUserStore } from "@/hooks/useUserStore";
 import { useCookingStore } from "../../hooks/useCookingStore";
 import { patchCookingResult } from "../../api/cookingRecord";
@@ -599,6 +599,9 @@ const getPrimaryAmountValue = (amount) => {
   return Number.isNaN(value) ? null : value;
 };
 
+const pickAmount = (...values) =>
+  values.find((value) => value != null && Number(value) !== 0) ?? 0;
+
 export default function CookingIngredientCheck() {
   const navigate = useNavigate();
   const { mealId } = useParams();
@@ -620,7 +623,12 @@ export default function CookingIngredientCheck() {
       id: item.cookingRecordFoodIngredientId,
       foodIngredientId: item.foodIngredientId,
       name: item.name,
-      amount: item.currentPrimaryAmountValue ?? 0,
+      amount: pickAmount(
+        item.primaryNeedAmountValue,
+        item.primaryAmountValue,
+        item.primaryUsedAmountValue,
+        item.currentPrimaryAmountValue
+      ),
       unit: item.primaryUnit,
     }));
   const [isReflectedModalOpen, setIsReflectedModalOpen] = useState(false);
@@ -641,18 +649,35 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
       return false;
     }
 
-    const foodIngredientList = list
-      .map((item) => ({
-        foodIngredientId: Number(item.foodIngredientId),
-        primaryAmountValue: getPrimaryAmountValue(item.amount),
-      }))
-      .filter(
-        (item) => Number.isFinite(item.foodIngredientId) && item.primaryAmountValue != null
+    try {
+      const response = await getUserFoodIngredients(userId, "OWN");
+      const payload = response?.data ?? response;
+      const ownedById = new Map(
+        (payload?.foodIngredientList ?? []).map((item) => [String(item.foodIngredientId), item])
       );
 
-    if (foodIngredientList.length === 0) return true;
+      const foodIngredientList = list
+        .map((item) => {
+          const used = getPrimaryAmountValue(item.amount);
+          const owned = ownedById.get(String(item.foodIngredientId));
+          if (!owned || owned.foodIngredientType === "SEASONING") return null;
 
-    try {
+          const ownedAmount = Number(owned.primaryAmountValue);
+          if (!Number.isFinite(used) || !Number.isFinite(ownedAmount) || ownedAmount <= used) {
+            return null;
+          }
+
+          return {
+            foodIngredientId: Number(item.foodIngredientId),
+            primaryAmountValue: ownedAmount - used,
+          };
+        })
+        .filter(
+          (item) => item && Number.isFinite(item.foodIngredientId) && item.primaryAmountValue > 0
+        );
+
+      if (foodIngredientList.length === 0) return true;
+
       await patchUserFoodIngredientAmount(userId, { foodIngredientList });
       return true;
     } catch (error) {

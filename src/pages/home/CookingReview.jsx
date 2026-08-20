@@ -9,6 +9,7 @@ import BottomFixedButton from "../../common/button/BottomFixedButton";
 import { useCookingStore } from "../../hooks/useCookingStore";
 import { useUserStore } from "../../hooks/useUserStore";
 import { getCookingRecordFoodIngredients } from "../../api/cookingRecord";
+import { getRecipeDetail } from "../../api/recipe";
 
 const PageContainer = styled.div`
   background: #fffefd;
@@ -124,8 +125,14 @@ export default function CookingReview() {
       return;
     }
     setIsLoading(true);
-    getCookingRecordFoodIngredients(cookingRecordId, userLoginNumber)
-      .then((res) => {
+    Promise.all([
+      getCookingRecordFoodIngredients(cookingRecordId, userLoginNumber),
+      getRecipeDetail(mealId, { userNumber: userLoginNumber, servings: 2 }).catch((err) => {
+        console.error("레시피 상세 조회 실패:", err);
+        return null;
+      }),
+    ])
+      .then(([res, recipeRes]) => {
         console.log("이번 요리 사용 재료 조회:", res.data);
         const recordPayload = res.data ?? res;
         const foodIngredients = {

@@ -43,7 +43,7 @@ export default function Login() {
       <Box>
       <Logo src={LogoIcon}/>
       <PwBox>
-        <Pw>비밀번호를 입력해주세요</Pw>
+        <Pw><p>안녕하세요!</p>비밀번호를 입력해주세요</Pw>
         <InputGroup>
           <PwInput $isInput={password.length >= 1} />
           <PwInput $isInput={password.length >= 2} />
@@ -79,7 +79,7 @@ const Contents = styled.div`
   flex-direction: column;
   height: 100%;
   align-items: center;
-  padding: 133px 23px 20px 23px;
+  padding: 133px 23px 36px 23px;
   justify-content: space-between;
 `;
 const Logo = styled.img`
@@ -89,21 +89,21 @@ const Box=styled.div`
   flex-direction: column;
   flex-shrink: 0;
   justify-content: space-between;
-  height: 350px;
+  height: 380px;
 `
 const Pw = styled.div`
   color: var(--900, #030303);
   text-align: center;
   font-family: 'Wanted Sans Variable';
-  font-size: 22px;
+  font-size: 20px;
   font-style: normal;
   font-weight: 500;
-  line-height: 130%; /* 28.6px */
+  line-height: 60%; /* 28.6px */
   letter-spacing: -0.22px;
 `;
 const PwInput = styled.div`
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   aspect-ratio: 1/1;
   background-color: ${({ $isInput }) => ($isInput ? '#D6F3A1' : '#f5f5f6')};
   border-radius: 50%;
@@ -161,7 +161,7 @@ const BtnBox = styled.div`
 const InputGroup = styled.div`
   position: relative;
   display: flex;
-  gap: 12px;
+  gap: 20px;
   align-items: center;
 `;
 const Input = styled.input`

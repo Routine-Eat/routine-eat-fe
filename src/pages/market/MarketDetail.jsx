@@ -6,9 +6,10 @@ import styled from 'styled-components';
 import headerCart from '@/assets/market/header-cart-detail.svg';
 import HeartEmpty from '@/assets/market/heartEmptyIcon.svg';
 import HeartFull from '@/assets/market/heartFullIcon.svg';
-import BackButton from '../../common/button/BackButton';
 import { recipes } from '@/constants/dummyMarket';
 import { productsDetail } from '@/constants/dummyMarket';
+
+import BackButton from '../../common/button/BackButton';
 
 const TABS = ['상품설명', '상세정보', '후기'];
 
@@ -51,7 +52,9 @@ export default function MarketDetail() {
         </InfoHead>
         <NameAndReview>
           <ProductName>{productData.name}</ProductName>
-          <Review onClick={()=>setIsSelect("후기")}>후기 {productData.review?.toLocaleString()}건</Review>
+          <Review onClick={() => setIsSelect('후기')}>
+            후기 {productData.review?.toLocaleString()}건
+          </Review>
         </NameAndReview>
         <MadeIn>원산지: {productData.origin}</MadeIn>
         <Price>{productData.price?.toLocaleString()}원</Price>
@@ -75,6 +78,7 @@ export default function MarketDetail() {
         {recipes.map((r) => (
           <RecipeCard>
             <RecipeImg src={r.imgUrl} />
+            <RecipeBackground />
             <RecipeName>{r.name}</RecipeName>
           </RecipeCard>
         ))}
@@ -177,7 +181,7 @@ const DiscountBar = styled.div`
   align-items: center;
 `;
 const DiscountRate = styled.div`
-  color: #72D472;
+  color: #72d472;
   font-family: 'Wanted Sans Variable';
   font-size: 24px;
   font-style: normal;
@@ -213,7 +217,7 @@ const Review = styled.div`
   text-decoration-thickness: auto;
   text-underline-offset: auto;
   text-underline-position: from-font;
-  &:hover{
+  &:hover {
     cursor: pointer;
   }
 `;
@@ -270,7 +274,6 @@ const RecipeCard = styled.div`
   height: 144px;
   width: 144px;
   border-radius: 12px;
-  background: var(--50, #f5f5f6);
   flex-shrink: 0;
 `;
 const RecipeImg = styled.img`
@@ -283,10 +286,17 @@ const RecipeName = styled.div`
   bottom: 12px;
   left: 12px;
   width: 90px;
-  color: var(--700, #2e2e2e);
+  color: white;
   font-family: 'Wanted Sans Variable';
   font-size: 15px;
   font-style: normal;
   font-weight: 600;
   line-height: 148%; /* 22.2px */
+`;
+const RecipeBackground = styled.div`
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
 `;

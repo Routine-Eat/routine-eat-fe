@@ -8,6 +8,7 @@ import searchIconUrl from '@/assets/market/searchIcon.svg';
 import { products, saveRecipeProducts, timeSaleProduct } from '@/constants/dummyMarket';
 import Product from '@/pages/market/Product';
 import TimeSaleProduct from '@/pages/market/TimeSaleProduct';
+import AdImgUrl from "@/assets/market/adImg.png"
 
 const TABS = ['추천', '베스트', '단독', '세일'];
 
@@ -44,7 +45,7 @@ function Market() {
       </ProductsBar>
       <ProductIntro>자취생 인기 만능 소스</ProductIntro>
       <TimeSaleProduct {...timeSaleProduct} />
-      <AdBanner>광고 배너</AdBanner>
+      <AdBanner src={AdImgUrl}/>
       <ProductIntro>저장한 레시피 속 재료</ProductIntro>
       <ProductsBar>
         {saveRecipeProducts.map((p, index) => (
@@ -186,18 +187,11 @@ const ProductsBar = styled.div`
   /* IE, 구형 Edge */
   -ms-overflow-style: none;
 `;
-const AdBanner = styled.div`
+const AdBanner = styled.img`
   margin: 50px 0 50px 0;
   display: flex;
   height: 118px;
   justify-content: center;
   align-items: center;
   background: #efefef;
-  color: #000;
-  text-align: center;
-  font-family: 'Wanted Sans Variable';
-  font-size: 18px;
-  font-style: normal;
-  font-weight: 600;
-  line-height: 130%; /* 23.4px */
 `;

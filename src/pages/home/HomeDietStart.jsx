@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
 import { getUserMealPlanDetail, patchUserMealPlanStatus } from "../../api/mealPlanApi";
-import { DUMMY_DIET_PROGRESS, THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
+ import { DUMMY_DIET_PROGRESS, THEME_CARDS } from "../../constants/home/DummyHome.js";
 import eggFoodImg from "../../assets/images/EggFood.svg";
 import muscleIcon from "../../assets/icons/muscle.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
@@ -415,6 +415,7 @@ export default function HomeDietStart() {
   const userId = useUserStore((state) => state.userId);
   const setMealPlanContext = useCookingStore((state) => state.setMealPlanContext);
   const setActiveMealPlanId = useCookingStore((state) => state.setActiveMealPlanId);
+   const missingIngredientsByMenuId = useCookingStore((state) => state.missingIngredientsByMenuId);
   const isMealPlanId = /^\d+$/.test(String(mealId));
 
   const dummyTheme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
@@ -425,7 +426,7 @@ export default function HomeDietStart() {
   const [selectedMealId, setSelectedMealId] = useState(
     () => (isMealPlanId ? null : dummyMeals.find((m) => !m.completed)?.id)
   );
-  const missingIngredients = MISSING_INGREDIENTS;
+  const missingIngredients = missingIngredientsByMenuId?.[selectedMealId] ?? [];
   const [isBoughtModalOpen, setIsBoughtModalOpen] = useState(false);
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
@@ -490,7 +491,7 @@ export default function HomeDietStart() {
       }
     }
     setActiveMealPlanId(null);
-    navigate("/");
+     navigate("/", { state: { toastMessage: "식단이 중단되었어요" } });
   };
 
   return (
@@ -507,7 +508,7 @@ export default function HomeDietStart() {
       <EmptyNotice>
         {completedCount === 0
           ? "아직 만든 레시피가 없네요!"
-          : `${completedCount}끼 챙겨먹기에 성공했어요!`}
+          : `${MEAL_TAB_LABELS[completedCount - 1]} 챙겨먹기에 성공했어요!`}
       </EmptyNotice>
 
       <MealTabs>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import starFilledIcon from "../../assets/icons/StarFilled.svg";
 import { THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
@@ -11,6 +11,7 @@ import starEmptyIcon from "../../assets/icons/StarEmpty.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
 import { getAiMealPlanRecommendation, postUserMealPlan } from "../../api/mealPlanApi";
 import { useUserStore } from "../../hooks/useUserStore";
+import { useCookingStore } from "../../hooks/useCookingStore";
 
 const THEME_TO_AI_KEY = {
   "skill-up": "practice",
@@ -41,6 +42,26 @@ const mapAiMenus = (menus) =>
     image: eggFoodImg,
     matchRate: item.sameRate ?? null,
   }));
+
+   const sheetSlideUp = keyframes`
+   from { opacity: 0; transform: translateY(60px); }
+   to { opacity: 1; transform: translateY(0); }
+ `;
+
+ const sheetSlideDown = keyframes`
+   from { opacity: 1; transform: translateY(0); }
+   to { opacity: 0; transform: translateY(60px); }
+ `;
+
+ const overlayFadeIn = keyframes`
+   from { opacity: 0; }
+   to { opacity: 1; }
+ `;
+
+ const overlayFadeOut = keyframes`
+   from { opacity: 1; }
+   to { opacity: 0; }
+ `;
 
 const PageContainer = styled.div`
 background: #fffdfc;
@@ -193,12 +214,14 @@ const StartModalOverlay = styled.div`
   justify-content: center;
   z-index: 200;
   padding: 0 20px 20px;
+  animation: ${({ $closing }) => ($closing ? overlayFadeOut : overlayFadeIn)} 0.25s ease;
 `;
 
 const StartModalSheet = styled.div`
   position: relative;
   width: 100%;
   max-width: 350px;
+  max-height: 480px;
   background: white;
   border-radius: 24px;
   overflow: hidden;
@@ -207,6 +230,7 @@ const StartModalSheet = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
+  animation: ${({ $closing }) => ($closing ? sheetSlideDown : sheetSlideUp)} 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 `;
 
 const DragHandle = styled.div`
@@ -259,7 +283,17 @@ const ChipRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: center;
+ justify-content: flex-start;
+  max-height: 140px;
+ overflow-y: auto;
+ padding-right: 4px;
+
+  scrollbar-width: none;
+ -ms-overflow-style: none;
+
+ &::-webkit-scrollbar {
+   display: none;
+ }
 `;
 
 const MissingChip = styled.div`
@@ -302,12 +336,25 @@ export default function HomeMenu() {
   const location = useLocation();
   const { mealId } = useParams();
   const userId = useUserStore((state) => state.userId);
+  const setMissingIngredientsByMenuId = useCookingStore((state) => state.setMissingIngredientsByMenuId);
+
 
   const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
   const [recommendation, setRecommendation] = useState(location.state?.recommendation ?? null);
   const menuDishes = mapAiMenus(recommendation?.menus);
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
-  const missingIngredients = MISSING_INGREDIENTS;
+  const [isModalClosing, setIsModalClosing] = useState(false);
+  const missingIngredients = Array.from(
+   new Set((recommendation?.menus ?? []).flatMap((item) => item.missingIngredients ?? []))
+ );
+  
+  const closeStartModal = () => {
+   setIsModalClosing(true);
+   setTimeout(() => {
+     setIsStartModalOpen(false);
+     setIsModalClosing(false);
+   }, 250);
+ };
 
   useEffect(() => {
     if (location.state?.recommendation) {
@@ -336,6 +383,11 @@ export default function HomeMenu() {
     }
 
     try {
+           const map = {};
+     (recommendation?.menus ?? []).forEach((item) => {
+       map[item.menuId] = item.missingIngredients ?? [];
+     });
+     setMissingIngredientsByMenuId(map);
       const response = await postUserMealPlan(userId, {
         mealPlanType: recommendation?.type ?? THEME_TO_TYPE[mealId],
         mealPlanStatus: "PROGRESS",
@@ -359,12 +411,12 @@ export default function HomeMenu() {
   };
 
   const handleAddToShoppingList = () => {
-    setIsStartModalOpen(false);
+    closeStartModal();
     navigate("/shopping-list");
   };
 
   const handleProceedWithoutAdding = () => {
-    setIsStartModalOpen(false);
+    closeStartModal();
     startMealPlan();
   };
 
@@ -414,8 +466,8 @@ export default function HomeMenu() {
         식단 시작하기
       </BottomFixedButton>
             {isStartModalOpen && (
-        <StartModalOverlay onClick={() => setIsStartModalOpen(false)}>
-          <StartModalSheet onClick={(e) => e.stopPropagation()}>
+               <StartModalOverlay $closing={isModalClosing} onClick={closeStartModal}>
+         <StartModalSheet $closing={isModalClosing} onClick={(e) => e.stopPropagation()}>
             <DragHandle>
               <img src={dragHandleBar} alt="" />
             </DragHandle>
@@ -438,10 +490,10 @@ export default function HomeMenu() {
 
             <StartModalActions>
               <StartModalButton onClick={handleAddToShoppingList}>
-                재료가 모두 있어요
+                장보기 목록에 추가
               </StartModalButton>
               <StartModalButton $variant="primary" onClick={handleProceedWithoutAdding}>
-                재료 없이 시작할게요
+                추가 없이 진행할게요
               </StartModalButton>
             </StartModalActions>
           </StartModalSheet>

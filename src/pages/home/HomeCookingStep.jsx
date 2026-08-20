@@ -36,7 +36,6 @@ const VOICE_TUTORIAL_KEY = "hasSeenVoiceTutorial";
 
 const PageContainer = styled.div`
 background: #444;
-max-width: 390px;
 margin: 0 auto;
 min-height: 100vh;
 position: relative;

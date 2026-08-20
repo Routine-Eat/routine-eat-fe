@@ -32,6 +32,7 @@ function FilterPanel({ open, value, onApply, onClose }) {
   const [draft, setDraft] = useState(value);
   const [visible, setVisible] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [applyPressed, setApplyPressed] = useState(false);
 
   useEffect(() => {
     if (open) setDraft(value);
@@ -151,9 +152,14 @@ function FilterPanel({ open, value, onApply, onClose }) {
           </ResetBtn>
           <ApplyBtn
             type="button"
+            $pressed={applyPressed}
             onClick={() => {
-              onApply(draft);
-              onClose();
+              setApplyPressed(true);
+              window.setTimeout(() => {
+                onApply(draft);
+                onClose();
+                setApplyPressed(false);
+              }, 120);
             }}
           >
             선택한 조건으로 검색
@@ -419,4 +425,26 @@ const ApplyBtn = styled.button`
   letter-spacing: -0.15px;
   color: #fff;
   cursor: pointer;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 14px;
+    transform: scale(0.97);
+  }
+
+  ${({ $pressed }) =>
+    $pressed
+      ? `
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 14px;
+    transform: scale(0.97);
+  `
+      : ''}
 `;

@@ -569,6 +569,7 @@ border: none;
 cursor: pointer;
 background: ${({ $selected }) => ($selected ? "#96D960" : "#ffffff")};
 box-shadow: 0px 0px 8px -1px rgba(72, 28, 0, 0.08), 0px 0px 40px 0px rgba(17, 0, 0, 0.05);
+transition: transform 100ms ease, background-color 100ms ease;
 
 .chip-icon{
 display: flex;
@@ -594,6 +595,21 @@ font-size: 12px;
 font-family: Pretendard Variable;
 font-weight: 500;
 }
+
+${({ $selected }) =>
+  $selected
+    ? `
+  &:active {
+    background: #36a73c;
+    transform: scale(0.97);
+  }
+
+  &:active .chip-name,
+  &:active .chip-qty {
+    color: #c6f5a6;
+  }
+`
+    : ""}
 `;
 
 const ModalButton = styled.button`
@@ -612,6 +628,29 @@ font-family: Pretendard Variable;
 font-weight: 600;
 background: ${({ $variant }) => ($variant === "apply" ? "#96D960" : "#e7e7e7")};
 color: ${({ $variant }) => ($variant === "apply" ? "#ffffff" : "#3e3e3e")};
+transition: transform 100ms ease, background-color 100ms ease, color 100ms ease, font-size 100ms ease;
+
+${({ $variant }) =>
+  $variant === "apply"
+    ? `
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 15px;
+    transform: scale(0.97);
+  }
+`
+    : ""}
+
+${({ $pressed, $variant }) =>
+  $pressed && $variant === "apply"
+    ? `
+  background: #36a73c;
+  color: #c6f5a6;
+  font-size: 15px;
+  transform: scale(0.97);
+`
+    : ""}
 `;
 
 const ConfirmModalOverlay = styled.div`
@@ -683,6 +722,33 @@ const ConfirmButton = styled.button`
   letter-spacing: -0.16px;
   background: ${({ $variant }) => ($variant === "confirm" ? "#96D960" : "#f5f5f6")};
   color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  ${({ $variant }) =>
+    $variant === "confirm"
+      ? `
+    &:active {
+      background: #36a73c;
+      color: #c6f5a6;
+      font-size: 15px;
+      transform: scale(0.97);
+    }
+  `
+      : ""}
+
+  ${({ $pressed, $variant }) =>
+    $pressed && $variant === "confirm"
+      ? `
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 15px;
+    transform: scale(0.97);
+  `
+      : ""}
 `;
 
 const CarouselWrap = styled.div`
@@ -883,6 +949,8 @@ export default function Home() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+  const [applyPressed, setApplyPressed] = useState(false);
+  const [confirmPressed, setConfirmPressed] = useState(false);
     const [isRecommended, setIsRecommended] = useState(false);
   const [recommendedDishes, setRecommendedDishes] = useState([]);
   const [carouselIndex, setCarouselIndex] = useState(0);
@@ -1324,7 +1392,17 @@ useEffect(() => {
                 <img src={closeIcon} alt="" style={{ width: 13, height: 13 }} />
                 취소
               </ModalButton>
-              <ModalButton $variant="apply" onClick={handleApply}>
+              <ModalButton
+                $variant="apply"
+                $pressed={applyPressed}
+                onClick={() => {
+                  setApplyPressed(true);
+                  window.setTimeout(() => {
+                    handleApply();
+                    setApplyPressed(false);
+                  }, 120);
+                }}
+              >
                 <img src={checkIcon} alt="" style={{ width: 14, height: 10 }} />
                 적용
               </ModalButton>
@@ -1346,7 +1424,17 @@ useEffect(() => {
               <ConfirmButton $variant="cancel" onClick={() => setIsConfirmModalOpen(false)}>
                 취소
               </ConfirmButton>
-              <ConfirmButton $variant="confirm" onClick={handleConfirmRecommend}>
+              <ConfirmButton
+                $variant="confirm"
+                $pressed={confirmPressed}
+                onClick={() => {
+                  setConfirmPressed(true);
+                  window.setTimeout(() => {
+                    handleConfirmRecommend();
+                    setConfirmPressed(false);
+                  }, 120);
+                }}
+              >
                 확인
               </ConfirmButton>
             </ConfirmActions>

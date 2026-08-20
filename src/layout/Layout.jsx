@@ -3,18 +3,17 @@ import { Outlet, useLocation } from 'react-router-dom';
 
 import styled from 'styled-components';
 
-import BottomNav from '../common/bottomNav/BottomNav';
-import Header from './header/Header';
 import { getUserMealPlans } from '../api/mealPlanApi';
-import { useUserStore } from '../hooks/useUserStore';
+import BottomNav from '../common/bottomNav/BottomNav';
 import { useCookingStore } from '../hooks/useCookingStore';
+import { useUserStore } from '../hooks/useUserStore';
+import Header from './header/Header';
 
 function Layout() {
   const { pathname } = useLocation();
   const [feedSearchMode, setFeedSearchMode] = useState(false);
   const userId = useUserStore((state) => state.userId);
   const setActiveMealPlanId = useCookingStore((state) => state.setActiveMealPlanId);
-
 
   // 피드 검색 모드 — 다른 탭으로 나가면 해제
   useEffect(() => {
@@ -54,9 +53,7 @@ function Layout() {
 
   return (
     <AppContainer>
-      {!hideHeader && (
-        <Header />
-      )}
+      {!hideHeader && <Header />}
       <Main $noNav={hideBottomNav}>
         <Outlet context={{ feedSearchMode, setFeedSearchMode }} />
       </Main>

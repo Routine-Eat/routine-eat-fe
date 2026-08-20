@@ -42,6 +42,22 @@ const PageContainer = styled.div`
   flex-direction: column;
   align-items: center;
   padding: 60px 24px 120px;
+
+  > button:last-child {
+    transition:
+      transform 100ms ease,
+      background-color 100ms ease,
+      color 100ms ease,
+      font-size 100ms ease;
+    transform-origin: center;
+  }
+
+  > button:last-child:active:not(:disabled) {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: translateX(-50%) scale(0.97);
+  }
 `;
 
 const Headline = styled.p`

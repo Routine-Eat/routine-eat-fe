@@ -2,6 +2,8 @@ import { useState } from 'react';
 
 import styled from 'styled-components';
 
+import headerCart from '@/assets/market/header-cart.svg';
+import headerHeart from '@/assets/market/header-heart.svg';
 import searchIconUrl from '@/assets/market/searchIcon.svg';
 import { products, saveRecipeProducts, timeSaleProduct } from '@/constants/dummyMarket';
 import Product from '@/pages/market/Product';
@@ -13,6 +15,16 @@ function Market() {
   const [isSelect, setIsSelect] = useState('추천');
   return (
     <Contents>
+      <Header>
+        <HeaderActions>
+          <HeaderIcon type="button" aria-label="찜">
+            <HeartIcon src={headerHeart} alt="" />
+          </HeaderIcon>
+          <HeaderIcon type="button" aria-label="장바구니">
+            <CartIcon src={headerCart} alt="" />
+          </HeaderIcon>
+        </HeaderActions>
+      </Header>
       <SearchBar>
         <SearchIcon src={searchIconUrl} />
         <SearchInput placeholder="원하는 재료를 검색을 통해 찾아보세요" />
@@ -58,6 +70,48 @@ const Contents = styled.div`
   scrollbar-width: none;
   /* IE, 구형 Edge */
   -ms-overflow-style: none;
+`;
+
+const Header = styled.header`
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  height: 62px;
+  padding: 24px 20px 0;
+  background: #fffefd;
+`;
+
+const HeaderActions = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const HeaderIcon = styled.button`
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+`;
+
+const HeartIcon = styled.img`
+  display: block;
+  width: 22px;
+  height: 20px;
+`;
+
+const CartIcon = styled.img`
+  display: block;
+  width: 30px;
+  height: 30px;
 `;
 const SearchBar = styled.div`
   display: flex;

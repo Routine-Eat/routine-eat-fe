@@ -1,12 +1,40 @@
 import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
+import { getUserMealPlanDetail, patchUserMealPlanStatus } from "../../api/mealPlanApi";
 import { DUMMY_DIET_PROGRESS, THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
+import eggFoodImg from "../../assets/images/EggFood.svg";
 import muscleIcon from "../../assets/icons/muscle.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
 import chefIcon from "../../assets/icons/chef.svg";
 import checkCircleWhiteIcon from "../../assets/icons/checkCircleWhite.svg";
 import forkKnifeIcon from "../../assets/images/forkKnife.svg";
+import { useUserStore } from "../../hooks/useUserStore";
+import { useCookingStore } from "../../hooks/useCookingStore";
+
+const MEAL_PLAN_THEME = {
+  PRACTICE: "skill-up",
+  QUICK: "quick",
+  ONE_INGREDIENT: "one-ingredient",
+  MAX_INGREDIENT: "max-ingredient",
+};
+
+const mapPlanMenus = (list) =>
+  (list ?? []).map((item) => {
+    const [, month, day] = String(item.planMenuDate ?? "").slice(0, 10).split("-");
+    const dateLabel =
+      month && day && month !== "00" ? `${Number(month)}월 ${Number(day)}일` : "";
+    const menuId = Number(item.menuId);
+
+    return {
+      id: Number.isFinite(menuId) && menuId > 0 ? menuId : item.planMenuId,
+      planMenuId: item.planMenuId,
+      name: typeof item.menuName === "string" && item.menuName !== "true" ? item.menuName : "",
+      completed: Boolean(item.planMenuCompleted),
+      status: dateLabel,
+      image: eggFoodImg,
+    };
+  });
 
 const PageContainer = styled.div`
   background: #fffefd;
@@ -19,7 +47,7 @@ const PageContainer = styled.div`
 
 const StopLink = styled.button`
   position: absolute;
-  right: 24px;
+  right: 8px;
   top: 24px;
   background: none;
   border: none;
@@ -315,7 +343,7 @@ const BoughtActionButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.16px;
-  background: ${({ $variant }) => ($variant === "confirm" ? "#72d472" : "#f5f5f6")};
+  background: ${({ $variant }) => ($variant === "confirm" ? "#96D960" : "#f5f5f6")};
   color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
 `;
 
@@ -364,18 +392,44 @@ const Toast = styled.div`
 export default function HomeDietStart() {
   const navigate = useNavigate();
   const { mealId } = useParams();
+  const userId = useUserStore((state) => state.userId);
+  const setMealPlanContext = useCookingStore((state) => state.setMealPlanContext);
+  const isMealPlanId = /^\d+$/.test(String(mealId));
 
-  const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
-  const meals = DUMMY_DIET_PROGRESS.slice(0, 3);
+  const dummyTheme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
+  const dummyMeals = DUMMY_DIET_PROGRESS.slice(0, 3);
+  const [themeTitle, setThemeTitle] = useState(dummyTheme.title);
+  const [meals, setMeals] = useState(() => (isMealPlanId ? [] : dummyMeals));
   const completedCount = meals.filter((m) => m.completed).length;
   const [selectedMealId, setSelectedMealId] = useState(
-    () => meals.find((m) => !m.completed)?.id
+    () => (isMealPlanId ? null : dummyMeals.find((m) => !m.completed)?.id)
   );
   const missingIngredients = MISSING_INGREDIENTS;
   const [isBoughtModalOpen, setIsBoughtModalOpen] = useState(false);
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [isStopModalOpen, setIsStopModalOpen] = useState(false);
+
+  useEffect(() => {
+    if (!isMealPlanId || !userId) return undefined;
+
+    const fetchMealPlanDetail = async () => {
+      try {
+        const response = await getUserMealPlanDetail(userId, mealId);
+        const payload = response.data ?? response;
+        const theme = THEME_CARDS.find((t) => t.id === MEAL_PLAN_THEME[payload.mealPlanType]);
+        if (theme) setThemeTitle(theme.title);
+
+        const nextMeals = mapPlanMenus(payload.planMenuList);
+        setMeals(nextMeals);
+        setSelectedMealId(nextMeals.find((m) => !m.completed)?.id ?? nextMeals[0]?.id ?? null);
+      } catch (error) {
+        console.error("사용자 식단 상세 조회 실패:", error);
+      }
+    };
+
+    fetchMealPlanDetail();
+  }, [isMealPlanId, userId, mealId]);
 
   const showToast = (message) => {
     setToastMessage(message);
@@ -397,8 +451,23 @@ export default function HomeDietStart() {
     showToast("재료를 등록했어요. 상세수량은 my에서 수정할 수 있어요.");
   };
 
-  const handleStopDiet = () => {
+  const handleStartCooking = () => {
+    const selectedMeal = meals.find((meal) => meal.id === selectedMealId);
+    if (isMealPlanId && selectedMeal?.planMenuId) {
+      setMealPlanContext({ mealPlanId: mealId, planMenuId: selectedMeal.planMenuId });
+    }
+    navigate(`/cooking/${selectedMealId}`);
+  };
+
+  const handleStopDiet = async () => {
     setIsStopModalOpen(false);
+    if (isMealPlanId && userId) {
+      try {
+        await patchUserMealPlanStatus(mealId, userId, "DONE");
+      } catch (error) {
+        console.error("사용자 식단 상태 수정 실패:", error);
+      }
+    }
     navigate("/");
   };
 
@@ -410,7 +479,7 @@ export default function HomeDietStart() {
         <img src={muscleIcon} alt="" />
       </IconBox>
 
-      <PageTitle>{theme.title}을 진행 중이에요</PageTitle>
+      <PageTitle>{themeTitle}을 진행 중이에요</PageTitle>
       <PageSubtitle>레시피 선택 후 시작하기 버튼을 통해 시작해보세요!</PageSubtitle>
 
       <EmptyNotice>
@@ -421,7 +490,7 @@ export default function HomeDietStart() {
 
       <MealTabs>
         {meals.map((meal, idx) => (
-          <MealTab key={meal.id} $done={idx < completedCount}>
+          <MealTab key={meal.planMenuId ?? meal.id} $done={meal.completed}>
             {idx + 1}끼
           </MealTab>
         ))}
@@ -432,7 +501,7 @@ export default function HomeDietStart() {
       <MealList>
         {meals.map((meal) => (
           <MealRow
-            key={meal.id}
+            key={meal.planMenuId ?? meal.id}
             $isNext={meal.id === selectedMealId}
             $completed={meal.completed}
             onClick={() => {
@@ -543,7 +612,7 @@ export default function HomeDietStart() {
         </Toast>
       )}
 
-      <BottomFixedButton variant="inline" onClick={() => navigate(`/cooking/${mealId}`)}>
+      <BottomFixedButton variant="inline" onClick={handleStartCooking}>
         식단 시작하기
       </BottomFixedButton>
     </PageContainer>

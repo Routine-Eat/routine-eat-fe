@@ -4,6 +4,18 @@ import micIcon from "../../assets/icons/mic2.svg";
 import BackButton from "../../common/button/BackButton";
 import checkCircleIcon from "../../assets/icons/checkcircle.svg";
 import { DUMMY_COOKING_STEPS } from "../../constants/home/DummyHome.js";
+import { useUserStore } from "../../hooks/useUserStore";
+import { useCookingStore } from "../../hooks/useCookingStore";
+ import {
+   postStartCooking,
+   getCurrentCookingRecord,
+   getCurrentCookingStep,
+   postNextCookingStep,
+   postPrevCookingStep,
+   getCookingSessionAiHistory,
+   postCookingSessionAi,
+   getCurrentCookingStepTitles,
+ } from "../../api/cookingRecord";
 import styled, { keyframes } from "styled-components";
 import chevronNavIcon from "../../assets/icons/chevronNavIcon.svg";
 import forkKnifeImg from "../../assets/images/forkKnife.svg";
@@ -13,7 +25,6 @@ import chevronLeftSmallIcon from "../../assets/icons/chevronLeftSmall.svg";
 import chevronToggleSmallIcon from "../../assets/icons/chevronToggleSmall.svg";
 import squidExampleImg from "../../assets/images/squidExample.svg";
 import micMoveIcon from "../../assets/icons/micMove.svg";
-import { VOICE_HISTORY } from "../../constants/home/DummyHome.js";
 
 const SWIPE_TUTORIAL_KEY = "hasSeenStepTutorial";
 const VOICE_TUTORIAL_KEY = "hasSeenVoiceTutorial";
@@ -738,16 +749,21 @@ const CompleteActionButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.16px;
-  background: ${({ $variant }) => ($variant === "confirm" ? "#72d472" : "#f5f5f6")};
+  background: ${({ $variant }) => ($variant === "confirm" ? "#96D960" : "#f5f5f6")};
   color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
 `;
 
 export default function HomeCookingStep() {
   const navigate = useNavigate();
   const { mealId } = useParams();
+  const userLoginNumber = useUserStore((state) => state.userLoginNumber);
+ const setGlobalCookingRecordId = useCookingStore((state) => state.setCookingRecordId);
+  const [cookingRecordId, setCookingRecordId] = useState(null);
+  const [cookingStepData, setCookingStepData] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [direction, setDirection] = useState("next");
-    const [detailStepKey, setDetailStepKey] = useState(null);
+  const [stepTitles, setStepTitles] = useState([]); // [{ stepLevel, stepTitle }, ...]
+    const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isExampleImageOpen, setIsExampleImageOpen] = useState(false);
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
@@ -760,6 +776,19 @@ export default function HomeCookingStep() {
   const [isHistoryDragging, setIsHistoryDragging] = useState(false);
     const historyBoxRef = useRef(null);
   const [hasMoreBelow, setHasMoreBelow] = useState(false);
+
+   // --- AI 대화 기록 / 음성 질의 관련 state ---
+ const [aiHistoryTurns, setAiHistoryTurns] = useState([]);
+ const [isHistoryLoading, setIsHistoryLoading] = useState(false);
+ const [historyCursor, setHistoryCursor] = useState(1);
+ const [hasMoreHistory, setHasMoreHistory] = useState(true);
+ const HISTORY_PAGE_SIZE = 10;
+ const recognitionRef = useRef(null);
+ const isRecognizingRef = useRef(false);
+const silenceTimerRef = useRef(null);
+const latestTranscriptRef = useRef("");
+const SILENCE_MS = 2000; // 이 시간(ms) 동안 조용하면 말이 끝난 걸로 간주
+const audioPlayerRef = useRef(null);
 
   const checkHasMoreBelow = () => {
     const el = historyBoxRef.current;
@@ -779,9 +808,222 @@ export default function HomeCookingStep() {
     if (localStorage.getItem(VOICE_TUTORIAL_KEY) !== "true") return "voice";
     return null;
   });
-  const currentStep = DUMMY_COOKING_STEPS[currentStepIndex];
-  const isFirstStep = currentStepIndex === 0;
-  const isLastStep = currentStepIndex === DUMMY_COOKING_STEPS.length - 1;
+  const currentStep = cookingStepData?.currentCookingStep;
+ const isFirstStep = !cookingStepData?.prevCookingStepLevel;
+ const isLastStep = !!cookingStepData && !cookingStepData?.nextCookingStepLevel;
+
+  // --- AI 대화 기록 조회 (GET /cooking-records/{id}/cooking-session/ai, 커서 페이지네이션) ---
+ const fetchAiHistory = (cursor = 1, append = false) => {
+   if (!cookingRecordId || !userLoginNumber) return;
+   setIsHistoryLoading(true);
+   getCookingSessionAiHistory(cookingRecordId, {
+     userNumber: userLoginNumber,
+     cursor,
+     size: HISTORY_PAGE_SIZE,
+   })
+     .then((res) => {
+       const raw = res.data?.items ?? res.data?.aiHistories ?? (Array.isArray(res.data) ? res.data : []);
+       const normalized = raw.map((item) => ({
+         id: item.id ?? item.cookingSessionAiId,
+         question: item.userSpeechText ?? item.question ?? item.request,
+         answer: item.answer ?? item.aiMessage ?? item.response,
+       }));
+       setAiHistoryTurns((prev) => (append ? [...prev, ...normalized] : normalized));
+       setHistoryCursor(res.data?.nextCursor ?? cursor + 1);
+       setHasMoreHistory(res.data?.hasNext ?? raw.length === HISTORY_PAGE_SIZE);
+     })
+     .catch((err) => console.error("AI 대화 기록 조회 실패:", err))
+     .finally(() => setIsHistoryLoading(false));
+ };
+
+ const handleLoadMoreHistory = () => {
+   if (isHistoryLoading || !hasMoreHistory) return;
+   fetchAiHistory(historyCursor, true);
+ };
+
+ // multipart/form-data 응답 파서 (JSON 파트 + 오디오 파트 분리)
+// multipart/form-data 응답 파서 (바이너리 기반 - 오디오 파트가 섞여 있어도 안 깨짐)
+// res.data는 ArrayBuffer로 옴 (postCookingSessionAi가 responseType: "arraybuffer"로 요청하기 때문)
+const parseMultipartAiResponse = (res) => {
+  const contentType = res.headers?.["content-type"] ?? res.headers?.["Content-Type"] ?? "";
+  const boundaryMatch = contentType.match(/boundary=([^;]+)/);
+
+  if (!boundaryMatch || !(res.data instanceof ArrayBuffer)) {
+    return { json: {}, audioBlob: null };
+  }
+
+  const boundary = "--" + boundaryMatch[1].replace(/"/g, "");
+  const bytes = new Uint8Array(res.data);
+  const boundaryBytes = new TextEncoder().encode(boundary);
+
+  const findAll = (haystack, needle) => {
+    const positions = [];
+    for (let i = 0; i <= haystack.length - needle.length; i++) {
+      let match = true;
+      for (let j = 0; j < needle.length; j++) {
+        if (haystack[i + j] !== needle[j]) {
+          match = false;
+          break;
+        }
+      }
+      if (match) positions.push(i);
+    }
+    return positions;
+  };
+
+  const findHeaderEnd = (buf) => {
+    for (let i = 0; i <= buf.length - 4; i++) {
+      if (buf[i] === 13 && buf[i + 1] === 10 && buf[i + 2] === 13 && buf[i + 3] === 10) {
+        return i;
+      }
+    }
+    return -1;
+  };
+
+  const boundaryPositions = findAll(bytes, boundaryBytes);
+
+  let json = {};
+  let audioBlob = null;
+
+  for (let i = 0; i < boundaryPositions.length - 1; i++) {
+    const partStart = boundaryPositions[i] + boundaryBytes.length;
+    const partEnd = boundaryPositions[i + 1];
+    const partBytes = bytes.slice(partStart, partEnd);
+
+    const headerEndIdx = findHeaderEnd(partBytes);
+    if (headerEndIdx === -1) continue;
+
+    const headerBytes = partBytes.slice(0, headerEndIdx);
+    let bodyBytes = partBytes.slice(headerEndIdx + 4);
+    if (bodyBytes.length >= 2 && bodyBytes[bodyBytes.length - 2] === 13 && bodyBytes[bodyBytes.length - 1] === 10) {
+      bodyBytes = bodyBytes.slice(0, bodyBytes.length - 2);
+    }
+
+    const headerText = new TextDecoder("utf-8").decode(headerBytes);
+    const nameMatch = headerText.match(/name="([^"]+)"/);
+    const partName = nameMatch?.[1] ?? "";
+    const isJsonPart = /application\/json/i.test(headerText) || ["response", "request", "text", "data"].includes(partName);
+    const isAudioPart = /audio\//i.test(headerText) || partName === "audio";
+
+    if (isJsonPart) {
+      try {
+        json = JSON.parse(new TextDecoder("utf-8").decode(bodyBytes));
+      } catch (e) {
+        console.error("AI 응답 JSON 파트 파싱 실패:", e);
+      }
+    } else if (isAudioPart) {
+      const mimeMatch = headerText.match(/Content-Type:\s*([^\r\n]+)/i);
+      const mime = mimeMatch?.[1]?.trim() || "audio/mpeg";
+      audioBlob = new Blob([bodyBytes], { type: mime });
+    }
+  }
+
+  return { json, audioBlob };
+};
+
+ // --- 요리 중 AI에게 지시/질문 (POST /cooking-records/{id}/cooking-session/ai) ---
+ const handleSendVoiceQuery = (userSpeechText) => {
+   if (!cookingRecordId || !userLoginNumber || !userSpeechText) return;
+
+   postCookingSessionAi(cookingRecordId, userLoginNumber, userSpeechText)
+     .then((res) => {
+        console.log("응답 타입 확인:", typeof res.data, res.data?.constructor?.name, res.headers?.["content-type"]);
+              const { json, audioBlob } = parseMultipartAiResponse(res);
+       console.log("AI 응답(JSON):", json, "오디오 Blob:", audioBlob);
+
+             if (json?.data?.currentCookingStep) {
+        setCookingStepData(json.data);
+       }
+
+       setAiHistoryTurns((prev) => [
+         ...prev,
+         {
+           id: json?.id ?? `local-${Date.now()}`,
+           question: userSpeechText,
+           answer: json?.data?.answer ?? json?.answer ?? json?.aiMessage ?? "",
+         },
+       ]);
+
+              // AI 답변을 음성으로 재생
+       if (audioBlob) {
+         // 이전에 재생 중이던 오디오가 있으면 정리
+         if (audioPlayerRef.current) {
+           audioPlayerRef.current.pause();
+           URL.revokeObjectURL(audioPlayerRef.current.src);
+         }
+         const audioUrl = URL.createObjectURL(audioBlob);
+         const audioEl = new Audio(audioUrl);
+         audioPlayerRef.current = audioEl;
+         audioEl.play().catch((err) => console.error("오디오 재생 실패:", err));
+       }
+     })
+     .catch((err) => console.error("AI 질문 전송 실패:", err));
+ };
+
+ // 브라우저 음성 인식(SpeechRecognition) - 텍스트 변환 후 handleSendVoiceQuery 호출
+ useEffect(() => {
+   const SpeechRecognitionCtor = window.SpeechRecognition || window.webkitSpeechRecognition;
+   if (!SpeechRecognitionCtor) return;
+
+   const recognition = new SpeechRecognitionCtor();   recognition.lang = "ko-KR";
+     recognition.continuous = true;
+   recognition.interimResults = true;
+
+   const clearSilenceTimer = () => {
+     if (silenceTimerRef.current) {
+       clearTimeout(silenceTimerRef.current);
+       silenceTimerRef.current = null;
+     }
+   };
+
+   const resetSilenceTimer = () => {
+     clearSilenceTimer();
+     silenceTimerRef.current = setTimeout(() => {
+       // SILENCE_MS 동안 새로운 음성 결과가 없으면 강제로 종료 처리
+       recognitionRef.current?.stop();
+     }, SILENCE_MS);
+   };
+
+
+   recognition.onresult = (event) => {
+          // 가장 최근 결과의 최신 transcript를 계속 갱신
+          console.log("onresult 호출됨:", event.results[event.results.length - 1][0].transcript);
+     const lastResult = event.results[event.results.length - 1];
+          const transcript = lastResult[0].transcript;
+     if (transcript && transcript.trim()) {
+       latestTranscriptRef.current = transcript;
+     }
+     resetSilenceTimer(); // 새로운 음성이 들어올 때마다 무음 타이머 리셋
+   };
+   recognition.onerror = (err) => {
+     console.error("음성 인식 오류:", err);
+     clearSilenceTimer();
+     isRecognizingRef.current = false;
+     setIsListening(false);
+   };
+   recognition.onend = () => {
+    console.log("onend 호출됨, finalTranscript:", latestTranscriptRef.current);
+        clearSilenceTimer();
+    const finalTranscript = latestTranscriptRef.current.trim();
+    latestTranscriptRef.current = "";
+    isRecognizingRef.current = false;
+     setIsListening(false);
+         if (finalTranscript) {
+      handleSendVoiceQuery(finalTranscript); // 종료 시점에 확정된 텍스트를 서버로 전송
+    }
+   };
+
+   recognitionRef.current = recognition;
+
+   return () => {
+    clearSilenceTimer();
+     recognition.onresult = null;
+     recognition.onerror = null;
+     recognition.onend = null;
+   };
+   // eslint-disable-next-line react-hooks/exhaustive-deps
+ }, [cookingRecordId, userLoginNumber]);
+
 
   const handleMicPressStart = () => {
     longPressFiredRef.current = false;
@@ -789,6 +1031,7 @@ export default function HomeCookingStep() {
       longPressFiredRef.current = true;
       setHistoryHeight(null);
       setIsHistoryOpen(true);
+      fetchAiHistory(1, false);
     }, 500);
   };
 
@@ -798,7 +1041,24 @@ export default function HomeCookingStep() {
       longPressTimerRef.current = null;
     }
     if (!longPressFiredRef.current) {
-      setIsListening((prev) => !prev);
+           setIsListening((prev) => {
+       const next = !prev;
+       if (next) {
+                  if (!isRecognizingRef.current) {
+           try {
+             recognitionRef.current?.start();
+             isRecognizingRef.current = true;
+           } catch (err) {
+             console.error("음성 인식 시작 실패:", err);
+           }
+         }
+       } else {
+                  if (isRecognizingRef.current) {
+           recognitionRef.current?.stop();
+         }
+       }
+       return next;
+     });
     }
   };
 
@@ -834,7 +1094,9 @@ export default function HomeCookingStep() {
   };
 
   const handleHandlePointerDown = (e) => {
-    e.preventDefault();
+       if (!e.touches) {
+     e.preventDefault(); // 마우스 이벤트일 때만 기본 동작 막기
+   }
     setIsHistoryDragging(true);
     const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     handleHandleDragStart(clientY);
@@ -861,7 +1123,12 @@ export default function HomeCookingStep() {
     const timer = setTimeout(() => {
       justMountedRef.current = false;
     }, 500);
-    return () => clearTimeout(timer);
+        return () => {
+      clearTimeout(timer);
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+      }
+    };
   }, []);
 
   const advanceTutorial = () => {
@@ -896,16 +1163,24 @@ export default function HomeCookingStep() {
     if (isFirstStep) {
       navigate(-1);
     } else {
-      setCurrentStepIndex((prev) => prev - 1);
+           postPrevCookingStep(cookingRecordId, userLoginNumber)
+       .then((res) => setCookingStepData(res.data))
+       .catch((err) => console.error("이전 단계 이동 실패:", err));
     }
   };
 
   const handleGoNextStep = () => {
     setDirection("next");
     if (isLastStep) {
-      navigate(`/cooking/${mealId}/complete`);
+           postNextCookingStep(cookingRecordId, userLoginNumber)
+       .then(() => {
+         navigate(`/cooking/${mealId}/complete`);
+       })
+       .catch((err) => console.error("요리 완료 처리 실패:", err));
     } else {
-      setCurrentStepIndex((prev) => prev + 1);
+           postNextCookingStep(cookingRecordId, userLoginNumber)
+       .then((res) => setCookingStepData(res.data))
+       .catch((err) => console.error("다음 단계 이동 실패:", err));
     }
   };
 
@@ -1006,18 +1281,68 @@ export default function HomeCookingStep() {
     }
   };
 
-  const totalSteps = DUMMY_COOKING_STEPS.length;
-  let windowStart = currentStepIndex - 1;
-  if (windowStart < 0) windowStart = 0;
-  if (windowStart + 3 > totalSteps) windowStart = Math.max(0, totalSteps - 3);
-  const windowEnd = Math.min(windowStart + 3, totalSteps);
-  const visibleIndices = [];
-  for (let i = windowStart; i < windowEnd; i++) visibleIndices.push(i);
+  const totalSteps = cookingStepData?.cookingStepCount ?? 0;
+  const startedRef = useRef(false);
 
-  const pagesBefore = currentStepIndex;
-  const pagesAfter = totalSteps - 1 - currentStepIndex;
-  const showUpHint = pagesBefore >= 2;
-  const showDownHint = pagesAfter >= 2;
+ // 현재 단계 위치에 따라 앞/뒤 프리뷰로 보여줄 단계 번호 계산
+ const level = currentStep?.level;
+ const previewLevels = { before: [], after: [] };
+ if (level && totalSteps) {
+   if (level === 1) {
+     for (let l = level + 1; l <= Math.min(level + 2, totalSteps); l++) {
+       previewLevels.after.push(l);
+     }
+   } else if (level === totalSteps) {
+     previewLevels.before.push(level - 1);
+   } else {
+     previewLevels.before.push(level - 1);
+     previewLevels.after.push(level + 1);
+   }
+ }
+
+ const getStepTitleByLevel = (lvl) =>
+   stepTitles.find((s) => s.stepLevel === lvl)?.stepTitle ?? `${lvl}단계`;
+  
+  useEffect(() => {
+  if (!userLoginNumber || !mealId) return;
+     if (startedRef.current) return;
+   startedRef.current = true;
+  getCurrentCookingRecord(userLoginNumber)
+    .then((res) => {
+      // 진행 중인 세션이 있음 → 그 단계를 이어서 조회
+      const existingId = res.data.cookingRecordId;
+      return getCurrentCookingStep(existingId, userLoginNumber).then((stepRes) => {
+        console.log("진행 중인 요리 이어서 조회:", stepRes.data);
+        setCookingRecordId(existingId);
+        setGlobalCookingRecordId(existingId);
+        setCookingStepData(stepRes.data);
+      });
+    })
+    .catch((err) => {
+      // 진행 중인 세션이 없음(404) → 새로 시작
+      if (err.response?.status !== 404) {
+        console.error("진행 중 세션 조회 실패:", err);
+      }
+      postStartCooking(userLoginNumber, { recipeId: Number(mealId), servings: 2 })
+        .then((res) => {
+          console.log("요리 시작 응답:", res.data);
+          setCookingRecordId(res.data.cookingRecordId);
+          setGlobalCookingRecordId(res.data.cookingRecordId);
+          setCookingStepData(res.data);
+        })
+        .catch((startErr) => console.error("요리 시작 실패:", startErr));
+    });
+
+      // 전체 단계 번호+제목 목록 조회 (프리뷰 카드용)
+  getCurrentCookingStepTitles(userLoginNumber)
+    .then((res) => {
+      setStepTitles(res.data?.cookingStepTitles ?? []);
+    })
+   .catch((err) => console.error("전체 단계 제목 조회 실패:", err));
+
+ }, [userLoginNumber, mealId]);
+   const showUpHint = !isFirstStep;
+ const showDownHint = !isLastStep;
 
   return (
     <PageContainer
@@ -1049,116 +1374,98 @@ export default function HomeCookingStep() {
       )}
 
       <CardStack $hasUpHint={showUpHint}>
-        {visibleIndices.map((idx) => {
-          if (idx === currentStepIndex) {
-            const step = DUMMY_COOKING_STEPS[idx];
+                {previewLevels.before.map((l) => (
+          <PreviewCard key={`before-${l}`} $level={1}>
+            <span className="count">{l}/{totalSteps}</span>
+            <span className="label">{getStepTitleByLevel(l)}</span>
+          </PreviewCard>
+        ))}
 
-                        if (detailStepKey === idx && step.squidDetail) {
-              return (
-                <StepCard key={idx} $direction={direction}>
-                  <div className="detail-label">{step.link1}</div>
-                  <button
-                    className="detail-back"
-                    onClick={() => setDetailStepKey(null)}
-                  >
-                    <img src={chevronLeftSmallIcon} alt="" />
-                    레시피로 돌아가기
-                  </button>
-                  {step.squidDetail.sections.map((sec, i) => (
-                    <div className="detail-section" key={i}>
-                      <p className="detail-title">{sec.title}</p>
-                      <p className="detail-body">
-                        {sec.segments.map((seg, j) =>
-                          seg.bold ? (
-                            <strong key={j}>{seg.text}</strong>
-                          ) : (
-                            <span key={j}>{seg.text}</span>
-                          )
-                        )}
-                      </p>
-                      {sec.note && <p className="detail-note">{sec.note}</p>}
-                    </div>
-                  ))}
-                  <button
-                    className="example-toggle"
-                    onClick={() => setIsExampleImageOpen((prev) => !prev)}
-                  >
-                    <img
-                      className={`toggle-icon ${isExampleImageOpen ? "open" : ""}`}
-                      src={chevronToggleSmallIcon}
-                      alt=""
-                    />
-                    예시 이미지 보기
-                  </button>
-                  {isExampleImageOpen && (
-                    <img
-                      className="example-image"
-                      src={squidExampleImg}
-                      alt="오징어 써는 법 예시"
-                    />
-                  )}
-                </StepCard>
-              );
-            }
-            return (
-              <StepCard key={idx} $direction={direction}>
-                <div className="step-count">{idx + 1}/{totalSteps}</div>
-                <div className="title-row">
-                  <img className="check-icon" src={checkCircleIcon} alt="" />
-                  <span className="title">{step.title}</span>
-                </div>
-                <div className="body">
-                                   {step.bodySegments ? (
-                    <p className="segmented" style={{ margin: 0 }}>
-                      {step.bodySegments.map((seg, i) =>
-                        seg.bold ? (
-                          <strong key={i}>{seg.text}</strong>
-                        ) : (
-                          <span key={i}>{seg.text}</span>
-                        )
-                      )}
-                    </p>
-                  ) : (
-                    step.body.map((line, i) => (
-                      <p key={i} style={{ margin: 0 }}>{line}</p>
-                    ))
-                  )}
-                </div>
-                {step.tip && <p className="tip">{step.tip}</p>}
-                {step.link1 && (
-                  step.squidDetail ? (
-                    <button
-                      className="link"
-                      onClick={() => {
-                        setDetailStepKey(idx);
-                        setIsExampleImageOpen(false);
-                      }}
-                    >
-                      {step.link1}
-                    </button>
-                  ) : (
-                    <a className="link" href="#!">{step.link1}</a>
-                  )
-                )}
-                {step.body2 && <p className="body" style={{ marginTop: 20 }}>{step.body2}</p>}
-                {step.link2 && <a className="link" href="#!">{step.link2}</a>}
-                <div className="ingredient-tags">
-                  {step.ingredients.map((tag) => (
-                    <span className="tag" key={tag}>{tag}</span>
-                  ))}
-                </div>
-              </StepCard>
-            );
-          }
-          const distance = Math.abs(idx - currentStepIndex);
-          return (
-            <PreviewCard key={idx} $level={distance === 1 ? 1 : 2}>
-              <span className="count">{idx + 1}/{totalSteps}</span>
-              <span className="label">{DUMMY_COOKING_STEPS[idx].title}</span>
-            </PreviewCard>
-          );
-        })}
-        {isLastStep && (
+                              {currentStep && isDetailOpen && (
+         <StepCard $direction={direction}>
+           <div className="detail-label">{currentStep.tips?.[0]?.cookingTipTitle}</div>
+           <button
+             className="detail-back"
+             onClick={() => {
+               setIsDetailOpen(false);
+               setIsExampleImageOpen(false);
+             }}
+           >
+             <img src={chevronLeftSmallIcon} alt="" />
+             레시피로 돌아가기
+           </button>
+           {currentStep.tips
+             ?.filter((tip) => tip.cookingTipType === "TEXT")
+             .map((tip, i) => (
+               <div className="detail-section" key={i}>
+                 <p className="detail-body">{tip.cookingTipContent}</p>
+               </div>
+             ))}
+           {currentStep.tips?.some((tip) => tip.cookingTipType === "IMAGE") && (
+             <button
+               className="example-toggle"
+               onClick={() => setIsExampleImageOpen((prev) => !prev)}
+             >
+               <img
+                 className={`toggle-icon ${isExampleImageOpen ? "open" : ""}`}
+                 src={chevronToggleSmallIcon}
+                 alt=""
+               />
+               예시 이미지 보기
+             </button>
+           )}
+           {isExampleImageOpen &&
+             currentStep.tips
+               ?.filter((tip) => tip.cookingTipType === "IMAGE")
+               .map((tip, i) => (
+                 <img
+                   key={i}
+                   className="example-image"
+                   src={tip.cookingTipContent}
+                   alt={tip.cookingTipTitle}
+                 />
+               ))}
+         </StepCard>
+       )}
+       {currentStep && !isDetailOpen && (
+         <StepCard $direction={direction}>
+           <div className="step-count">{currentStep.level}/{totalSteps}</div>
+           <div className="title-row">
+             <img className="check-icon" src={checkCircleIcon} alt="" />
+             <span className="title">{currentStep.title}</span>
+           </div>
+           <div className="body">
+             <p style={{ margin: 0 }}>{currentStep.content}</p>
+           </div>
+           {currentStep.subContent && <p className="tip">{currentStep.subContent}</p>}
+           {currentStep.tips?.length > 0 && (
+             <button
+               className="link"
+               onClick={() => {
+                 setIsDetailOpen(true);
+                 setIsExampleImageOpen(false);
+               }}
+             >
+               {currentStep.tips[0].cookingTipTitle}
+             </button>
+           )}
+           <div className="ingredient-tags">
+             {currentStep.foodIngredients?.map((ing) => (
+               <span className="tag" key={ing.cookingRecordFoodIngredientId}>
+                 {ing.name} {ing.primaryAmountValue}{ing.primaryUnit}
+               </span>
+             ))}
+           </div>
+         </StepCard>
+       )}
+                      {previewLevels.after.map((l, i) => (
+          <PreviewCard key={`after-${l}`} $level={i === 0 ? 1 : 2}>
+            <span className="count">{l}/{totalSteps}</span>
+            <span className="label">{getStepTitleByLevel(l)}</span>
+          </PreviewCard>
+        ))}
+
+        {cookingStepData && isLastStep && (
           <CompleteButton onClick={() => setIsCompleteModalOpen(true)}>
             <span className="left">
               <img className="icon" src={forkKnifeImg} alt="" />
@@ -1247,7 +1554,14 @@ export default function HomeCookingStep() {
               </CompleteActionButton>
               <CompleteActionButton
                 $variant="confirm"
-                onClick={() => navigate(`/cooking/${mealId}/complete`)}
+                               onClick={() => {
+                 postNextCookingStep(cookingRecordId, userLoginNumber)
+                   .then(() => {
+                     setIsCompleteModalOpen(false);
+                     navigate(`/cooking/${mealId}/complete`);
+                   })
+                   .catch((err) => console.error("요리 완료 처리 실패:", err));
+               }}
               >
                 완료
               </CompleteActionButton>
@@ -1270,22 +1584,14 @@ export default function HomeCookingStep() {
               onTouchStart={handleHandlePointerDown}
             />
                         <HistoryScrollArea ref={historyBoxRef} onScroll={checkHasMoreBelow}>
-              {VOICE_HISTORY.map((turn, i) => (
-                <HistoryTurn key={i}>
-                  <HistoryQuestion>{turn.question}</HistoryQuestion>
-                  <HistoryAnswer>
-                    {turn.answerLines.map((line, li) => (
-                      <p key={li}>
-                        {line.length === 0
-                          ? "\u00A0"
-                          : line.map((seg, si) =>
-                              seg.bold ? <strong key={si}>{seg.text}</strong> : <span key={si}>{seg.text}</span>
-                            )}
-                      </p>
-                    ))}
-                  </HistoryAnswer>
-                </HistoryTurn>
-              ))}
+                           {aiHistoryTurns.map((turn, i) => (
+               <HistoryTurn key={turn.id ?? i}>
+                 <HistoryQuestion>{turn.question}</HistoryQuestion>
+                 <HistoryAnswer>
+                   <p>{turn.answer}</p>
+                 </HistoryAnswer>
+               </HistoryTurn>
+             ))}
             </HistoryScrollArea>
             {!isHistoryDragging && hasMoreBelow && <HistoryScrollFade />}
           </HistoryBox>

@@ -1,10 +1,17 @@
 import React, { useState } from "react";
+import { useNavigate, useParams, useLocation } from "react-router-dom";
+
 import styled from "styled-components";
-import { useNavigate, useParams } from "react-router-dom";
+
+import { patchUserFoodIngredientAmount } from "@/api/userApi";
+import { useUserStore } from "@/hooks/useUserStore";
+import { useCookingStore } from "../../hooks/useCookingStore";
+import { patchCookingResult } from "../../api/cookingRecord";
+import { patchPlanMenuCompleted } from "../../api/mealPlanApi";
+
 import BackButton from "../../common/button/BackButton";
 import checkBadgeGreenIcon from "../../assets/icons/checkCircleWhite.svg";
 import arrowLeftIcon from "../../assets/icons/arrowLeft.svg";
-import { INITIAL_INGREDIENTS } from "../../constants/home/DummyHome.js";
 import forkKnifeImg from "../../assets/images/forkKnife.svg";
 
 const PageContainer = styled.div`
@@ -108,7 +115,7 @@ const ActionButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.18px;
-  background: ${({ $variant }) => ($variant === "primary" ? "#72d472" : "#e9e9e9")};
+  background: ${({ $variant }) => ($variant === "primary" ? "#96D960" : "#e9e9e9")};
   color: ${({ $variant }) => ($variant === "primary" ? "#ffffff" : "#5a5a5b")};
 `;
 
@@ -183,7 +190,7 @@ const ReflectedConfirmButton = styled.button`
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  background: #72d472;
+  background: #96D960;
   color: white;
   font-size: 16px;
   font-family: Wanted Sans Variable;
@@ -264,7 +271,7 @@ const CompleteConfirmButton = styled.button`
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  background: #72d472;
+  background: #96D960;
   color: white;
   font-size: 16px;
   font-family: Wanted Sans Variable;
@@ -383,7 +390,7 @@ const SheetConfirmButton = styled.button`
   border-radius: 10px;
   border: none;
   cursor: pointer;
-  background: #72d472;
+  background: #96D960;
   color: white;
   font-size: 18px;
   font-family: Wanted Sans Variable;
@@ -488,7 +495,7 @@ const DetailConfirmButton = styled.button`
   border-radius: 12px;
   border: none;
   cursor: pointer;
-  background: #72d472;
+  background: #96D960;
   color: white;
   font-size: 18px;
   font-family: Wanted Sans Variable;
@@ -496,21 +503,114 @@ const DetailConfirmButton = styled.button`
   letter-spacing: -0.18px;
 `;
 
+/* "200G" / "1" -> 200 / 1. Secondary 단위·수량은 사용하지 않음 */
+const getPrimaryAmountValue = (amount) => {
+  if (!amount) return null;
+
+  const value = parseFloat(amount);
+
+  return Number.isNaN(value) ? null : value;
+};
+
 export default function CookingIngredientCheck() {
   const navigate = useNavigate();
   const { mealId } = useParams();
+  const location = useLocation();
+  const userId = useUserStore((state) => state.userId);
+    const userLoginNumber = useUserStore((state) => state.userLoginNumber);
+  const cookingRecordId = useCookingStore((state) => state.cookingRecordId);
+  const photoFile = useCookingStore((state) => state.photoFile);
+  const mealPlanId = useCookingStore((state) => state.mealPlanId);
+  const planMenuId = useCookingStore((state) => state.planMenuId);
+  const clearCookingSession = useCookingStore((state) => state.clearCookingSession);
+
+  // CookingReview.jsx에서 navigate state로 넘겨준 값
+  const { difficultyLevel, foodIngredients: apiFoodIngredients } = location.state ?? {};
+
+  // API 응답을 화면에서 쓰는 형태로 변환
+  const mapApiIngredientsToState = (raw) =>
+    (raw?.foodIngredients ?? []).map((item) => ({
+      id: item.cookingRecordFoodIngredientId,
+      foodIngredientId: item.foodIngredientId,
+      name: item.name,
+      amount: item.currentPrimaryAmountValue ?? 0,
+      unit: item.primaryUnit,
+    }));
   const [isReflectedModalOpen, setIsReflectedModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [ingredients, setIngredients] = useState(INITIAL_INGREDIENTS);
+const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(apiFoodIngredients));
   const [editingId, setEditingId] = useState(null); // null이면 목록 화면, id가 있으면 상세 입력 화면
   const [editingAmount, setEditingAmount] = useState("");
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleUsedDifferently = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleUsedAsIs = () => {
+  const saveOwnedIngredientAmounts = async (list) => {
+    if (!userId) {
+      console.error("사용자 정보가 없습니다.");
+      return false;
+    }
+
+    const foodIngredientList = list
+      .map((item) => ({
+        foodIngredientId: Number(item.foodIngredientId),
+        primaryAmountValue: getPrimaryAmountValue(item.amount),
+      }))
+      .filter(
+        (item) => Number.isFinite(item.foodIngredientId) && item.primaryAmountValue != null
+      );
+
+    if (foodIngredientList.length === 0) return true;
+
+    try {
+      await patchUserFoodIngredientAmount(userId, { foodIngredientList });
+      return true;
+    } catch (error) {
+      console.error("사용자 식재료 보유량 수정 실패:", error);
+      return false;
+    }
+  };
+
+    // 요리 결과 최종 저장 (맛 평가/난이도/팁/실제 사용량/사진)
+  const saveCookingResult = async (list) => {
+    if (!userLoginNumber) {
+      console.error("userLoginNumber가 없습니다.");
+      return false;
+    }
+
+    const modifiedCookingRecordFoodIngredients = list
+      .map((item) => ({
+        cookingRecordFoodIngredientId: item.id,
+        usedPrimaryAmountValue: getPrimaryAmountValue(item.amount),
+        usedSecondaryAmountValue: null,
+      }))
+      .filter((item) => item.usedPrimaryAmountValue != null);
+
+    try {
+      await patchCookingResult(userLoginNumber, {
+        tasteRating: "LEVEL_1",
+        difficultyLevel: difficultyLevel ?? "LEVEL_1",
+        cookingTip: "",
+        modifiedCookingRecordFoodIngredients,
+        image: photoFile,
+      });
+      return true;
+    } catch (error) {
+      console.error("요리 결과 저장 실패:", error);
+      return false;
+    }
+  };
+  const handleUsedAsIs = async () => {
+    setIsSaving(true);
+    const saved = await saveOwnedIngredientAmounts(ingredients);
+    if (!saved) { setIsSaving(false); return; }
+        const resultSaved = await saveCookingResult(ingredients);
+    setIsSaving(false);
+    if (!resultSaved) return;
+
     setIsReflectedModalOpen(true);
   };
 
@@ -519,9 +619,18 @@ export default function CookingIngredientCheck() {
     setIsCompleteModalOpen(true);
   };
 
-    const handleFinalComplete = () => {
+    const handleFinalComplete = async () => {
     setIsCompleteModalOpen(false);
-    navigate(`/diet-start/${mealId}`);
+    const nextDietId = mealPlanId ?? mealId;
+    if (userId && planMenuId) {
+      try {
+        await patchPlanMenuCompleted(userId, planMenuId, true);
+      } catch (error) {
+        console.error("식단 메뉴 완료 여부 수정 실패:", error);
+      }
+    }
+    clearCookingSession();
+    navigate(`/diet-start/${nextDietId}`);
   };
 
   const closeEditModal = () => {
@@ -552,7 +661,15 @@ export default function CookingIngredientCheck() {
     closeEditModal();
   };
 
-  const handleListConfirm = () => {
+  const handleListConfirm = async () => {
+    setIsSaving(true);
+    const saved = await saveOwnedIngredientAmounts(ingredients);
+    if (!saved) { setIsSaving(false); return; }
+
+        const resultSaved = await saveCookingResult(ingredients);
+    setIsSaving(false);
+    if (!resultSaved) return;
+
     closeEditModal();
     setIsCompleteModalOpen(true);
   };

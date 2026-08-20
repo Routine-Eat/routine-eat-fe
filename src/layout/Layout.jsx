@@ -15,17 +15,20 @@ function Layout() {
     if (pathname !== '/feed') setFeedSearchMode(false);
   }, [pathname]);
 
-  // 마이페이지·레시피/유사요리/장보기·알림은 전용 상단바
+  // 마이페이지·마켓·레시피/유사요리·장보기·알림은 전용 상단바
   const hideHeader =
     pathname.startsWith('/mypage') ||
+    pathname.startsWith('/market') ||
     pathname.startsWith('/recipes') ||
     pathname.startsWith('/similar-recipes') ||
+    pathname.startsWith('/cooking-records') ||
     pathname.startsWith('/shopping-list') ||
     pathname.startsWith('/notifications');
   // 상세·유사·장보기·알림은 하단 CTA만 사용
   const hideBottomNav =
     pathname.startsWith('/recipes') ||
     pathname.startsWith('/similar-recipes') ||
+    pathname.startsWith('/cooking-records') ||
     pathname.startsWith('/shopping-list') ||
     pathname.startsWith('/notifications');
 
@@ -63,7 +66,7 @@ const Main = styled.main`
   flex: 1;
   min-height: 0;
   overflow: hidden;
-  padding-bottom: ${({ $noNav }) => ($noNav ? 0 : '56px')};
+  padding-bottom: ${({ $noNav }) => ($noNav ? 0 : '128px')};
 `;
 
 export default Layout;

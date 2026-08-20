@@ -1,22 +1,32 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 
 import styled from "styled-components";
+import { useUserStore } from "../../hooks/useUserStore";
 import starFilledIcon from "../../assets/icons/StarFilled.svg";
 import starEmptyIcon from "../../assets/icons/StarEmpty.svg";
 import closeIcon from "../../assets/icons/x.svg";
 import checkIcon from "../../assets/icons/check.svg";
 import recipeImg from "../../assets/images/recipeImg.svg";
-import { DUMMY_DISHES, DUMMY_INGREDIENT_CATEGORIES, THEME_CARDS } from "../../constants/home/DummyHome.js";
+import { DUMMY_INGREDIENT_CATEGORIES, THEME_CARDS } from "../../constants/home/DummyHome.js";
+import { getUserFoodIngredients } from "@/api/userApi";
 import chevronBrownIcon from "../../assets/icons/chevronBrown.svg";
 import chevronGrayIcon from "../../assets/icons/chevronGray.svg";
 import fireIcon from "../../assets/icons/fire.svg";
 import cometIcon from "../../assets/icons/comet.svg";
 import checkBadgeIcon from "../../assets/icons/checkBadge.svg";
 import chevronDarkGrayIcon from "../../assets/icons/chevronDarkGray.svg";
-
+import { getAiRecommendedRecipe, postAiRecipeRecommendAgain } from "../../api/recipe";
+import { getAiMealPlanRecommendation } from "../../api/mealPlanApi";
 
 const ENERGY_OPTIONS = ["의욕 없음", "보통", "의욕 넘침"];
+
+const THEME_TO_AI_KEY = {
+  "skill-up": "practice",
+  quick: "simple",
+  "max-ingredient": "useAll",
+  "one-ingredient": "recycling",
+};
 
 function getParticle(word) {
   if (!word) return "가";
@@ -72,12 +82,15 @@ text-align: center;
 const RecipeCardWrap = styled.div`
 margin: 28px auto 0;
 width: 216px;
-height: 288px;
+min-height: 288px;
 border-radius: 30px;
 position: relative;
 overflow: hidden;
 background: linear-gradient(148deg, #fff6b4 14%, #fffbe1 44%, #ffeca0 57%, #fff6b4 80%);
 box-shadow: 0px 0px 20px 0px rgba(72, 28, 0, 0.15), 0px 0px 10px 0px rgba(72, 28, 0, 0.04);
+display: flex;
+flex-direction: column;
+padding-bottom: 18px;
 
 &::after{
 content: "";
@@ -90,11 +103,9 @@ pointer-events: none;
 `;
 
 const RecipeThumbBox = styled.div`
-position: absolute;
-left: 12px;
-right: 12px;
-top: 11px;
+margin: 11px 12px 0;
 height: 153px;
+flex-shrink: 0;
 border-radius: 26px;
 background: white;
 box-shadow: 0px 0px 5px 0px rgba(107, 56, 0, 0.08), 0px 0px 40px 0px rgba(97, 51, 0, 0.05);
@@ -113,11 +124,7 @@ transform: scale(1.);
 `;
 
 const RecipeName = styled.p`
-position: absolute;
-left: 18px;
-top: 180px;
-margin: 0;
-width: 160px;
+margin: 12px 18px 0;
 color: #481c00;
 font-size: 20px;
 font-family: Wanted Sans Variable;
@@ -126,10 +133,7 @@ letter-spacing: -0.4px;
 `;
 
 const RecipeDesc = styled.div`
-position: absolute;
-left: 18px;
-top: 212px;
-width: 190px;
+margin: 6px 18px 0;
 color: #805200;
 font-size: 12px;
 font-family: Wanted Sans Variable;
@@ -521,7 +525,7 @@ padding: 0 8px;
 border-radius: 30px;
 border: none;
 cursor: pointer;
-background: ${({ $selected }) => ($selected ? "#72d472" : "#ffffff")};
+background: ${({ $selected }) => ($selected ? "#96D960" : "#ffffff")};
 box-shadow: 0px 0px 8px -1px rgba(72, 28, 0, 0.08), 0px 0px 40px 0px rgba(17, 0, 0, 0.05);
 
 .chip-icon{
@@ -564,7 +568,7 @@ gap: 4px;
 font-size: 16px;
 font-family: Pretendard Variable;
 font-weight: 600;
-background: ${({ $variant }) => ($variant === "apply" ? "#72d472" : "#e7e7e7")};
+background: ${({ $variant }) => ($variant === "apply" ? "#96D960" : "#e7e7e7")};
 color: ${({ $variant }) => ($variant === "apply" ? "#ffffff" : "#3e3e3e")};
 `;
 
@@ -635,7 +639,7 @@ const ConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.16px;
-  background: ${({ $variant }) => ($variant === "confirm" ? "#72d472" : "#f5f5f6")};
+  background: ${({ $variant }) => ($variant === "confirm" ? "#96D960" : "#f5f5f6")};
   color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
 `;
 
@@ -785,6 +789,8 @@ const CarouselArrowButton = styled.button`
 
 export default function Home() {
   const navigate = useNavigate();
+  const userId = useUserStore((state) => state.userId);
+  console.log("현재 userId:", userId, typeof userId);
   const [energy, setEnergy] = useState("보통");
   const [difficulty, setDifficulty] = useState(4);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -799,9 +805,51 @@ export default function Home() {
     const carouselStartXRef = useRef(0);
   const carouselDraggingRef = useRef(false);
 
-  const recommendedDish = DUMMY_DISHES[0];
+    const [recommendedDish, setRecommendedDish] = useState(null);
+    const [ownedIngredients, setOwnedIngredients] = useState([]); // 실제 보유 재료 목록
+  const [mealPlanRecommendations, setMealPlanRecommendations] = useState(null);
 
-    const allIngredients = DUMMY_INGREDIENT_CATEGORIES.flatMap((c) => c.items);
+
+  useEffect(() => {
+        if (!userId) return; // 로그인 안 된 상태면 호출하지 않음
+    getAiRecommendedRecipe(userId)
+                       .then((res) => {
+       console.log("추천 레시피 응답:", res);
+       setRecommendedDish(res.data);
+     })
+      .catch((err) => console.error("추천 레시피 조회 실패:", err));
+  }, [userId]);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    getAiMealPlanRecommendation(userId)
+      .then((res) => {
+        setMealPlanRecommendations(res.data ?? res);
+      })
+      .catch((err) => console.error("AI 목적별 식단 추천 조회 실패:", err));
+  }, [userId]);
+
+    useEffect(() => {
+    if (!userId) return;
+    getUserFoodIngredients(userId, "OWN")
+      .then((res) => {
+        const list = res.data?.foodIngredientList ?? [];
+        setOwnedIngredients(
+          list.map((item) => ({
+            id: item.foodIngredientId,       // 서버가 이해하는 진짜 숫자 ID
+            name: item.foodIngredientName,
+            qty: item.primaryAmountValue != null
+              ? `${item.primaryAmountValue}${item.foodIngredientPrimaryUnit}`
+              : "",
+            icon: null, // 서버가 아이콘을 안 주므로 일단 비워둠 (필요하면 종류별 아이콘 매핑 추가 가능)
+          }))
+        );
+      })
+      .catch((err) => console.error("보유 식재료 조회 실패:", err));
+  }, [userId]);
+
+    const allIngredients = ownedIngredients;
   const selectedIngredientObjects = selectedIngredients
     .map((id) => allIngredients.find((item) => item.id === id))
     .filter(Boolean);
@@ -822,11 +870,23 @@ export default function Home() {
   };
 
     const handleConfirmRecommend = () => {
-          const dishes = DUMMY_DISHES.length >= 3 ? DUMMY_DISHES.slice(0, 3) : DUMMY_DISHES;
-    setRecommendedDishes(dishes);
-    setCarouselIndex(Math.floor(dishes.length / 2));
-    setIsRecommended(true);
     setIsConfirmModalOpen(false);
+
+        const difficultyMap = ["LEVEL_1", "LEVEL_1", "LEVEL_2", "LEVEL_3", "LEVEL_4", "LEVEL_5"];
+    const energyToTimeFilter = { "의욕 없음": "QUICK", "보통": "MEDIUM", "의욕 넘침": "LONG" };
+
+    postAiRecipeRecommendAgain(userId, {
+      difficultyLevel: difficultyMap[difficulty],
+      timeFilter: energyToTimeFilter[energy],
+      desiredIngredientIds: selectedIngredients,
+      previousRecipeId: recommendedDish?.recipeId,
+    })
+             .then((res) => {
+       setRecommendedDishes(res.data);
+       setCarouselIndex(Math.floor(res.data.length / 2));
+       setIsRecommended(true);
+     })
+      .catch((err) => console.error("레시피 재추천 실패:", err));
   };
 
     const goToCarouselIndex = (nextIndex) => {
@@ -890,7 +950,7 @@ export default function Home() {
 
                 return (
                   <CarouselCard
-                    key={dish.id ?? index}
+                    key={dish.menuId ?? index}
                     $x={x}
                     $scale={scale}
                     $active={isActive}
@@ -898,12 +958,11 @@ export default function Home() {
                     onClick={() => !isCarouselDragging && goToCarouselIndex(index)}
                   >
                                         <CarouselThumbBox>
-                      <img src={recipeImg} alt={dish.name} />
+                      <img src={dish.menuThumbnailUrl || recipeImg} alt={dish.menuName} />
                     </CarouselThumbBox>
-                    <CarouselCardName $active={isActive}>{dish.name}</CarouselCardName>
+                     <CarouselCardName $active={isActive}>{dish.menuName}</CarouselCardName>
                     <CarouselCardDesc $active={isActive}>
-                      <p>15분 안에 간단하게 요리할 수 있어요.</p>
-                      <p>난이도가 낮아요. 있는 재료로만 요리할 수 있어요.</p>
+                       <p>{dish.reason}</p>
                     </CarouselCardDesc>
                   </CarouselCard>
                 );
@@ -932,17 +991,21 @@ export default function Home() {
         <>
           <Title>오늘의 추천 레시피예요</Title>
           <Subtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</Subtitle>
-
+          
+{recommendedDish && (
           <RecipeCardWrap>
             <RecipeThumbBox>
-              <img src={recipeImg} alt={recommendedDish.name} />
+                            <img
+                src={recommendedDish.menuThumbnailUrl || recipeImg}
+                alt={recommendedDish.menuName}
+              />
             </RecipeThumbBox>
-            <RecipeName>{recommendedDish.name}</RecipeName>
+            <RecipeName>{recommendedDish.menuName}</RecipeName>
             <RecipeDesc>
-              <p>15분 안에 간단하게 요리할 수 있어요.</p>
-              <p>난이도가 낮아요. 있는 재료로만 요리할 수 있어요.</p>
+              <p>{recommendedDish.reason}</p>
             </RecipeDesc>
           </RecipeCardWrap>
+)}
         </>
       )}
 
@@ -1039,17 +1102,31 @@ export default function Home() {
       <ThemeSectionSubtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</ThemeSectionSubtitle>
 
       <ThemeGrid>
-        {THEME_CARDS.map((theme) => (
-           <ThemeCard key={theme.id} onClick={() => navigate(`/menu/${theme.id}`)}>
-            <img className="icon" src={theme.icon} alt="" />
-            <span className="title">{theme.title}</span>
-            <div className="desc">
-              {theme.desc.map((line, i) => (
-                <p key={i}>{line}</p>
-              ))}
-            </div>
-          </ThemeCard>
-        ))}
+        {THEME_CARDS.map((theme) => {
+          const recommendation = mealPlanRecommendations?.[THEME_TO_AI_KEY[theme.id]] ?? null;
+          if (theme.id === "max-ingredient" && !recommendation) return null;
+
+          const desc = recommendation?.reason ? [recommendation.reason] : theme.desc;
+
+          return (
+            <ThemeCard
+              key={theme.id}
+              onClick={() =>
+                navigate(`/menu/${theme.id}`, {
+                  state: { recommendation },
+                })
+              }
+            >
+              <img className="icon" src={theme.icon} alt="" />
+              <span className="title">{theme.title}</span>
+              <div className="desc">
+                {desc.map((line, i) => (
+                  <p key={i}>{line}</p>
+                ))}
+              </div>
+            </ThemeCard>
+          );
+        })}
       </ThemeGrid>
 
       {isIngredientModalOpen && (
@@ -1059,27 +1136,25 @@ export default function Home() {
             <div className="modal-subtitle">보유한 재료 중 최대 3개까지 선택가능</div>
 
             {DUMMY_INGREDIENT_CATEGORIES.map((category) => (
-              <div className="ingredient-category" key={category.title}>
-                <div className="category-title">{category.title}</div>
-                <div className="chip-wrap">
-                  {category.items.map((item) => (
-                    <IngredientChip
-                      key={item.id}
-                      $selected={selectedIngredients.includes(item.id)}
-                      onClick={() => toggleIngredient(item.id)}
-                    >
-                      {item.icon && (
-                        <span className="chip-icon">
-                          <img src={item.icon} alt="" />
-                        </span>
-                      )}
-                      <span className="chip-name">{item.name}</span>
-                      <span className="chip-qty">{item.qty}</span>
-                    </IngredientChip>
-                  ))}
-                </div>
-              </div>
+                           null
             ))}
+            <div className="ingredient-category">
+              <div className="chip-wrap">
+                {ownedIngredients.map((item) => (
+                  <IngredientChip
+                    key={item.id}
+                    $selected={selectedIngredients.includes(item.id)}
+                    onClick={() => toggleIngredient(item.id)}
+                  >
+                    <span className="chip-name">{item.name}</span>
+                   <span className="chip-qty">{item.qty}</span>
+                  </IngredientChip>
+                ))}
+                {ownedIngredients.length === 0 && (
+                  <p style={{ color: "#a9a9a9", fontSize: 14 }}>보유한 재료가 없어요</p>
+                )}
+              </div>
+            </div>
 
             <div className="modal-actions">
               <ModalButton $variant="cancel" onClick={handleCancel}>

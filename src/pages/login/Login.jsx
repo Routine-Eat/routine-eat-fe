@@ -6,13 +6,15 @@ import styled from 'styled-components';
 import { getUserByLoginNumber, postCreateUser } from '@/api/userApi';
 import { useUserStore } from '@/hooks/useUserStore';
 
+import LogoIcon from "@/assets/common/logo.svg"
+
 export default function Login() {
   const [password, setPassword] = useState('');
   const userLogin = useUserStore((state) => state.login);
   const navigate = useNavigate();
 
   const onLogin = async (password) => {
-    if (password.length < 1) {
+    if (password.length < 4) {
       console.log('비밀번호를 입력해주세요.');
       return;
     }
@@ -38,9 +40,10 @@ export default function Login() {
   };
   return (
     <Contents>
-      <Logo>Routine-Eat</Logo>
+      <Box>
+      <Logo src={LogoIcon}/>
       <PwBox>
-        <Pw>비밀번호를 입력해주세요</Pw>
+        <Pw><p>안녕하세요!</p>비밀번호를 입력해주세요</Pw>
         <InputGroup>
           <PwInput $isInput={password.length >= 1} />
           <PwInput $isInput={password.length >= 2} />
@@ -63,8 +66,10 @@ export default function Login() {
           심사용 로그인은 <span style={{ fontWeight: 700 }}>0825</span>를 입력해주세요
           </p>
         </Explanation>
-        <LoginBtn onClick={() => onLogin(password)}>로그인</LoginBtn>
+        
       </BtnBox>
+      </Box>
+      <LoginBtn onClick={() => onLogin(password)}>로그인</LoginBtn>
     </Contents>
   );
 }
@@ -74,36 +79,35 @@ const Contents = styled.div`
   flex-direction: column;
   height: 100%;
   align-items: center;
-  padding: 133px 23px 200px 23px;
+  padding: 133px 23px 36px 23px;
   justify-content: space-between;
 `;
-const Logo = styled.div`
-  color: var(--900, #030303);
-  text-align: center;
-  font-family: 'Google Sans Flex';
-  font-size: 30px;
-  font-style: normal;
-  font-weight: 700;
-  line-height: 130%; /* 39px */
-  letter-spacing: -0.3px;
+const Logo = styled.img`
 `;
+const Box=styled.div`
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  justify-content: space-between;
+  height: 380px;
+`
 const Pw = styled.div`
   color: var(--900, #030303);
   text-align: center;
   font-family: 'Wanted Sans Variable';
-  font-size: 22px;
+  font-size: 20px;
   font-style: normal;
   font-weight: 500;
-  line-height: 130%; /* 28.6px */
+  line-height: 60%; /* 28.6px */
   letter-spacing: -0.22px;
 `;
 const PwInput = styled.div`
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   aspect-ratio: 1/1;
-  background-color: ${({ $isInput }) => ($isInput ? '#FFE6BD' : '#f5f5f6')};
+  background-color: ${({ $isInput }) => ($isInput ? '#D6F3A1' : '#f5f5f6')};
   border-radius: 50%;
-  border: ${({ $isInput }) => ($isInput ? '2px solid #FF9B44' : '2px solid #d9d9da')};
+  border: ${({ $isInput }) => ($isInput ? '2px solid #C2EE73' : '2px solid #d9d9da')};
 `;
 const Explanation = styled.div`
   display: flex;
@@ -131,7 +135,7 @@ const LoginBtn = styled.button`
   align-items: center;
   gap: 10px;
   border-radius: 12px;
-  background: #ff9b44;
+  background: #96D960;
   color: #fff;
   text-align: center;
   font-family: 'Wanted Sans Variable';
@@ -139,6 +143,7 @@ const LoginBtn = styled.button`
   font-style: normal;
   font-weight: 500;
   border: none;
+  margin-top: auto;
 `;
 const PwBox = styled.div`
   display: flex;
@@ -156,7 +161,7 @@ const BtnBox = styled.div`
 const InputGroup = styled.div`
   position: relative;
   display: flex;
-  gap: 12px;
+  gap: 20px;
   align-items: center;
 `;
 const Input = styled.input`

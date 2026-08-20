@@ -3,10 +3,10 @@ import { useNavigate, useParams } from 'react-router-dom';
 
 import styled from 'styled-components';
 
-import BackIconUrl from '@/assets/market/backIcon.svg';
+import headerCart from '@/assets/market/header-cart-detail.svg';
 import HeartEmpty from '@/assets/market/heartEmptyIcon.svg';
 import HeartFull from '@/assets/market/heartFullIcon.svg';
-import CartIconUrl from '@/assets/market/shoppingCartIcon_gray.svg';
+import BackButton from '../../common/button/BackButton';
 import { recipes } from '@/constants/dummyMarket';
 import { productsDetail } from '@/constants/dummyMarket';
 
@@ -23,11 +23,8 @@ export default function MarketDetail() {
   return (
     <Contents>
       <Header>
-        <BackButton onClick={() => navigate(-1)}>
-          <img src={BackIconUrl} />
-        </BackButton>
-        <ProductHeaderName>{productData.name}</ProductHeaderName>
-        <img src={CartIconUrl} />
+        <BackButton onClick={() => navigate(-1)} />
+        <HeaderCart src={headerCart} alt="" />
       </Header>
       <ButtonBar>
         {TABS.map((tab) => (
@@ -93,34 +90,14 @@ const Contents = styled.div`
 const Header = styled.header`
   display: flex;
   align-items: center;
-  justify-content: space-around;
-  margin: 10px 0 20px 0;
+  justify-content: space-between;
+  padding: 30px 20px 20px;
+  background: #fffefd;
 `;
-const BackButton = styled.button`
-  display: flex;
-  width: 48px;
-  height: 48px;
-  justify-content: center;
-  align-items: center;
-  border-radius: 1000px;
-  background: #fff;
-  /* 버튼 그림자 */
-  box-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.1);
-  border: none;
-`;
-const ProductHeaderName = styled.div`
-  color: var(--800, #1a1a1a);
-  font-family: 'Wanted Sans Variable';
-  font-size: 20px;
-  font-style: normal;
-  font-weight: 600;
-  line-height: 148%; /* 29.6px */
-  width: 200px;
-  justify-content: flex-start;
-  /* 말줄임표(...) 설정 */
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+const HeaderCart = styled.img`
+  display: block;
+  width: 30px;
+  height: 30px;
 `;
 const ProductName = styled.div`
   color: var(--800, #1a1a1a);

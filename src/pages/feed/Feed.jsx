@@ -7,122 +7,86 @@ import chevronIcon from '../../assets/feed/chevron.svg';
 import filterIcon from '../../assets/feed/filter.svg';
 import foodImg from '../../assets/feed/food.png';
 import searchIcon from '../../assets/feed/search.svg';
+import { deleteFavoriteRecipe, postFavoriteRecipe } from '../../api/favoriteRecipe';
+import { getRecipeSearchHistory, getRecipes, searchRecipes } from '../../api/recipe';
 import MenuCard from '../../common/menuCard/MenuCard';
+import { useUserStore } from '../../hooks/useUserStore';
 import FilterPanel, { DEFAULT_FILTER } from './FilterPanel';
 
-/* 피그마 섹션 순서: 레시피 → 광고 → 레시피… */
-const BLOCKS = [
-  { type: 'section', id: 's1', title: '퇴근 후 15분 간단 레시피' },
-  { type: 'banner', id: 'b1' },
-  { type: 'section', id: 's2', title: '남은 양파 먼저 쓰기' },
-  { type: 'section', id: 's3', title: '남은 양파 먼저 쓰기' },
-  { type: 'section', id: 's4', title: '남은 양파 먼저 쓰기' },
-];
-
 const SORTS = ['기본순', '재료 일치도순'];
-const RECENT_KEY = 'feed-recent-searches';
 
-/* 요리 시간 칩 → 분 단위 매칭 */
-function matchCookTime(timeLabel, cookTime) {
-  if (!cookTime || cookTime === '상관없음') return true;
-  const mins = parseInt(timeLabel, 10);
-  if (Number.isNaN(mins)) return true;
-  if (cookTime === '15분 이하') return mins <= 15;
-  if (cookTime === '15분~30분') return mins > 15 && mins < 30;
-  if (cookTime === '30분 이상') return mins >= 30;
-  return true;
-}
+const TIME_REQUIRED_MAP = {
+  '15분 이하': 'WITHIN_15_MINUTES',
+  '15분~30분': 'WITHIN_30_MINUTES',
+  '30분 이상': 'OVER_30_MINUTES',
+};
 
-/* 사용자가 검색한 단어만 — 더미 기본값 없음 */
-function loadRecent() {
-  try {
-    const raw = localStorage.getItem(RECENT_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    // 이전 시드(브로콜리·목이버섯)만 있던 경우 초기화
-    if (parsed.length === 2 && parsed[0] === '브로콜리' && parsed[1] === '목이버섯') {
-      localStorage.removeItem(RECENT_KEY);
-      return [];
-    }
-    return parsed.filter((t) => typeof t === 'string' && t.trim());
-  } catch {
-    return [];
-  }
-}
+const CATEGORY_MAP = {
+  한식: 'KOREAN',
+  중식: 'CHINESE',
+  일식: 'JAPANESE',
+  양식: 'WESTERN',
+  기타: 'OTHER',
+};
 
-/* 피드 더미 — API 연동 전 */
-const RECIPES = [
-  {
-    id: 'r1',
-    title: '계란 야채 볶음밥',
-    time: '10분 소요',
-    utilization: '재료 활용률 100%',
-    difficulty: 1,
-    category: '한식',
-    image: foodImg,
-    isSaved: false,
-  },
-  {
-    id: 'r2',
-    title: '고깃집 스타일 된장가득 술밥 찌개',
-    time: '17분 소요',
-    utilization: '재료 활용률 72%',
-    difficulty: 3,
-    category: '한식',
-    image: foodImg,
-    isSaved: false,
-  },
-  {
-    id: 'r3',
-    title: '계란 야채 볶음밥',
-    time: '10분 소요',
-    utilization: null,
-    difficulty: 1,
-    category: '일식',
-    image: foodImg,
-    isSaved: true,
-  },
-  {
-    id: 'r4',
-    title: '양파 볶음밥',
-    time: '13분 소요',
-    utilization: '재료 활용률 100%',
-    difficulty: 1,
-    category: '한식',
-    image: foodImg,
-    isSaved: false,
-  },
-  {
-    id: 'r5',
-    title: '양파 가득 짜장면',
-    time: '30분 소요',
-    utilization: '재료 활용률 92%',
-    difficulty: 3,
-    category: '중식',
-    image: foodImg,
-    isSaved: false,
-  },
-  {
-    id: 'r6',
-    title: '계란 야채 볶음밥',
-    time: '10분 소요',
-    utilization: '재료 활용률 72%',
-    difficulty: 1,
-    category: '한식',
-    image: foodImg,
-    isSaved: false,
-  },
-];
+const mapRecipeCard = (item) => {
+  const level = Number(String(item.difficultyLevel ?? '').replace('LEVEL_', ''));
+
+  return {
+    id: item.recipeId,
+    title: item.menuName,
+    image: item.thumbnailUrl || foodImg,
+    time: item.timeRequired != null ? `${item.timeRequired}분 소요` : '',
+    utilization:
+      item.foodIngredientUsingPercent != null
+        ? `재료 활용률 ${item.foodIngredientUsingPercent}%`
+        : '',
+    difficulty: Number.isFinite(level) && level > 0 ? level : 1,
+    isSaved: Boolean(item.isFavoriteRecipe),
+  };
+};
+
+const mapRecipeGroup = (group) => (group?.content ?? []).map(mapRecipeCard);
+
+const buildFeedSections = (payload = {}) => {
+  const remainName = payload.remainFoodIngredientName;
+  const sections = [
+    {
+      id: 'simple',
+      title: '퇴근 후 15분 간단 레시피',
+      recipes: mapRecipeGroup(payload.simpleRecipe),
+    },
+    { type: 'banner', id: 'b1' },
+    {
+      id: 'remain',
+      title: remainName ? `남은 ${remainName} 먼저 쓰기` : '남은 재료 먼저 쓰기',
+      recipes: mapRecipeGroup(payload.remainFoodIngredient),
+    },
+    {
+      id: 'diet',
+      title: '다이어트 레시피',
+      recipes: mapRecipeGroup(payload.dietRecipe),
+    },
+    {
+      id: 'gluten',
+      title: '글루텐 프리 레시피',
+      recipes: mapRecipeGroup(payload.glutenFreeRecipe),
+    },
+  ];
+
+  return sections.filter((section) => section.type === 'banner' || section.recipes.length > 0);
+};
 
 function Feed() {
   const navigate = useNavigate();
+  const { userLoginNumber } = useUserStore();
   const { feedSearchMode, setFeedSearchMode } = useOutletContext() ?? {};
   const inputRef = useRef(null);
-  const [recipes, setRecipes] = useState(RECIPES);
+  const [searchResults, setSearchResults] = useState([]);
+  const [sections, setSections] = useState([]);
   const [query, setQuery] = useState('');
   const [searchMode, setSearchMode] = useState(false);
-  const [recent, setRecent] = useState(loadRecent);
+  const [recent, setRecent] = useState([]);
   const [sortBy, setSortBy] = useState(SORTS[0]);
   const [filterOpen, setFilterOpen] = useState(false);
   const [filter, setFilter] = useState(DEFAULT_FILTER);
@@ -131,20 +95,6 @@ function Feed() {
   const trimmed = query.trim();
   const showRecent = searchMode && !trimmed;
   const showResults = searchMode && !!trimmed;
-
-  const list = recipes.filter((r) => {
-    if (trimmed && !r.title.includes(trimmed)) return false;
-    if (!matchCookTime(r.time, filter.cookTime)) return false;
-    if (!filter.difficultyAny && r.difficulty !== filter.difficulty) return false;
-    if (filter.category !== '전체' && r.category !== filter.category) return false;
-    return true;
-  });
-
-  const pushRecent = (term) => {
-    const next = [term, ...recent.filter((t) => t !== term)].slice(0, 10);
-    setRecent(next);
-    localStorage.setItem(RECENT_KEY, JSON.stringify(next));
-  };
 
   const setMode = (next) => {
     setSearchMode(next);
@@ -160,6 +110,73 @@ function Feed() {
     }
   }, [feedSearchMode, searchMode]);
 
+  useEffect(() => {
+    if (!userLoginNumber) return undefined;
+
+    const fetchRecipes = async () => {
+      try {
+        const response = await getRecipes({
+          userNumber: userLoginNumber,
+          cursor: 1,
+          size: 10,
+          timeRequired: TIME_REQUIRED_MAP[filter.cookTime],
+          difficultyLevel: filter.difficultyAny ? undefined : `LEVEL_${filter.difficulty}`,
+          category: CATEGORY_MAP[filter.category],
+          sortType: sortBy === SORTS[1] ? 'FOOD_INTEGRATION' : 'DEFAULT',
+        });
+        const payload = response.data ?? response;
+        setSections(buildFeedSections(payload));
+      } catch (error) {
+        console.error('레시피 목록 조회 실패:', error);
+      }
+    };
+
+    fetchRecipes();
+  }, [userLoginNumber, filter, sortBy]);
+
+  useEffect(() => {
+    if (!userLoginNumber || !showResults) return undefined;
+
+    const fetchSearchRecipes = async () => {
+      try {
+        const response = await searchRecipes({
+          userNumber: userLoginNumber,
+          searchWord: trimmed,
+          cursor: 1,
+          size: 10,
+          timeRequired: TIME_REQUIRED_MAP[filter.cookTime],
+          difficultyLevel: filter.difficultyAny ? undefined : `LEVEL_${filter.difficulty}`,
+          category: CATEGORY_MAP[filter.category],
+          sortType: sortBy === SORTS[1] ? 'FOOD_INTEGRATION' : 'DEFAULT',
+        });
+        const payload = response.data ?? response;
+        setSearchResults((payload.content ?? []).map(mapRecipeCard));
+      } catch (error) {
+        console.error('레시피 검색 실패:', error);
+      }
+    };
+
+    fetchSearchRecipes();
+  }, [userLoginNumber, showResults, trimmed, filter, sortBy]);
+
+  useEffect(() => {
+    if (!userLoginNumber || !showRecent) return undefined;
+
+    const fetchSearchHistory = async () => {
+      try {
+        const response = await getRecipeSearchHistory(userLoginNumber);
+        const payload = response.data ?? response;
+        setRecent(
+          (payload.searchHistoryList ?? []).filter((term) => typeof term === 'string' && term.trim())
+        );
+      } catch (error) {
+        console.error('최근 검색 기록 조회 실패:', error);
+      }
+    };
+
+    fetchSearchHistory();
+  }, [userLoginNumber, showRecent]);
+
   const enterSearch = () => setMode(true);
 
   const applyQuery = (term) => {
@@ -167,13 +184,63 @@ function Feed() {
     if (!next) return;
     setQuery(next);
     setMode(true);
-    pushRecent(next);
   };
 
-  const toggleSave = (id) => {
-    setRecipes((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, isSaved: !item.isSaved } : item))
+  const patchSaved = (recipeId, isSaved) => {
+    setSections((prev) =>
+      prev.map((section) =>
+        section.type === 'banner'
+          ? section
+          : {
+              ...section,
+              recipes: section.recipes.map((item) =>
+                item.id === recipeId ? { ...item, isSaved } : item
+              ),
+            }
+      )
     );
+    setSearchResults((prev) =>
+      prev.map((item) => (item.id === recipeId ? { ...item, isSaved } : item))
+    );
+  };
+
+  const findRecipe = (id) => {
+    const fromSearch = searchResults.find((item) => item.id === id);
+    if (fromSearch) return fromSearch;
+    for (const section of sections) {
+      const found = section.recipes?.find((item) => item.id === id);
+      if (found) return found;
+    }
+    return undefined;
+  };
+
+  const toggleSave = async (id) => {
+    if (!userLoginNumber) {
+      console.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    const recipe = findRecipe(id);
+    if (recipe?.isSaved) {
+      try {
+        await deleteFavoriteRecipe(id, userLoginNumber);
+        patchSaved(id, false);
+      } catch (error) {
+        console.error('레시피 찜 해제 실패:', error);
+      }
+      return;
+    }
+
+    try {
+      await postFavoriteRecipe(id, userLoginNumber);
+      patchSaved(id, true);
+    } catch (error) {
+      if (error.response?.status === 409) {
+        patchSaved(id, true);
+        return;
+      }
+      console.error('레시피 찜 등록 실패:', error);
+    }
   };
 
   return (
@@ -188,7 +255,7 @@ function Feed() {
           <SearchInput
             ref={inputRef}
             type="search"
-            placeholder="재료, 레시피명으로 검색해보세요"
+            placeholder="재료나 요리 이름을 검색해 보세요"
             value={query}
             onFocus={enterSearch}
             onChange={(e) => {
@@ -253,7 +320,7 @@ function Feed() {
           </SortRow>
 
           <ResultGrid>
-            {list.map((r) => (
+            {searchResults.map((r) => (
               <MenuCard
                 key={r.id}
                 image={r.image}
@@ -286,19 +353,19 @@ function Feed() {
             </SortBtn>
           </SortRow>
 
-          {BLOCKS.map((block, i) => {
+          {sections.map((block, i) => {
             if (block.type === 'banner') {
               return <Banner key={block.id}>광고 배너</Banner>;
             }
 
-            const prev = BLOCKS[i - 1];
+            const prev = sections[i - 1];
             const top = !prev ? 26 : prev.type === 'banner' ? 0 : 48;
 
             return (
               <Section key={block.id} $top={top}>
                 <SectionTitle>{block.title}</SectionTitle>
                 <CardRow>
-                  {list.map((r) => (
+                  {block.recipes.map((r) => (
                     <MenuCard
                       key={`${block.id}-${r.id}`}
                       image={r.image}

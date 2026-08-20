@@ -4,6 +4,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import cameraIcon from "../../assets/icons/camera2.svg";
 import checkIcon from "../../assets/icons/checkRounded.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
+import { useCookingStore } from "../../hooks/useCookingStore";
 
 const PageContainer = styled.div`
   background: #fffefd;
@@ -167,6 +168,7 @@ export default function CookingComplete() {
   const [skipPhoto, setSkipPhoto] = useState(true);
   const [photoUrl, setPhotoUrl] = useState(null);
   const fileInputRef = useRef(null);
+  const setPhotoFile = useCookingStore((state) => state.setPhotoFile);
 
   const dishName = "꾸덕한 오징어볶음";
   const completedDate = "8월 21일";
@@ -182,6 +184,7 @@ export default function CookingComplete() {
     const url = URL.createObjectURL(file);
     setPhotoUrl(url);
     setSkipPhoto(false);
+    setPhotoFile(file);
   };
 
   return (

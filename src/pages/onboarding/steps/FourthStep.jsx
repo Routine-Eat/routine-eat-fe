@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import styled from 'styled-components';
 
-import plusIcon from '../../../assets/onboarding/register/plus.svg';
-import sauceIcon from '../../../assets/onboarding/register/sauce.svg';
+import PillButton from '@/common/PillButton';
+
 import RegisterMaterialModal from '../../../common/modal/RegisterMaterialModal';
-import { IngredientIcon } from './SecondStep';
 
 function FourthStep({ ingredients, seasonings, onSaveIngredients, onSaveSeasonings }) {
   const [modal, setModal] = useState(null); /* 'ingredient' | 'seasoning' | null */
@@ -12,41 +11,35 @@ function FourthStep({ ingredients, seasonings, onSaveIngredients, onSaveSeasonin
   return (
     <Wrap>
       <Header>
-        <Title>재료를 등록해주세요</Title>
-        <Subtitle>수량을 입력하면 더 정확하게 추천해드려요</Subtitle>
+        <Title>집에 있는 재료를 등록해주세요</Title>
+        <Subtitle>하나만 알려줘도 지금 만들기 좋은 요리를 찾아요.</Subtitle>
       </Header>
 
       <SectionLabel>식재료</SectionLabel>
       <ChipGrid>
         {ingredients.map((item) => (
-          <RegChip key={item.id} type="button">
-            <IngredientIcon icon={item.icon} />
-            <ChipText>{item.name}</ChipText>
-            {item.qty && <QtyText>{item.qty}</QtyText>}
-          </RegChip>
+          <PillButton
+            key={item.id}
+            kind="INGREDIENT"
+            detailType={item.type}
+            name={item.name}
+            amountValue={item.qty}
+          />
         ))}
-        <AddChip type="button" onClick={() => setModal('ingredient')}>
-          <AddIconFrame>
-            <AddIcon src={plusIcon} alt="" />
-          </AddIconFrame>
-          <ChipText>추가</ChipText>
-        </AddChip>
+        <PillButton kind="ETC" name="추가" onClick={() => setModal('ingredient')} />
       </ChipGrid>
 
       <SectionLabel $mt>조미료</SectionLabel>
       <ChipGrid>
         {seasonings.map((item) => (
-          <RegChip key={item.id} type="button">
-            <SauceImg src={item.icon || sauceIcon} alt="" />
-            <ChipText>{item.name}</ChipText>
-          </RegChip>
+          <PillButton
+            key={item.id}
+            kind="INGREDIENT"
+            detailType={item.type || 'SEASONING'}
+            name={item.name}
+          />
         ))}
-        <AddChip type="button" onClick={() => setModal('seasoning')}>
-          <AddIconFrame>
-            <AddIcon src={plusIcon} alt="" />
-          </AddIconFrame>
-          <ChipText>추가</ChipText>
-        </AddChip>
+        <PillButton kind="ETC" name="추가" onClick={() => setModal('seasoning')} />
       </ChipGrid>
 
       <RegisterMaterialModal
@@ -70,7 +63,7 @@ const Wrap = styled.div`
   flex-direction: column;
   flex: 1;
   min-height: 0;
-  padding: 40px 20px 160px;
+  padding: 40px 20px 16px;
   overflow-y: auto;
 `;
 
@@ -83,12 +76,12 @@ const Header = styled.div`
 
 const Title = styled.h1`
   margin: 0;
-  width: 214px;
   font-size: 24px;
   font-weight: 600;
   line-height: 1.3;
   letter-spacing: -0.48px;
   color: #030303;
+  white-space: nowrap;
 `;
 
 const Subtitle = styled.p`
@@ -113,73 +106,4 @@ const ChipGrid = styled.div`
   flex-wrap: wrap;
   gap: 12px 4px;
   padding: 0 12px;
-`;
-
-const RegChip = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  height: 36px;
-  padding: 0 15px;
-  border: none;
-  border-radius: 30px;
-  background: #fff;
-  box-shadow:
-    0 0 8px rgba(3, 3, 3, 0.05),
-    0 0 30px rgba(3, 3, 3, 0.05);
-  cursor: default;
-`;
-
-const AddChip = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  width: 83px;
-  height: 37px;
-  padding: 0 16px;
-  border: none;
-  border-radius: 30px;
-  background: #fff;
-  box-shadow:
-    0 0 8px rgba(3, 3, 3, 0.05),
-    0 0 30px rgba(3, 3, 3, 0.05);
-  cursor: pointer;
-`;
-
-const AddIconFrame = styled.span`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 19px;
-  height: 19px;
-  flex-shrink: 0;
-  overflow: hidden;
-`;
-
-const AddIcon = styled.img`
-  display: block;
-  width: 13.48px;
-  height: 13.48px;
-  object-fit: contain;
-`;
-
-const SauceImg = styled.img`
-  width: 19px;
-  height: 19px;
-  object-fit: contain;
-`;
-
-const ChipText = styled.span`
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #1a1a1a;
-`;
-
-const QtyText = styled.span`
-  font-size: 12px;
-  font-weight: 500;
-  line-height: 1.2;
-  color: #5a5a5b;
 `;

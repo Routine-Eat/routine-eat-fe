@@ -7,6 +7,7 @@ import MarketDetail from '@/pages/market/MarketDetail';
 
 import Layout from './layout/Layout';
 import Feed from './pages/feed/Feed';
+import FeedSection from './pages/feed/FeedSection';
 import CookingComplete from './pages/home/CookingComplete';
 import CookingIngredientCheck from './pages/home/CookingIngredientCheck.jsx';
 import CookingReview from './pages/home/CookingReview';
@@ -56,6 +57,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/feed" element={<Feed />} />
+          <Route path="/feed/:sectionId" element={<FeedSection />} />
           <Route path="/notifications" element={<Notification />} />
           <Route path="/recipes/:id" element={<RecipeDetail />} />
           <Route path="/similar-recipes/:id" element={<SimilarRecipe />} />

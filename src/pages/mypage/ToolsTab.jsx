@@ -10,11 +10,11 @@ import {
 } from '@/api/userApi';
 import { useUserStore } from '@/hooks/useUserStore';
 
-import plusIcon from '../../assets/mypage/plus.svg';
 import resetIcon from '../../assets/mypage/reset.svg';
 import trashIcon from '../../assets/mypage/trash.svg';
-import marketIcon from '../../assets/shopping/market-icon.png';
+import PillButton from '../../common/PillButton';
 import RegisterMaterialModal from '../../common/modal/RegisterMaterialModal';
+import MarketBrowseButton from './MarketBrowseButton';
 import { TOOL_SECTIONS } from '../../constants/dummyTools';
 
 const TYPE_TO_CATEGORY = {
@@ -24,11 +24,18 @@ const TYPE_TO_CATEGORY = {
   PREP_TOOL: 'prep',
 };
 
+const CATEGORY_TO_TYPE = {
+  appliance: 'APPLIANCE',
+  basic: 'UTENSIL',
+  prep: 'PREP_TOOL',
+};
+
 const mapUserCookingEquipments = (data) =>
   (data ?? [])
     .map((item) => ({
       id: item.cookingEquipmentId,
       name: item.cookingEquipmentName,
+      type: item.cookingEquipmentType,
       category: TYPE_TO_CATEGORY[item.cookingEquipmentType],
     }))
     .filter((item) => item.category);
@@ -111,7 +118,12 @@ function ToolsTab({ isEditing, selectedIds, setSelectedIds }) {
 
       setItems((prev) => [
         ...prev,
-        ...newDraft.map((d) => ({ id: d.id, name: d.name, category: modal })),
+        ...newDraft.map((d) => ({
+          id: d.id,
+          name: d.name,
+          type: d.type ?? CATEGORY_TO_TYPE[modal],
+          category: modal,
+        })),
       ]);
     } catch (error) {
       console.error('사용자 조리도구 생성 실패:', error);
@@ -130,29 +142,17 @@ function ToolsTab({ isEditing, selectedIds, setSelectedIds }) {
               <SectionTitle>{section.label}</SectionTitle>
             </SectionHead>
             <ChipRow>
-              {section.items.map((item) => {
-                const selected = isEditing && selectedIds.includes(item.id);
-                return (
-                  /* 도구 칩: 흰 알약 / 선택 시 연두 알약 */
-                  <Chip
-                    key={item.id}
-                    type="button"
-                    $selected={selected}
-                    $editing={isEditing}
-                    onClick={() => toggleSelect(item.id)}
-                  >
-                    <ChipName>{item.name}</ChipName>
-                  </Chip>
-                );
-              })}
-
-              {/* 추가 칩: + 알약 */}
-              <AddChip type="button" onClick={() => setModal(section.id)}>
-                <PlusWrap>
-                  <PlusIcon src={plusIcon} alt="" />
-                </PlusWrap>
-                <AddName>추가</AddName>
-              </AddChip>
+              {section.items.map((item) => (
+                <PillButton
+                  key={item.id}
+                  kind="EQUIPMENT"
+                  detailType={item.type}
+                  name={item.name}
+                  isSelected={isEditing && selectedIds.includes(item.id)}
+                  onClick={isEditing ? () => toggleSelect(item.id) : undefined}
+                />
+              ))}
+              <PillButton kind="ETC" name="추가" onClick={() => setModal(section.id)} />
             </ChipRow>
           </Section>
         ))}
@@ -174,10 +174,7 @@ function ToolsTab({ isEditing, selectedIds, setSelectedIds }) {
           </ActionRow>
         ) : (
           /* 일반: 마켓 CTA 흰 테두리 둥근 직사각형 */
-          <MarketBtn type="button" onClick={() => navigate('/market')}>
-            <PlateImg src={marketIcon} alt="" />
-            마켓에서 재료 둘러보기
-          </MarketBtn>
+          <MarketBrowseButton onClick={() => navigate('/market')} />
         )}
       </BottomBar>
 
@@ -251,108 +248,20 @@ const ChipRow = styled.div`
   max-width: 350px;
 `;
 
-/* —— 도구 칩: 알약(둥근 직사각 height 36) —— */
-const Chip = styled.button`
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  height: 36px;
-  padding: 0 16px;
-  /* 미선택도 2px 투명 테두리 → 선택 시 크기 흔들림 방지 */
-  border: 2px solid ${({ $selected }) => ($selected ? '#c2ee73' : 'transparent')};
-  border-radius: 30px;
-  background: ${({ $selected }) => ($selected ? '#d6f3a1' : '#fff')};
-  box-shadow:
-    0 0 8px rgba(3, 3, 3, 0.05),
-    0 0 30px rgba(3, 3, 3, 0.05);
-  pointer-events: ${({ $editing }) => ($editing ? 'auto' : 'none')};
-  cursor: ${({ $editing }) => ($editing ? 'pointer' : 'default')};
-`;
-
-const ChipName = styled.span`
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #2e2e2e;
-`;
-
-/* —— 추가 칩: 알약 —— */
-const AddChip = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  height: 36px;
-  padding: 0 14px 0 8px;
-  border: none;
-  border-radius: 30px;
-  background: #fff;
-  box-shadow:
-    0 0 8px rgba(3, 3, 3, 0.05),
-    0 0 30px rgba(3, 3, 3, 0.05);
-  cursor: pointer;
-`;
-
-const AddName = styled.span`
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: #2e2e2e;
-`;
-
-const PlusWrap = styled.span`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 20px;
-  height: 20px;
-`;
-
-const PlusIcon = styled.img`
-  width: 11px;
-  height: 11px;
-  object-fit: contain;
-`;
-
 /* —— 하단 바: 상단 둥근 흰 직사각형 —— */
 const BottomBar = styled.div`
   position: fixed;
   left: 50%;
-  bottom: 56px;
+  bottom: 0;
   z-index: 15;
   box-sizing: border-box;
   width: 100%;
   max-width: 390px;
-  padding: 34px 24px 20px;
+  padding: 28px 24px 32px;
   transform: translateX(-50%);
   border-radius: 22px 22px 0 0;
   background: #fff;
   box-shadow: 0 -1px 14.6px 0 rgba(201, 201, 189, 0.25);
-`;
-
-/* —— 마켓 CTA: 흰 테두리 둥근 직사각형 342×56 —— */
-const MarketBtn = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  width: 100%;
-  height: 56px;
-  border: 1px solid #bebebf;
-  border-radius: 13px;
-  background: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  color: #2e2e2e;
-  cursor: pointer;
-`;
-
-/* —— 접시 아이콘: 20×20 정사각 —— */
-const PlateImg = styled.img`
-  width: 20px;
-  height: 20px;
-  object-fit: contain;
 `;
 
 const ActionRow = styled.div`

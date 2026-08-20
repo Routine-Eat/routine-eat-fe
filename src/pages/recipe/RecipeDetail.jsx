@@ -9,13 +9,22 @@ import starEmpty from '../../assets/feed/star-empty.svg';
 import starFilled from '../../assets/feed/star-filled.svg';
 import chevronDown from '../../assets/recipe/chevron-down.svg';
 import bagIcon from '../../assets/recipe/shopping-bag.svg';
+import checkCircleWhiteIcon from '../../assets/icons/checkCircleWhite.svg';
 import { deleteFavoriteRecipe, postFavoriteRecipe } from '../../api/favoriteRecipe';
 import { getCanCookRecipe, getRecipeDetail } from '../../api/recipe';
+import { getUserFoodIngredients } from '../../api/userApi';
 import BackButton from '../../common/button/BackButton';
 import { useUserStore } from '../../hooks/useUserStore';
-import { addItemsToShopping } from '../../store/shoppingStore';
+import {
+  addItemsToShopping,
+  getCustomOwnedIngredients,
+} from '../../store/shoppingStore';
 import CookStartModal from './CookStartModal';
-import { EMPTY_RECIPE, mapRecipeDetail } from './mapRecipeDetail';
+import {
+  EMPTY_RECIPE,
+  mapRecipeDetail,
+  removeOwnedAdditionalIngredients,
+} from './mapRecipeDetail';
 
 const SERVINGS = ['1인분', '2인분', '3인분'];
 
@@ -36,7 +45,7 @@ const pickMissingIngredientNames = (payload = {}) => {
 function RecipeDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { userLoginNumber } = useUserStore();
+  const { userId, userLoginNumber } = useUserStore();
   const [recipe, setRecipe] = useState(EMPTY_RECIPE);
   const [similar, setSimilar] = useState([]);
   const [serving, setServing] = useState(SERVINGS[0]);
@@ -44,6 +53,7 @@ function RecipeDetail() {
   const [cookOpen, setCookOpen] = useState(false);
   const [canCook, setCanCook] = useState(true);
   const [missingIngredients, setMissingIngredients] = useState([]);
+  const [isToastVisible, setIsToastVisible] = useState(false);
   const servingRef = useRef(null);
 
   useEffect(() => {
@@ -60,20 +70,39 @@ function RecipeDetail() {
 
     const fetchRecipeDetail = async () => {
       try {
-        const response = await getRecipeDetail(id, {
-          userNumber: userLoginNumber,
-          servings: Number.parseInt(serving, 10) || 1,
-        });
-        const mapped = mapRecipeDetail(response.data ?? response);
-        setRecipe(mapped);
-        setSimilar(mapped.similar);
+        const [recipeResponse, ownedResponse] = await Promise.all([
+          getRecipeDetail(id, {
+            userNumber: userLoginNumber,
+            servings: Number.parseInt(serving, 10) || 1,
+          }),
+          userId
+            ? getUserFoodIngredients(userId, 'OWN').catch((error) => {
+                console.error('보유 식재료 조회 실패:', error);
+                return null;
+              })
+            : Promise.resolve(null),
+        ]);
+        const mapped = mapRecipeDetail(recipeResponse.data ?? recipeResponse);
+        const ownedItems = [
+          ...(ownedResponse?.data?.foodIngredientList ?? []),
+          ...getCustomOwnedIngredients(userId),
+        ];
+        const filtered = removeOwnedAdditionalIngredients(mapped, ownedItems);
+        setRecipe(filtered);
+        setSimilar(filtered.similar);
       } catch (error) {
         console.error('레시피 상세 조회 실패:', error);
       }
     };
 
     fetchRecipeDetail();
-  }, [id, userLoginNumber, serving]);
+  }, [id, userId, userLoginNumber, serving]);
+
+  useEffect(() => {
+    if (!isToastVisible) return undefined;
+    const timer = setTimeout(() => setIsToastVisible(false), 2000);
+    return () => clearTimeout(timer);
+  }, [isToastVisible]);
 
   const handleStartCooking = async () => {
     if (!id || !userLoginNumber) {
@@ -87,7 +116,14 @@ function RecipeDetail() {
         servings: Number.parseInt(serving, 10) || 1,
       });
       const payload = response.data ?? response;
-      setCanCook(Boolean(payload.canCook));
+      const canStartImmediately = Boolean(payload.canCook);
+
+      if (canStartImmediately) {
+        navigate(`/cooking/${id}`);
+        return;
+      }
+
+      setCanCook(false);
       setMissingIngredients(pickMissingIngredientNames(payload));
       setCookOpen(true);
     } catch (error) {
@@ -193,7 +229,7 @@ function RecipeDetail() {
             type="button"
             onClick={() => {
               addItemsToShopping(recipe.title, recipe.additionalIngredients);
-              navigate('/shopping-list');
+              setIsToastVisible(true);
             }}
           >
             <BagIcon src={bagIcon} alt="" />
@@ -204,9 +240,10 @@ function RecipeDetail() {
         {/* 유사 요리 — 제목 + 가로 스크롤 카드 */}
         <SimilarTitle>이 레시피 재료와 유사한 요리</SimilarTitle>
         <SimilarRow>
-          {similar.map((item) => (
+          {similar.slice(0, 3).map((item) => (
             <SimilarCard key={item.id} onClick={() => navigate(`/similar-recipes/${item.id}`)}>
               <Thumb>
+                {item.image ? <ThumbImg src={item.image} alt="" /> : null}
                 <Heart
                   type="button"
                   aria-label="저장"
@@ -273,6 +310,18 @@ function RecipeDetail() {
           navigate(`/cooking/${id}`);
         }}
       />
+
+      {isToastVisible && (
+        <Toast>
+          <img src={checkCircleWhiteIcon} alt="" />
+          <span>
+            재료를 장보기 목록에 추가했어요.{' '}
+            <ToastGo type="button" onClick={() => navigate('/shopping-list')}>
+              이동하기
+            </ToastGo>
+          </span>
+        </Toast>
+      )}
     </Page>
   );
 }
@@ -284,7 +333,9 @@ const Page = styled.div`
   position: relative;
   display: flex;
   flex-direction: column;
-  height: 100%;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
   background: #fffefd;
 `;
 
@@ -301,7 +352,7 @@ const Scroll = styled.div`
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  padding: 95px 24px 132px;
+  padding: 95px 24px 140px;
 `;
 
 /* —— 히어로: 둥근 회색 사각(15) —— */
@@ -316,15 +367,11 @@ const Hero = styled.div`
   background: #f5f5f6;
 `;
 
-/* —— 히어로 안 음식 사진: 원형에 가까운 사각 —— */
+/* —— 히어로 안 음식 사진: 네모칸을 채움 —— */
 const HeroImg = styled.img`
-  width: 140px;
-  height: 140px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border-radius: 50%;
-  box-shadow:
-    0 0 10px 0 rgba(61, 32, 0, 0.05),
-    0 0 40px 0 rgba(110, 58, 0, 0.13);
 `;
 
 /* —— 제목 행: 가로 space-between —— */
@@ -607,8 +654,16 @@ const Thumb = styled.div`
   position: relative;
   width: 124px;
   height: 104px;
+  overflow: hidden;
   border-radius: 10px;
   background: #f1f1f1;
+`;
+
+const ThumbImg = styled.img`
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 `;
 
 /* —— 하트 버튼: 우상단 —— */
@@ -652,19 +707,21 @@ const SimilarExtra = styled.p`
 
 /* —— 하단 바: 상단만 둥근 흰 사각 —— */
 const Footer = styled.div`
-  position: absolute;
-  left: 0;
-  right: 0;
+  position: fixed;
+  left: 50%;
   bottom: 0;
+  z-index: 10;
   display: flex;
   justify-content: center;
-  height: 108px;
-  padding: 24px 21px 0;
-  border-radius: 22px 22px 0 0;
+  width: 100%;
+  max-width: 390px;
+  transform: translateX(-50%);
+  padding: 28px 20px 32px;
+  border-radius: 36px 36px 0 0;
   background: #fffefd;
   box-shadow:
-    0 0 10px 0 rgba(3, 3, 3, 0.06),
-    0 0 40px 0 rgba(3, 3, 3, 0.08);
+    0 0 10px rgba(3, 3, 3, 0.06),
+    0 0 40px rgba(3, 3, 3, 0.08);
 `;
 
 /* —— 요리 시작 CTA: 노란 둥근 사각(12) —— */
@@ -683,4 +740,62 @@ const StartBtn = styled.button`
   letter-spacing: -0.18px;
   color: #fff;
   cursor: pointer;
+`;
+
+const toastFade = `
+  @keyframes toastFade {
+    0% { opacity: 0; transform: translate(-50%, 8px); }
+    10% { opacity: 1; transform: translate(-50%, 0); }
+    85% { opacity: 1; transform: translate(-50%, 0); }
+    100% { opacity: 0; transform: translate(-50%, 8px); }
+  }
+`;
+
+const Toast = styled.div`
+  ${toastFade}
+  position: fixed;
+  left: 50%;
+  bottom: 120px;
+  transform: translate(-50%, 0);
+  z-index: 300;
+  background: #727272;
+  border-radius: 10px;
+  padding: 12px 16px 12px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: toastFade 2s ease forwards;
+  max-width: calc(100% - 48px);
+  pointer-events: none;
+
+  img {
+    width: 24px;
+    height: 24px;
+    display: block;
+    flex-shrink: 0;
+  }
+
+  span {
+    color: white;
+    font-size: 14px;
+    font-weight: 400;
+    letter-spacing: -0.14px;
+    line-height: 1.3;
+    white-space: nowrap;
+  }
+`;
+
+const ToastGo = styled.button`
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: #c2ee73;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -0.14px;
+  line-height: 1.3;
+  text-decoration: underline;
+  text-underline-position: from-font;
+  cursor: pointer;
+  pointer-events: auto;
 `;

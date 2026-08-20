@@ -52,7 +52,7 @@ function BottomNav({ feedSearchActive = false, onExitFeedSearch }) {
 
 const Nav = styled.nav`
   position: fixed;
-  bottom: 40px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 
 import checkBoxIcon from '../../assets/feed/check-box.svg';
 import starEmpty from '../../assets/feed/star-empty.svg';
@@ -25,22 +25,47 @@ export const DEFAULT_FILTER = {
   category: '전체',
 };
 
+const SHEET_MS = 360;
+const SHEET_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
 function FilterPanel({ open, value, onApply, onClose }) {
   const [draft, setDraft] = useState(value);
+  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (open) setDraft(value);
   }, [open, value]);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (open) {
+      setClosing(false);
+      setVisible(true);
+      return undefined;
+    }
+
+    setClosing(true);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      setClosing(false);
+    }, SHEET_MS);
+    return () => clearTimeout(timer);
+  }, [open]);
+
+  if (!visible) return null;
 
   const patch = (next) => setDraft((prev) => ({ ...prev, ...next }));
 
   return (
-    // 필터 오버레이 — 딤 + 중앙 모달
-    <Overlay onClick={onClose}>
+    // 필터 오버레이 — 딤 + 바텀시트
+    <Overlay $closing={closing} onClick={onClose}>
       {/* 필터 모달 — 사방 둥근 흰 사각 */}
-      <Modal role="dialog" aria-label="필터" onClick={(e) => e.stopPropagation()}>
+      <Modal
+        role="dialog"
+        aria-label="필터"
+        $closing={closing}
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* 핸들 바 — 가로 둥근 막대 */}
         <Handle />
 
@@ -120,7 +145,6 @@ function FilterPanel({ open, value, onApply, onClose }) {
             type="button"
             onClick={() => {
               setDraft(DEFAULT_FILTER);
-              onApply(DEFAULT_FILTER);
             }}
           >
             선택 초기화
@@ -142,17 +166,59 @@ function FilterPanel({ open, value, onApply, onClose }) {
 
 export default FilterPanel;
 
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+`;
+
+const fadeOut = keyframes`
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+`;
+
+const slideUp = keyframes`
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+`;
+
+const slideDown = keyframes`
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+`;
+
 /* —— 딤 오버레이: 화면 full 반투명 사각 —— */
 const Overlay = styled.div`
   position: fixed;
   inset: 0;
   z-index: 40;
   display: flex;
-  align-items: flex-start;
+  align-items: flex-end;
   justify-content: center;
-  padding: 298px 15px 32px;
-  overflow-y: auto;
+  padding: 0 15px 32px;
+  overflow: hidden;
   background: rgba(3, 3, 3, 0.15);
+  pointer-events: ${({ $closing }) => ($closing ? 'none' : 'auto')};
+  animation: ${({ $closing }) => ($closing ? fadeOut : fadeIn)} ${SHEET_MS}ms ease both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 /* —— 필터 모달: 사방 둥근 흰 사각 360 —— */
@@ -163,12 +229,19 @@ const Modal = styled.div`
   gap: 29px;
   width: 100%;
   max-width: 360px;
+  max-height: calc(100dvh - 64px);
+  overflow-y: auto;
   padding: 48px 24px 32px;
   border-radius: 30px;
   background: #fff;
   box-shadow:
     0 0 10px 0 rgba(3, 3, 3, 0.12),
     0 0 40px 0 rgba(3, 3, 3, 0.25);
+  animation: ${({ $closing }) => ($closing ? slideDown : slideUp)} ${SHEET_MS}ms ${SHEET_EASE} both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 /* —— 핸들: 가로 둥근 막대 —— */

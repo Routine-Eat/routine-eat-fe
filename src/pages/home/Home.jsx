@@ -1030,8 +1030,8 @@ export default function Home() {
         </>
       ) : (
         <>
-          <Title>오늘의 추천 레시피예요</Title>
-          <Subtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</Subtitle>
+          <Title>오늘 만들기 좋은 한 끼예요</Title>
+          <Subtitle>집에 있는 재료와 요리 경험을 반영했어요.</Subtitle>
           
 {recommendedDish && (
    (() => {
@@ -1167,18 +1167,13 @@ export default function Home() {
         </ToggleOpenCard>
       )}
 
-      <ThemeSectionTitle>오늘의 추천 식단이에요</ThemeSectionTitle>
-      <ThemeSectionSubtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</ThemeSectionSubtitle>
+      <ThemeSectionTitle>오늘 시작하기 좋은 세 끼 식단이에요</ThemeSectionTitle>
+      <ThemeSectionSubtitle>집에 있는 재료와 선호도, 경험을 반영했어요.</ThemeSectionSubtitle>
 
       <ThemeGrid>
         {THEME_CARDS.map((theme) => {
-          const recommendation = mealPlanRecommendations?.[THEME_TO_AI_KEY[theme.id]] ?? null;
-
-
-                   const desc =
-           recommendation?.reason && containsKorean(recommendation.reason)
-             ? [recommendation.reason]
-             : theme.desc;
+                   const recommendation = mealPlanRecommendations?.[THEME_TO_AI_KEY[theme.id]] ?? null;
+         const desc = theme.desc;
 
          const descFullText = desc.join(" ");
          const descFontSize = getThemeDescFontSize(descFullText);

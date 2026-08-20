@@ -375,7 +375,7 @@ export default function HomeMenu() {
       </Header>
 
        <PageTitle>{theme.title}</PageTitle>
-      <PageSubtitle>{recommendation?.reason || theme.desc.join("")}</PageSubtitle>
+      <PageSubtitle>{theme.desc.join("")}</PageSubtitle>
 
       <RecipeList>
         {menuDishes.map((recipe, idx) => (
@@ -425,8 +425,8 @@ export default function HomeMenu() {
                 <img src={shoppingCartIcon} alt="" />
               </CartIconBox>
               <ModalHeadingText>
-                <p>식단에 포함된 재료가 부족해요.</p>
-                <p>장보기 목록에 추가할까요?</p>
+                <p>해당 재료가 부족해요</p>
+               <p>그래도 레시피를 시작할까요?</p>
               </ModalHeadingText>
             </ModalHeadingBox>
 
@@ -438,10 +438,10 @@ export default function HomeMenu() {
 
             <StartModalActions>
               <StartModalButton onClick={handleAddToShoppingList}>
-                장보기 목록에 추가
+                재료가 모두 있어요
               </StartModalButton>
               <StartModalButton $variant="primary" onClick={handleProceedWithoutAdding}>
-                추가 없이 진행할게요
+                재료 없이 시작할게요
               </StartModalButton>
             </StartModalActions>
           </StartModalSheet>

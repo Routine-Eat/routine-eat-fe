@@ -29,6 +29,11 @@ import micMoveIcon from "../../assets/icons/micMove.svg";
 const SWIPE_TUTORIAL_KEY = "hasSeenStepTutorial";
 const VOICE_TUTORIAL_KEY = "hasSeenVoiceTutorial";
 
+ const slideUp = keyframes`
+   from { opacity: 0; transform: translateY(48px); }
+   to { opacity: 1; transform: translateY(0); }
+ `;
+
 const PageContainer = styled.div`
 background: #444;
 max-width: 390px;
@@ -36,6 +41,7 @@ margin: 0 auto;
 min-height: 100vh;
 position: relative;
 padding-bottom: 60px;
+animation: ${slideUp} 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 `;
 
 const TopBar = styled.div`
@@ -69,6 +75,11 @@ align-items: center;
 gap: 12px;
 `;
 
+const overlayFadeIn = keyframes`
+   from { opacity: 0; }
+   to { opacity: 1; }
+ `;
+
 const HistoryOverlay = styled.div`
   position: fixed;
   inset: 0;
@@ -77,7 +88,13 @@ const HistoryOverlay = styled.div`
   align-items: flex-end;
   justify-content: center;
   z-index: 300;
+  animation: ${overlayFadeIn} 0.25s ease-out;
 `;
+
+const sheetSlideUp = keyframes`
+   from { opacity: 0; transform: translateY(80px); }
+   to { opacity: 1; transform: translateY(0); }
+ `;
 
 const HistoryBox = styled.div`
   width: 100%;
@@ -92,6 +109,7 @@ const HistoryBox = styled.div`
     overflow: hidden;
   display: flex;
   flex-direction: column;
+  animation: ${sheetSlideUp} 0.35s cubic-bezier(0.22, 1, 0.36, 1);
 `;
 
 const HistoryScrollArea = styled.div`
@@ -187,10 +205,25 @@ width: 80px;
 height: 32px;
 `;
 
-const slideUp = keyframes`
-  from { opacity: 0; transform: translateY(28px); }
-  to { opacity: 1; transform: translateY(0); }
-`;
+const creditUp = keyframes`
+   from { opacity: 0; transform: translateY(36px); }
+   to { opacity: 1; transform: translateY(0); }
+ `;
+
+ const creditDown = keyframes`
+   from { opacity: 0; transform: translateY(-36px); }
+   to { opacity: 1; transform: translateY(0); }
+ `;
+
+  const creditOutUp = keyframes`
+   from { opacity: 1; transform: translateY(0); }
+   to { opacity: 0; transform: translateY(-36px); }
+ `;
+
+ const creditOutDown = keyframes`
+   from { opacity: 1; transform: translateY(0); }
+   to { opacity: 0; transform: translateY(36px); }
+ `;
 
 const slideDown = keyframes`
   from { opacity: 0; transform: translateY(-28px); }
@@ -202,7 +235,7 @@ display: flex;
 flex-direction: column;
 align-items: center;
 gap: 8px;
-padding-top: ${({ $hasUpHint }) => ($hasUpHint ? "0px" : "76px")};
+ padding-top: ${({ $hasUpHint }) => ($hasUpHint ? "0px" : "30px")};
 `;
 
 const StepCard = styled.div`
@@ -211,8 +244,8 @@ border-radius: 28px;
 background: white;
 box-shadow: 0px 0px 10px 0px rgba(3, 3, 3, 0.03), 0px 0px 40px 0px rgba(3, 3, 3, 0.05);
 padding: 24px 28px 32px;
-animation: ${({ $direction }) => ($direction === "prev" ? slideDown : slideUp)} 0.28s ease;
-
+overflow: hidden;
+position: relative;
 .step-count{
 text-align: right;
 color: #5a5a5b;
@@ -409,6 +442,27 @@ display: block;
 }
 `;
 
+ const StepContent = styled.div`
+   transform-origin: center;
+   backface-visibility: hidden;
+   animation: ${({ $direction }) => {
+        if ($direction === "prev") return creditDown;
+     return creditUp;
+   }} 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+ `;
+
+  const OutgoingContent = styled.div`
+   position: absolute;
+   top: 24px;
+   left: 28px;
+   right: 28px;
+   bottom: 32px;
+   background: white;
+   pointer-events: none;
+   animation: ${({ $direction }) =>
+     $direction === "prev" ? creditOutDown : creditOutUp} 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+ `;
+
 const PreviewCard = styled.div`
 width: 366px;
 height: 60px;
@@ -419,6 +473,8 @@ display: flex;
 align-items: center;
 padding: 0 28px;
 gap: 12px;
+ overflow: hidden;
+ perspective: 800px;
 
 .count{
 color: #2e2e2e;
@@ -435,6 +491,16 @@ font-family: Pretendard Variable;
 font-weight: 600;
 }
 `;
+
+ const PreviewContent = styled.div`
+   display: flex;
+   align-items: center;
+   gap: 12px;
+   transform-origin: center;
+   backface-visibility: hidden;
+   animation: ${({ $direction }) =>
+     $direction === "prev" ? creditDown : creditUp} 0.9s cubic-bezier(0.22, 1, 0.36, 1);
+ `;
 
 const CompleteButton = styled.button`
 width: 366px;
@@ -501,11 +567,11 @@ margin: 0;
 }
 
 .hint-top{
-top: 370px;
+top: 290px;
 }
 
 .hint-bottom{
-top: 500px;
+top: 420px;
 }
 `;
 
@@ -549,45 +615,50 @@ const VoiceTutorialOverlay = styled.div`
   cursor: pointer;
 `;
 
-const glowPulse = keyframes`
-  0%, 100% { transform: scale(1); opacity: 0.85; }
-  50% { transform: scale(1.12); opacity: 1; }
+const ripple = keyframes`
+  0% { transform: scale(0.6); opacity: 0.6; }
+  100% { transform: scale(1.6); opacity: 0; }
 `;
 
 const VoiceGlowWrap = styled.div`
   position: absolute;
-  top: -20px;
-  right: -56px;
-  width: 200px;
-  height: 200px;
+ top: 50%;
+ left: 50%;
+  width: 140px;
+  height: 140px;
   pointer-events: none;
-    border-radius: 50%;
-  background:
-    radial-gradient(
-      circle,
-      rgba(255, 243, 196, 0.75) 0%,
-      rgba(255, 243, 196, 0.25) 55%,
-      rgba(255, 243, 196, 0) 100%
-    );
-
-animation: ${glowPulse} 2s ease-in-out infinite;
+  transform: translate(-50%, -50%);
 
   &::before {
     content: "";
     position: absolute;
-    top: 5%;
-    left: 5%;
-    width: 90%;
-    height: 90%;
     border-radius: 50%;
-    background:
-      radial-gradient(
-        circle,
-        rgba(255, 233, 168, 0.5) 0%,
-        rgba(255, 233, 168, 0.15) 60%,
-        rgba(255, 233, 168, 0) 100%
-      );
+     inset: 0;
+         background: radial-gradient(
+     circle,
+     rgba(255, 236, 160, 0.55) 0%,
+     rgba(255, 236, 160, 0.25) 55%,
+     rgba(255, 236, 160, 0) 80%
+   );
+   animation: ${ripple} 2s ease-out infinite;
   }
+
+   &::after {
+   content: "";
+   position: absolute;
+   inset: 0;
+   border-radius: 50%;
+        background: radial-gradient(
+     circle,
+     rgba(255, 236, 160, 0.55) 0%,
+     rgba(255, 236, 160, 0.25) 55%,
+     rgba(255, 236, 160, 0) 80%
+   );
+  
+   animation: ${ripple} 2s ease-out infinite;
+   animation-delay: 1s;
+ }
+
 `;
 
 const HighlightMic = styled.div`
@@ -606,8 +677,8 @@ const HighlightMic = styled.div`
   z-index: 2;
 
   img {
-    width: 34px;
-    height: 34px;
+       width: 48px;
+   height: 48px;
   }
 `;
 
@@ -762,6 +833,10 @@ export default function HomeCookingStep() {
   const [cookingStepData, setCookingStepData] = useState(null);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [direction, setDirection] = useState("next");
+  const [animKey, setAnimKey] = useState(0);
+   const [outgoingSnapshot, setOutgoingSnapshot] = useState(null);
+ const outgoingTimerRef = useRef(null);
+ const ANIM_DURATION = 900;
   const [stepTitles, setStepTitles] = useState([]); // [{ stepLevel, stepTitle }, ...]
     const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isExampleImageOpen, setIsExampleImageOpen] = useState(false);
@@ -785,6 +860,7 @@ export default function HomeCookingStep() {
  const HISTORY_PAGE_SIZE = 10;
  const recognitionRef = useRef(null);
  const isRecognizingRef = useRef(false);
+ const handleSendVoiceQueryRef = useRef(null);
 const silenceTimerRef = useRef(null);
 const latestTranscriptRef = useRef("");
 const SILENCE_MS = 2000; // 이 시간(ms) 동안 조용하면 말이 끝난 걸로 간주
@@ -822,15 +898,32 @@ const audioPlayerRef = useRef(null);
      size: HISTORY_PAGE_SIZE,
    })
      .then((res) => {
-       const raw = res.data?.items ?? res.data?.aiHistories ?? (Array.isArray(res.data) ? res.data : []);
-       const normalized = raw.map((item) => ({
-         id: item.id ?? item.cookingSessionAiId,
-         question: item.userSpeechText ?? item.question ?? item.request,
-         answer: item.answer ?? item.aiMessage ?? item.response,
-       }));
-       setAiHistoryTurns((prev) => (append ? [...prev, ...normalized] : normalized));
+             const raw = res.data?.content ?? [];
+       // USER/AI 로그가 개별 항목으로 오므로, USER 뒤에 오는 항목을 답변으로 묶어줌
+       const turns = [];
+       let pendingQuestion = null;
+       raw.forEach((log) => {
+         if (log.cookingSessionLogType === "USER") {
+           pendingQuestion = {
+             id: log.cookingSessionLogId,
+             question: log.cookingSessionLogContent,
+             answer: "",
+           };
+           turns.push(pendingQuestion);
+         } else if (pendingQuestion) {
+           pendingQuestion.answer = log.cookingSessionLogContent;
+           pendingQuestion = null;
+         } else {
+           turns.push({
+             id: log.cookingSessionLogId,
+             question: "",
+             answer: log.cookingSessionLogContent,
+           });
+         }
+       });
+       setAiHistoryTurns((prev) => (append ? [...prev, ...turns] : turns));
        setHistoryCursor(res.data?.nextCursor ?? cursor + 1);
-       setHasMoreHistory(res.data?.hasNext ?? raw.length === HISTORY_PAGE_SIZE);
+       setHasMoreHistory(res.data?.hasNext ?? false);
      })
      .catch((err) => console.error("AI 대화 기록 조회 실패:", err))
      .finally(() => setIsHistoryLoading(false));
@@ -932,6 +1025,12 @@ const parseMultipartAiResponse = (res) => {
        console.log("AI 응답(JSON):", json, "오디오 Blob:", audioBlob);
 
              if (json?.data?.currentCookingStep) {
+                     const newLevel = json.data.currentCookingStep.level;
+       const oldLevel = currentStep?.level;
+       const dir = oldLevel != null && newLevel < oldLevel ? "prev" : "next";
+       captureOutgoing();
+       setDirection(dir);
+       setAnimKey((k) => k + 1);
         setCookingStepData(json.data);
        }
 
@@ -959,6 +1058,11 @@ const parseMultipartAiResponse = (res) => {
      })
      .catch((err) => console.error("AI 질문 전송 실패:", err));
  };
+
+  // handleSendVoiceQuery의 최신 버전을 항상 가리키도록 ref에 매 렌더마다 갱신
+ useEffect(() => {
+   handleSendVoiceQueryRef.current = handleSendVoiceQuery;
+ });
 
  // 브라우저 음성 인식(SpeechRecognition) - 텍스트 변환 후 handleSendVoiceQuery 호출
  useEffect(() => {
@@ -1009,7 +1113,7 @@ const parseMultipartAiResponse = (res) => {
     isRecognizingRef.current = false;
      setIsListening(false);
          if (finalTranscript) {
-      handleSendVoiceQuery(finalTranscript); // 종료 시점에 확정된 텍스트를 서버로 전송
+      handleSendVoiceQueryRef.current(finalTranscript); // 종료 시점에 확정된 텍스트를 서버로 전송
     }
    };
 
@@ -1029,7 +1133,7 @@ const parseMultipartAiResponse = (res) => {
     longPressFiredRef.current = false;
     longPressTimerRef.current = setTimeout(() => {
       longPressFiredRef.current = true;
-      setHistoryHeight(null);
+      setHistoryHeight(HISTORY_MIN_HEIGHT);
       setIsHistoryOpen(true);
       fetchAiHistory(1, false);
     }, 500);
@@ -1148,6 +1252,7 @@ const parseMultipartAiResponse = (res) => {
   const touchStartY = useRef(null);
   const isDragging = useRef(false);
   const actionLock = useRef(false);
+  const lastTouchTimeRef = useRef(0);
 
   const lockAndRun = (action) => {
     if (actionLock.current) return;
@@ -1155,11 +1260,65 @@ const parseMultipartAiResponse = (res) => {
     action();
     setTimeout(() => {
       actionLock.current = false;
-    }, 500);
+    }, ANIM_DURATION);
   };
 
+   const captureOutgoing = () => {
+   if (currentStep) {
+     setOutgoingSnapshot({ step: currentStep, isDetailOpen });
+     clearTimeout(outgoingTimerRef.current);
+     outgoingTimerRef.current = setTimeout(() => {
+       setOutgoingSnapshot(null);
+     }, ANIM_DURATION);
+   }
+ };
+
+  const renderStepBody = (step) => (
+   <>
+     <div className="step-count">{step.level}/{totalSteps}</div>
+     <div className="title-row">
+       <img className="check-icon" src={checkCircleIcon} alt="" />
+              <span className="title">{step.title}</span>
+     </div>
+     <div className="body">
+       <p style={{ margin: 0 }}>{step.content}</p>
+     </div>
+     {step.subContent && <p className="tip">{step.subContent}</p>}
+     {step.tips?.length > 0 && (
+       <span className="link">{step.tips[0].cookingTipTitle}</span>
+     )}
+     <div className="ingredient-tags">
+       {step.foodIngredients?.map((ing) => (
+         <span className="tag" key={ing.cookingRecordFoodIngredientId}>
+           {ing.name} {ing.primaryAmountValue}{ing.primaryUnit}
+         </span>
+       ))}
+     </div>
+   </>
+ );
+
+ const renderDetailBody = (step) => (
+   <>
+     <div className="detail-label">{step.tips?.[0]?.cookingTipTitle}</div>
+     <div className="detail-back">
+       <img src={chevronLeftSmallIcon} alt="" />
+       레시피로 돌아가기
+     </div>
+     {step.tips
+       ?.filter((tip) => tip.cookingTipType === "TEXT")
+       .map((tip, i) => (
+         <div className="detail-section" key={i}>
+           <p className="detail-body">{tip.cookingTipContent}</p>
+         </div>
+       ))}
+   </>
+ );
+
   const handleGoBackStep = () => {
+    if (isFirstStep) return;
+    captureOutgoing();
     setDirection("prev");
+    setAnimKey((k) => k + 1);
     if (isFirstStep) {
       navigate(-1);
     } else {
@@ -1170,7 +1329,9 @@ const parseMultipartAiResponse = (res) => {
   };
 
   const handleGoNextStep = () => {
+    captureOutgoing();
     setDirection("next");
+    setAnimKey((k) => k + 1);
     if (isLastStep) {
            postNextCookingStep(cookingRecordId, userLoginNumber)
        .then(() => {
@@ -1185,14 +1346,15 @@ const parseMultipartAiResponse = (res) => {
   };
 
   const handleTouchStart = (e) => {
-    if (isHistoryOpen) return;
+    if (isHistoryOpen || isDetailOpen) return;
     touchStartY.current = e.touches[0].clientY;
   };
 
   const handleTouchEnd = (e) => {
-    if (isHistoryOpen) return;
+    if (isHistoryOpen || isDetailOpen) return;
     if (justMountedRef.current) return;
     if (touchStartY.current === null) return;
+    lastTouchTimeRef.current = Date.now();
     const deltaY = touchStartY.current - e.changedTouches[0].clientY;
     if (deltaY < -120) {
            if (tutorialStage) {
@@ -1214,7 +1376,8 @@ const parseMultipartAiResponse = (res) => {
   };
 
   const handleMouseDown = (e) => {
-    if (isHistoryOpen) return;
+     if (isHistoryOpen || isDetailOpen) return;
+    if (Date.now() - lastTouchTimeRef.current < 600) return;
     touchStartY.current = e.clientY;
     isDragging.current = true;
     window.addEventListener("mousemove", handleMouseMove);
@@ -1222,7 +1385,7 @@ const parseMultipartAiResponse = (res) => {
   };
 
   const handleMouseMove = (e) => {
-    if (justMountedRef.current) return;
+    if (justMountedRef.current || isDetailOpen) return;
     if (!isDragging.current || touchStartY.current === null) return;
     const deltaY = touchStartY.current - e.clientY;
     if (deltaY < -120) {
@@ -1263,7 +1426,7 @@ const parseMultipartAiResponse = (res) => {
   };
 
   const handleWheel = (e) => {
-    if (isHistoryOpen) return;
+    if (isHistoryOpen || isDetailOpen) return;
     if (justMountedRef.current) return;
     if (e.deltaY < -60) {
             if (tutorialStage) {
@@ -1375,94 +1538,122 @@ const parseMultipartAiResponse = (res) => {
 
       <CardStack $hasUpHint={showUpHint}>
                 {previewLevels.before.map((l) => (
-          <PreviewCard key={`before-${l}`} $level={1}>
-            <span className="count">{l}/{totalSteps}</span>
-            <span className="label">{getStepTitleByLevel(l)}</span>
-          </PreviewCard>
+                   <PreviewCard key={`before-${l}-${animKey}`} $level={1}>
+           <PreviewContent $direction={direction}>
+             <span className="count">{l}/{totalSteps}</span>
+             <span className="label">{getStepTitleByLevel(l)}</span>
+           </PreviewContent>
+         </PreviewCard>
         ))}
 
                               {currentStep && isDetailOpen && (
-         <StepCard $direction={direction}>
-           <div className="detail-label">{currentStep.tips?.[0]?.cookingTipTitle}</div>
-           <button
-             className="detail-back"
-             onClick={() => {
-               setIsDetailOpen(false);
-               setIsExampleImageOpen(false);
-             }}
-           >
-             <img src={chevronLeftSmallIcon} alt="" />
-             레시피로 돌아가기
-           </button>
-           {currentStep.tips
-             ?.filter((tip) => tip.cookingTipType === "TEXT")
-             .map((tip, i) => (
-               <div className="detail-section" key={i}>
-                 <p className="detail-body">{tip.cookingTipContent}</p>
-               </div>
-             ))}
-           {currentStep.tips?.some((tip) => tip.cookingTipType === "IMAGE") && (
-             <button
-               className="example-toggle"
-               onClick={() => setIsExampleImageOpen((prev) => !prev)}
-             >
-               <img
-                 className={`toggle-icon ${isExampleImageOpen ? "open" : ""}`}
-                 src={chevronToggleSmallIcon}
-                 alt=""
-               />
-               예시 이미지 보기
-             </button>
-           )}
-           {isExampleImageOpen &&
-             currentStep.tips
-               ?.filter((tip) => tip.cookingTipType === "IMAGE")
-               .map((tip, i) => (
-                 <img
-                   key={i}
-                   className="example-image"
-                   src={tip.cookingTipContent}
-                   alt={tip.cookingTipTitle}
-                 />
-               ))}
+         <StepCard key={animKey} $direction={direction}>
+                    {outgoingSnapshot && (
+            <OutgoingContent $direction={direction}>
+              {outgoingSnapshot.isDetailOpen
+                ? renderDetailBody(outgoingSnapshot.step)
+                : renderStepBody(outgoingSnapshot.step)}
+            </OutgoingContent>
+          )}
+                  
+                     <StepContent $direction={direction}>
+            <div className="detail-label">{currentStep.tips?.[0]?.cookingTipTitle}</div>
+            <button
+              className="detail-back"
+              onClick={() => {
+                captureOutgoing();
+                setDirection("detailClose");
+                setAnimKey((k) => k + 1);
+                setIsDetailOpen(false);
+                setIsExampleImageOpen(false);
+              }}
+            >
+              <img src={chevronLeftSmallIcon} alt="" />
+              레시피로 돌아가기
+            </button>
+            {currentStep.tips
+              ?.filter((tip) => tip.cookingTipType === "TEXT")
+              .map((tip, i) => (
+                <div className="detail-section" key={i}>
+                  <p className="detail-body">{tip.cookingTipContent}</p>                </div>
+              ))}
+            {currentStep.tips?.some((tip) => tip.cookingTipType === "IMAGE") && (
+              <button
+                className="example-toggle"
+                onClick={() => setIsExampleImageOpen((prev) => !prev)}
+              >
+                <img
+                  className={`toggle-icon ${isExampleImageOpen ? "open" : ""}`}
+                  src={chevronToggleSmallIcon}
+                  alt=""
+                />
+                예시 이미지 보기
+              </button>
+            )}
+            {isExampleImageOpen &&
+              currentStep.tips
+                ?.filter((tip) => tip.cookingTipType === "IMAGE")
+                .map((tip, i) => (
+                  <img
+                    key={i}
+                    className="example-image"
+                    src={tip.cookingTipContent}
+                    alt={tip.cookingTipTitle}
+                  />
+                ))}
+          </StepContent>
          </StepCard>
        )}
        {currentStep && !isDetailOpen && (
-         <StepCard $direction={direction}>
-           <div className="step-count">{currentStep.level}/{totalSteps}</div>
-           <div className="title-row">
-             <img className="check-icon" src={checkCircleIcon} alt="" />
-             <span className="title">{currentStep.title}</span>
-           </div>
-           <div className="body">
-             <p style={{ margin: 0 }}>{currentStep.content}</p>
-           </div>
-           {currentStep.subContent && <p className="tip">{currentStep.subContent}</p>}
-           {currentStep.tips?.length > 0 && (
-             <button
-               className="link"
-               onClick={() => {
-                 setIsDetailOpen(true);
-                 setIsExampleImageOpen(false);
-               }}
-             >
-               {currentStep.tips[0].cookingTipTitle}
-             </button>
-           )}
-           <div className="ingredient-tags">
-             {currentStep.foodIngredients?.map((ing) => (
-               <span className="tag" key={ing.cookingRecordFoodIngredientId}>
-                 {ing.name} {ing.primaryAmountValue}{ing.primaryUnit}
-               </span>
-             ))}
-           </div>
+         <StepCard key={animKey} $direction={direction}>
+                    {outgoingSnapshot && (
+            <OutgoingContent $direction={direction}>
+              {outgoingSnapshot.isDetailOpen
+                ? renderDetailBody(outgoingSnapshot.step)
+                : renderStepBody(outgoingSnapshot.step)}
+            </OutgoingContent>
+          )}
+                     <StepContent $direction={direction}>
+            <div className="step-count">{currentStep.level}/{totalSteps}</div>
+            <div className="title-row">
+              <img className="check-icon" src={checkCircleIcon} alt="" />
+              <span className="title">{currentStep.title}</span>
+            </div>
+            <div className="body">
+              <p style={{ margin: 0 }}>{currentStep.content}</p>
+            </div>
+            {currentStep.subContent && <p className="tip">{currentStep.subContent}</p>}
+            {currentStep.tips?.length > 0 && (
+              <button
+                className="link"
+                onClick={() => {
+                  captureOutgoing();
+                  setDirection("detailOpen");
+                  setAnimKey((k) => k + 1);
+                  setIsDetailOpen(true);
+                  setIsExampleImageOpen(false);
+                }}
+              >
+                {currentStep.tips[0].cookingTipTitle}
+              </button>
+            )}
+            <div className="ingredient-tags">
+              {currentStep.foodIngredients?.map((ing) => (
+                <span className="tag" key={ing.cookingRecordFoodIngredientId}>
+                  {ing.name} {ing.primaryAmountValue}{ing.primaryUnit}
+                </span>
+              ))}
+            </div>
+          </StepContent>
          </StepCard>
        )}
                       {previewLevels.after.map((l, i) => (
-          <PreviewCard key={`after-${l}`} $level={i === 0 ? 1 : 2}>
-            <span className="count">{l}/{totalSteps}</span>
-            <span className="label">{getStepTitleByLevel(l)}</span>
-          </PreviewCard>
+                  <PreviewCard key={`after-${l}-${animKey}`} $level={i === 0 ? 1 : 2}>
+           <PreviewContent $direction={direction}>
+             <span className="count">{l}/{totalSteps}</span>
+             <span className="label">{getStepTitleByLevel(l)}</span>
+           </PreviewContent>
+         </PreviewCard>
         ))}
 
         {cookingStepData && isLastStep && (
@@ -1484,7 +1675,7 @@ const parseMultipartAiResponse = (res) => {
 
       {tutorialStage === "swipe" && (
         <TutorialOverlay onClick={advanceTutorial}>
-          <ChevronStack $top={300} $direction="up">
+          <ChevronStack $top={220} $direction="up">
             <img src={chevronsUpIcon} alt="" />
           </ChevronStack>
           <div className="hint-block hint-top">
@@ -1495,7 +1686,7 @@ const parseMultipartAiResponse = (res) => {
             <p>화면을 위로 쓸어올려</p>
             <p>다음 단계로 이동</p>
           </div>
-          <ChevronStack $top={570} $direction="down">
+          <ChevronStack $top={490} $direction="down">
             <img src={chevronsUpIcon} alt="" />
           </ChevronStack>
         </TutorialOverlay>
@@ -1504,8 +1695,8 @@ const parseMultipartAiResponse = (res) => {
       {tutorialStage === "voice" && (
         <VoiceTutorialOverlay onClick={advanceTutorial}>
 
-<VoiceGlowWrap />
           <HighlightMic>
+            <VoiceGlowWrap />
             <img src={micIcon} alt="" />
           </HighlightMic>
           <VoiceHintText>

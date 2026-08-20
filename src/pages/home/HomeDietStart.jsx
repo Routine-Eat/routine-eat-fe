@@ -7,6 +7,7 @@ import eggFoodImg from "../../assets/images/EggFood.svg";
 import muscleIcon from "../../assets/icons/muscle.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
 import chefIcon from "../../assets/icons/chef.svg";
+import checkTabIcon from "../../assets/icons/checkTab.svg";
 import checkCircleWhiteIcon from "../../assets/icons/checkCircleWhite.svg";
 import forkKnifeIcon from "../../assets/images/forkKnife.svg";
 import { useUserStore } from "../../hooks/useUserStore";
@@ -18,6 +19,8 @@ const MEAL_PLAN_THEME = {
   ONE_INGREDIENT: "one-ingredient",
   MAX_INGREDIENT: "max-ingredient",
 };
+
+const MEAL_TAB_LABELS = ["한 끼", "두 끼", "세 끼"];
 
 const mapPlanMenus = (list) =>
   (list ?? []).map((item) => {
@@ -71,7 +74,7 @@ const IconBox = styled.div`
 `;
 
 const PageTitle = styled.p`
-  margin: 12px 0 0;
+  margin: 0px 0 0;
   color: #481c00;
   font-size: 22px;
   font-family: Wanted Sans Variable;
@@ -96,17 +99,27 @@ const MealTabs = styled.div`
 
 const MealTab = styled.div`
   flex: 1;
-  height: 68px;
+  height: 63px;
   border-radius: 10px;
   background: ${({ $done }) => ($done ? "#d6f3a1" : "#f5f5f6")};
   border: ${({ $done }) => ($done ? "2px solid #c2ee73" : "none")};
   display: flex;
-  align-items: center;
-  justify-content: center;
+   flex-direction: column;
+ align-items: center;
+ justify-content: flex-start;
+ padding-top: 6px;
+ padding-bottom: 6px;
+ gap: 6px;
   color: #727272;
   font-size: 14px;
   font-family: Wanted Sans Variable;
   font-weight: 600;
+
+   .check-icon {
+   width: 20px;
+   height: 14px;
+   display: block;
+ }
 `;
 
 const RecipeListHeading = styled.p`
@@ -401,6 +414,7 @@ export default function HomeDietStart() {
   const { mealId } = useParams();
   const userId = useUserStore((state) => state.userId);
   const setMealPlanContext = useCookingStore((state) => state.setMealPlanContext);
+  const setActiveMealPlanId = useCookingStore((state) => state.setActiveMealPlanId);
   const isMealPlanId = /^\d+$/.test(String(mealId));
 
   const dummyTheme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
@@ -475,6 +489,7 @@ export default function HomeDietStart() {
         console.error("사용자 식단 상태 수정 실패:", error);
       }
     }
+    setActiveMealPlanId(null);
     navigate("/");
   };
 
@@ -491,19 +506,22 @@ export default function HomeDietStart() {
 
       <EmptyNotice>
         {completedCount === 0
-          ? "아직 진행한 레시피가 없네요!"
+          ? "아직 만든 레시피가 없네요!"
           : `${completedCount}끼 챙겨먹기에 성공했어요!`}
       </EmptyNotice>
 
       <MealTabs>
-        {meals.map((meal, idx) => (
-          <MealTab key={meal.planMenuId ?? meal.id} $done={meal.completed}>
-            {idx + 1}끼
+               {meals.map((meal, idx) => (
+         <MealTab key={meal.planMenuId ?? meal.id} $done={idx < completedCount}>
+                       {MEAL_TAB_LABELS[idx] ?? `${idx + 1}끼`}
+           {idx < completedCount && (
+             <img className="check-icon" src={checkTabIcon} alt="" />
+           )}
           </MealTab>
         ))}
       </MealTabs>
 
-      <RecipeListHeading>{meals.length}끼 레시피</RecipeListHeading>
+      <RecipeListHeading>세 끼 레시피</RecipeListHeading>
 
       <MealList>
         {meals.map((meal) => (

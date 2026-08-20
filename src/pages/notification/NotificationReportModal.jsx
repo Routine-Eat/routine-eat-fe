@@ -201,7 +201,6 @@ const Stage = styled.div`
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 390px;
 `;
 
 const SideBtn = styled.div`

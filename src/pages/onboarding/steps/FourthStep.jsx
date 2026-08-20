@@ -5,8 +5,19 @@ import PillButton from '@/common/PillButton';
 
 import RegisterMaterialModal from '../../../common/modal/RegisterMaterialModal';
 
-function FourthStep({ ingredients, seasonings, onSaveIngredients, onSaveSeasonings }) {
+const byNameKo = (a, b) => a.name.localeCompare(b.name, 'ko');
+
+function FourthStep({
+  ingredients,
+  seasonings,
+  onSaveIngredients,
+  onSaveSeasonings,
+  onRemoveIngredient,
+  onRemoveSeasoning,
+}) {
   const [modal, setModal] = useState(null); /* 'ingredient' | 'seasoning' | null */
+  const sortedIngredients = [...ingredients].sort(byNameKo);
+  const sortedSeasonings = [...seasonings].sort(byNameKo);
 
   return (
     <Wrap>
@@ -17,13 +28,15 @@ function FourthStep({ ingredients, seasonings, onSaveIngredients, onSaveSeasonin
 
       <SectionLabel>식재료</SectionLabel>
       <ChipGrid>
-        {ingredients.map((item) => (
+        {sortedIngredients.map((item) => (
           <PillButton
             key={item.id}
             kind="INGREDIENT"
             detailType={item.type}
             name={item.name}
             amountValue={item.qty}
+            deleteAvailable
+            onClick={() => onRemoveIngredient(item.id)}
           />
         ))}
         <PillButton kind="ETC" name="추가" onClick={() => setModal('ingredient')} />
@@ -31,12 +44,14 @@ function FourthStep({ ingredients, seasonings, onSaveIngredients, onSaveSeasonin
 
       <SectionLabel $mt>조미료</SectionLabel>
       <ChipGrid>
-        {seasonings.map((item) => (
+        {sortedSeasonings.map((item) => (
           <PillButton
             key={item.id}
             kind="INGREDIENT"
             detailType={item.type || 'SEASONING'}
             name={item.name}
+            deleteAvailable
+            onClick={() => onRemoveSeasoning(item.id)}
           />
         ))}
         <PillButton kind="ETC" name="추가" onClick={() => setModal('seasoning')} />

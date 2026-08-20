@@ -47,6 +47,10 @@ const CATEGORIES = [
   },
 ];
 
+const byNameKo = (a, b) => a.name.localeCompare(b.name, 'ko');
+
+const hasId = (ids, id) => ids.some((item) => String(item) === String(id));
+
 /* 백엔드 데이터를 화면 카테고리 형태로 변환 */
 const makeCategories = (data) => [
   {
@@ -59,7 +63,8 @@ const makeCategories = (data) => [
         id: item.cookingEquipmentId,
         name: item.cookingEquipmentName,
         type: item.cookingEquipmentType,
-      })),
+      }))
+      .sort(byNameKo),
   },
   {
     id: 'basic',
@@ -73,7 +78,8 @@ const makeCategories = (data) => [
         id: item.cookingEquipmentId,
         name: item.cookingEquipmentName,
         type: item.cookingEquipmentType,
-      })),
+      }))
+      .sort(byNameKo),
   },
   {
     id: 'prep',
@@ -85,7 +91,8 @@ const makeCategories = (data) => [
         id: item.cookingEquipmentId,
         name: item.cookingEquipmentName,
         type: item.cookingEquipmentType,
-      })),
+      }))
+      .sort(byNameKo),
   },
 ];
 
@@ -116,17 +123,18 @@ function ThirdStep({ selectedIds, onToggle }) {
 
   const q = query.trim();
 
-  /* 검색어가 있으면 카테고리 안 도구 필터 */
+  /* 검색어가 있으면 카테고리 안 도구 필터, 선택된 항목은 본문에서 숨김 */
   const sections = useMemo(() => {
-    if (!q) return categories;
+    const withVisibleItems = categories.map((cat) => ({
+      ...cat,
+      items: [...cat.items]
+        .sort(byNameKo)
+        .filter((item) => !hasId(selectedIds, item.id))
+        .filter((item) => (!q ? true : item.name.includes(q))),
+    }));
 
-    return categories
-      .map((cat) => ({
-        ...cat,
-        items: cat.items.filter((item) => item.name.includes(q)),
-      }))
-      .filter((cat) => cat.items.length > 0);
-  }, [q, categories]);
+    return withVisibleItems.filter((cat) => cat.items.length > 0);
+  }, [q, categories, selectedIds]);
 
   return (
     <Wrap>
@@ -174,7 +182,6 @@ function ThirdStep({ selectedIds, onToggle }) {
                   kind="EQUIPMENT"
                   detailType={item.type}
                   name={item.name}
-                  isSelected={selectedIds.includes(item.id)}
                   onClick={() => onToggle(item.id)}
                 />
               ))}
@@ -211,7 +218,10 @@ export function SelectedToolChips({ selectedIds, onRemove }) {
     fetchCookingEquipments();
   }, []);
 
-  const items = selectedIds.map((id) => tools.find((item) => item.id === id)).filter(Boolean);
+  const items = selectedIds
+    .map((id) => tools.find((item) => String(item.id) === String(id)))
+    .filter(Boolean)
+    .sort(byNameKo);
 
   if (!items.length) return null;
 
@@ -272,7 +282,6 @@ const SearchBox = styled.div`
   align-items: center;
   flex-shrink: 0;
   width: 100%;
-  max-width: 340px;
   height: 48px;
   margin: 37px auto 0;
   border-radius: 12px;
@@ -362,10 +371,24 @@ const ChipRow = styled.div`
 
 const SelectedRow = styled.div`
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   width: 100%;
-  margin-bottom: 24px;
+  margin: -16px -12px 8px;
+  padding: 16px 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  & > * {
+    flex-shrink: 0;
+  }
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 `;
 
 export default ThirdStep;

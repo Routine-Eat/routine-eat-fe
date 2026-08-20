@@ -69,6 +69,15 @@ const IngredientBox = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+   justify-content: flex-start;
+ max-height: 240px;
+ overflow-y: auto;
+ scrollbar-width: none;
+ -ms-overflow-style: none;
+
+ &::-webkit-scrollbar {
+   display: none;
+ }
 `;
 
 const IngredientChip = styled.div`
@@ -319,7 +328,7 @@ const SheetContent = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 24px;
   width: 100%;
 `;
@@ -354,6 +363,15 @@ const SheetIngredientBox = styled.div`
   flex-wrap: wrap;
   gap: 8px;
   width: 100%;
+   justify-content: flex-start;
+ max-height: 160px;
+ overflow-y: auto;
+ scrollbar-width: none;
+ -ms-overflow-style: none;
+
+ &::-webkit-scrollbar {
+   display: none;
+ }
 `;
 
 const SheetIngredientChip = styled.button`
@@ -691,7 +709,7 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
   };
 
   const handleListCancel = () => {
-    setIngredients(INITIAL_INGREDIENTS);
+   setIngredients(mapApiIngredientsToState(apiFoodIngredients));
     closeEditModal();
   };
 

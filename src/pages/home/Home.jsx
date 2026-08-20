@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 
 import styled from "styled-components";
 import { useUserStore } from "../../hooks/useUserStore";
@@ -11,6 +11,7 @@ import recipeImg from "../../assets/images/recipeImg.svg";
 import { DUMMY_INGREDIENT_CATEGORIES, THEME_CARDS } from "../../constants/home/DummyHome.js";
 import { getUserFoodIngredients } from "@/api/userApi";
 import chevronBrownIcon from "../../assets/icons/chevronBrown.svg";
+import checkCircleWhiteIcon from "../../assets/icons/checkCircleWhite.svg";
 import chevronGrayIcon from "../../assets/icons/chevronGray.svg";
 import fireIcon from "../../assets/icons/fire.svg";
 import cometIcon from "../../assets/icons/comet.svg";
@@ -160,6 +161,16 @@ font-size: 20px;
 font-family: Wanted Sans Variable;
 font-weight: 700;
 letter-spacing: -0.4px;
+ display: flex;
+ align-items: center;
+ gap: 4px;
+
+ .arrow-icon {
+   width: 16px;
+   height: 16px;
+   display: block;
+ }
+
 `;
 
 const RecipeDesc = styled.div`
@@ -820,8 +831,51 @@ const CarouselArrowButton = styled.button`
   }
 `;
 
+ const toastFade = `
+   @keyframes toastFade {
+     0% { opacity: 0; transform: translate(-50%, 8px); }
+     10% { opacity: 1; transform: translate(-50%, 0); }
+     85% { opacity: 1; transform: translate(-50%, 0); }
+     100% { opacity: 0; transform: translate(-50%, 8px); }
+   }
+ `;
+
+ const Toast = styled.div`
+   ${toastFade}
+   position: fixed;
+   left: 50%;
+   bottom: 120px;
+   transform: translate(-50%, 0);
+   z-index: 300;
+   background: #727272;
+   border-radius: 10px;
+   padding: 12px 16px 12px 12px;
+   display: flex;
+   align-items: center;
+   gap: 8px;
+   animation: toastFade 2s ease forwards;
+   pointer-events: none;
+   max-width: calc(100% - 48px);
+
+   img {
+     width: 24px;
+     height: 24px;
+     display: block;
+     flex-shrink: 0;
+   }
+
+   span {
+     color: white;
+     font-size: 14px;
+     font-family: Wanted Sans Variable;
+     font-weight: 600;
+     letter-spacing: -0.14px;
+   }
+ `;
+
 export default function Home() {
   const navigate = useNavigate();
+  const location = useLocation();
   const userId = useUserStore((state) => state.userId);
   console.log("현재 userId:", userId, typeof userId);
   const [energy, setEnergy] = useState("보통");
@@ -841,6 +895,8 @@ export default function Home() {
     const [recommendedDish, setRecommendedDish] = useState(null);
     const [ownedIngredients, setOwnedIngredients] = useState([]); // 실제 보유 재료 목록
   const [mealPlanRecommendations, setMealPlanRecommendations] = useState(null);
+     const [isToastVisible, setIsToastVisible] = useState(false);
+   const [toastMessage, setToastMessage] = useState("");
 
 
   useEffect(() => {
@@ -881,6 +937,20 @@ export default function Home() {
       })
       .catch((err) => console.error("보유 식재료 조회 실패:", err));
   }, [userId]);
+
+useEffect(() => {
+   if (location.state?.toastMessage) {
+     setToastMessage(location.state.toastMessage);
+     setIsToastVisible(true);
+     window.history.replaceState({}, document.title); // 새로고침 시 토스트 재등장 방지
+   }
+ }, [location.state]);
+
+ useEffect(() => {
+   if (!isToastVisible) return;
+   const timer = setTimeout(() => setIsToastVisible(false), 2000);
+   return () => clearTimeout(timer);
+ }, [isToastVisible]);
 
     const allIngredients = ownedIngredients;
   const selectedIngredientObjects = selectedIngredients
@@ -956,6 +1026,45 @@ export default function Home() {
     setCarouselDragX(0);
   };
 
+   // 트랙패드 두 손가락 좌우 스와이프 대응
+   const carouselTrackRef = useRef(null);
+ const carouselWheelLockRef = useRef(false);
+  const carouselIndexRef = useRef(carouselIndex);
+ useEffect(() => {
+   carouselIndexRef.current = carouselIndex;
+ }, [carouselIndex]);
+
+ useEffect(() => {
+   const el = carouselTrackRef.current;
+   if (!el) return;
+
+   const handleWheel = (e) => {
+     if (recommendedDishes.length <= 1) return;
+     if (Math.abs(e.deltaX) <= Math.abs(e.deltaY)) return;
+
+     e.preventDefault();
+     if (carouselWheelLockRef.current) return;
+
+     const WHEEL_THRESHOLD = 30;
+     if (e.deltaX > WHEEL_THRESHOLD) {
+       carouselWheelLockRef.current = true;
+       goToCarouselIndex(carouselIndexRef.current + 1);
+     } else if (e.deltaX < -WHEEL_THRESHOLD) {
+       carouselWheelLockRef.current = true;
+       goToCarouselIndex(carouselIndexRef.current - 1);
+     }
+
+     if (carouselWheelLockRef.current) {
+       setTimeout(() => {
+         carouselWheelLockRef.current = false;
+       }, 400);
+     }
+   };
+
+   el.addEventListener("wheel", handleWheel, { passive: false });
+   return () => el.removeEventListener("wheel", handleWheel);
+ }, [recommendedDishes.length]);
+
   return (
     <HomeContainer>
             {isRecommended ? (
@@ -968,6 +1077,7 @@ export default function Home() {
 
           <CarouselWrap>
             <CarouselTrack
+            ref={carouselTrackRef}
               onPointerDown={handleCarouselPointerDown}
               onPointerMove={handleCarouselPointerMove}
               onPointerUp={endCarouselDrag}
@@ -1009,23 +1119,6 @@ export default function Home() {
                 );
               })}
             </CarouselTrack>
-
-                       {recommendedDishes.length > 1 && (
-             <>
-               <CarouselArrowButton
-                 className="left"
-                 onClick={() => goToCarouselIndex(carouselIndex - 1)}
-               >
-                 <img src={carouselArrowIcon} alt="이전" />
-               </CarouselArrowButton>
-               <CarouselArrowButton
-                 className="right"
-                 onClick={() => goToCarouselIndex(carouselIndex + 1)}
-               >
-                 <img src={carouselArrowIcon} alt="다음" />
-               </CarouselArrowButton>
-             </>
-           )}
           </CarouselWrap>
         </>
       ) : (
@@ -1045,7 +1138,7 @@ export default function Home() {
                 alt={recommendedDish.menuName}
               />
             </RecipeThumbBox>
-            <RecipeName>{recommendedDish.menuName}</RecipeName>
+            <RecipeName>{recommendedDish.menuName} →</RecipeName>
             <RecipeDesc $compact={isCompact}>
               <p>{recommendedDish.reason}</p>
             </RecipeDesc>
@@ -1067,7 +1160,7 @@ export default function Home() {
         <ToggleOpenCard>
           <ToggleOpenHeader onClick={() => setIsDetailOpen(false)}>
             <img className="chevron" src={chevronGrayIcon} alt="" />
-            <span className="label">추천 상세조건 설정</span>
+            <span className="label">추천 조건 바꾸기</span>
           </ToggleOpenHeader>
 
           <DetailSection>
@@ -1260,6 +1353,12 @@ export default function Home() {
           </ConfirmModalBox>
         </ConfirmModalOverlay>
       )}
+           {isToastVisible && (
+       <Toast>
+         <img src={checkCircleWhiteIcon} alt="" />
+         <span>{toastMessage}</span>
+       </Toast>
+     )}
     </HomeContainer>
   );
 }

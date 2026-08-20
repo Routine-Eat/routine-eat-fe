@@ -1,9 +1,11 @@
-   import React, { useRef, useState } from "react";
+  import React, { useRef, useState, useEffect } from "react";
     import { useNavigate, useParams } from "react-router-dom";
     import chevronUpIcon from "../../assets/icons/chevronup.svg";
     import { DUMMY_DISHES } from "../../constants/home/DummyHome.js";
     import BackButton from "../../common/button/BackButton";
      import styled, { keyframes } from "styled-components";
+import { getRecipeDetail } from "@/api/recipe";
+   import { useUserStore } from "../../hooks/useUserStore";
 
  const fadeOutUp = keyframes`
    from { opacity: 1; transform: translateY(0); }
@@ -12,7 +14,6 @@
 
     const PageContainer = styled.div`
     background: #f5f5f6;
-    max-width: 390px;
     margin: 0 auto;
     min-height: 100vh;
     position: relative;
@@ -94,10 +95,57 @@
     export default function HomeCooking() {
     const navigate = useNavigate();
     const { mealId } = useParams();
+    const userLoginNumber = useUserStore((state) => state.userLoginNumber);
     const touchStartY = useRef(null);
     const [isLeaving, setIsLeaving] = useState(false);
 
-    const dish = DUMMY_DISHES[0]; // TODO: mealId 기준으로 실제 요리 데이터 연결
+       const dummyDish = DUMMY_DISHES[0];
+   const [dish, setDish] = useState({
+       name: dummyDish.name,
+       image: dummyDish.image,
+       timeLabel: null,
+   });
+   const [isLoading, setIsLoading] = useState(true);
+
+   useEffect(() => {
+       if (!mealId || !userLoginNumber) {
+           setIsLoading(false);
+           return undefined;
+       }
+
+       let isMounted = true;
+
+       const fetchRecipeDetail = async () => {
+           try {
+               const response = await getRecipeDetail(mealId, {
+                   userNumber: userLoginNumber,
+                   servings: 1,
+               });
+               const payload = response.data ?? response;
+
+               if (!isMounted) return;
+
+               setDish({
+                   name: payload.recipeName ?? dummyDish.name,
+                   image: payload.recipeThumbnailUrl ?? dummyDish.image,
+                   timeLabel:
+                       payload.recipeTimeRequired != null
+                           ? `${payload.recipeTimeRequired}분 소요 예정`
+                           : null,
+               });
+           } catch (error) {
+               console.error("레시피 상세 조회 실패:", error);
+           } finally {
+               if (isMounted) setIsLoading(false);
+           }
+       };
+
+       fetchRecipeDetail();
+
+       return () => {
+           isMounted = false;
+       };
+   }, [mealId, userLoginNumber]);
 
     const handleStartSwipe = () => {
              if (isLeaving) return; // 중복 트리거 방지
@@ -173,11 +221,11 @@
         <StartHint>위로 쓸어올려 레시피 시작</StartHint>
 
         <DishCard>
-            <img className="thumb" src={dish.image} alt="계란 대파 볶음밥" />
-            <div>
-            <div className="dish-name">계란 대파 볶음밥</div>
-            <div className="dish-time">8분 소요 예정</div>
-            </div>
+                       <img className="thumb" src={dish.image} alt={dish.name} />
+           <div>
+           <div className="dish-name">{isLoading ? "불러오는 중..." : dish.name}</div>
+           {dish.timeLabel && <div className="dish-time">{dish.timeLabel}</div>}
+           </div>
         </DishCard>
 
         <ChevronStack>

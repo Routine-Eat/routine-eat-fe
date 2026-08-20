@@ -127,7 +127,7 @@ export const THEME_CARDS = [
     id: "one-ingredient",
     icon: liftingIcon,
     title: "한 가지 재료 털기",
-    desc: ["한 재료를 세 끼에", "다양하게 써요"],
+    desc: ["한 재료를 세 끼에 ", "다양하게 써요"],
   },
   {
     id: "skill-up",
@@ -139,7 +139,7 @@ export const THEME_CARDS = [
     id: "max-ingredient",
     icon: sparkleIcon,
     title: "재료 최대치 활용",
-    desc: ["집에 있는 재료를 먼저", "써서 추가 구매를 줄여요"],
+    desc: ["집에 있는 재료를 먼저 ", "써서 추가 구매를 줄여요"],
   },
 ];
 

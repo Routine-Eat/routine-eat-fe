@@ -1027,6 +1027,27 @@ const CarouselArrowButton = styled.button`
    height: 40px;
  `;
 
+ const RecipeCardLoadingBox = styled.div`
+   margin: 28px auto 0;
+   width: 216px;
+   min-height: 288px;
+   border-radius: 30px;
+   background: linear-gradient(148deg, #fff6b4 14%, #fffbe1 44%, #ffeca0 57%, #fff6b4 80%);
+   box-shadow: 0px 0px 20px 0px rgba(72, 28, 0, 0.15), 0px 0px 10px 0px rgba(72, 28, 0, 0.04);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+ `;
+
+ const ThemeGridLoadingBox = styled.div`
+   margin-top: 32px;
+   width: 100%;
+   min-height: 304px;
+   display: flex;
+   align-items: center;
+   justify-content: center;
+ `;
+
 export default function Home() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1053,8 +1074,10 @@ export default function Home() {
  const carouselPressedIndexRef = useRef(null);
 
     const [recommendedDish, setRecommendedDish] = useState(null);
+    const [isRecipeCardLoading, setIsRecipeCardLoading] = useState(true);
     const [ownedIngredients, setOwnedIngredients] = useState([]); // 실제 보유 재료 목록
   const [mealPlanRecommendations, setMealPlanRecommendations] = useState(null);
+  const [isThemeLoading, setIsThemeLoading] = useState(true);
      const [isToastVisible, setIsToastVisible] = useState(false);
    const [toastMessage, setToastMessage] = useState("");
 
@@ -1066,7 +1089,8 @@ export default function Home() {
        console.log("추천 레시피 응답:", res);
        setRecommendedDish(res.data);
      })
-      .catch((err) => console.error("추천 레시피 조회 실패:", err));
+            .catch((err) => console.error("추천 레시피 조회 실패:", err))
+      .finally(() => setIsRecipeCardLoading(false));
   }, [userId]);
 
   useEffect(() => {
@@ -1074,9 +1098,11 @@ export default function Home() {
 
     getAiMealPlanRecommendation(userId)
       .then((res) => {
+        console.log("mealPlan 응답 전체:", res.data ?? res);
         setMealPlanRecommendations(res.data ?? res);
       })
-      .catch((err) => console.error("AI 목적별 식단 추천 조회 실패:", err));
+        .catch((err) => console.error("AI 목적별 식단 추천 조회 실패:", err))
+      .finally(() => setIsThemeLoading(false));
   }, [userId]);
 
     useEffect(() => {
@@ -1309,6 +1335,12 @@ useEffect(() => {
         <>
           <Title>오늘 만들기 좋은 한 끼예요</Title>
           <Subtitle>집에 있는 재료와 요리 경험을 반영했어요.</Subtitle>
+
+          {isRecipeCardLoading && (
+  <RecipeCardLoadingBox>
+    <LoadingSpinner src={loaderIcon} alt="로딩 중" />
+  </RecipeCardLoadingBox>
+)}
           
 {recommendedDish && (
    (() => {
@@ -1450,10 +1482,21 @@ useEffect(() => {
       <ThemeSectionTitle>오늘 시작하기 좋은 세 끼 식단이에요</ThemeSectionTitle>
       <ThemeSectionSubtitle>집에 있는 재료와 선호도, 경험을 반영했어요.</ThemeSectionSubtitle>
 
+           {isThemeLoading ? (
+       <ThemeGridLoadingBox>
+         <LoadingSpinner src={loaderIcon} alt="로딩 중" />
+       </ThemeGridLoadingBox>
+     ) : (
+
       <ThemeGrid>
-        {THEME_CARDS.map((theme) => {
+        {mealPlanRecommendations && THEME_CARDS.map((theme) => {
                    const recommendation = mealPlanRecommendations?.[THEME_TO_AI_KEY[theme.id]] ?? null;
          const desc = theme.desc;
+
+                 // 데이터 로딩은 됐는데 해당 테마 추천이 없으면(null) 카드 자체를 숨김
+        if (!recommendation) {
+          return null;
+        }
 
          const descFullText = desc.join(" ");
          const descFontSize = getThemeDescFontSize(descFullText);
@@ -1478,6 +1521,7 @@ useEffect(() => {
           );
         })}
       </ThemeGrid>
+      )}
 
       {isIngredientModalOpen && (
                <ModalOverlay $closing={isIngredientModalClosing} onClick={closeIngredientModal}>

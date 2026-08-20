@@ -12,6 +12,7 @@ import BottomFixedButton from "../../common/button/BottomFixedButton";
 import { getAiMealPlanRecommendation, postUserMealPlan } from "../../api/mealPlanApi";
 import { useUserStore } from "../../hooks/useUserStore";
 import { useCookingStore } from "../../hooks/useCookingStore";
+import loaderIcon from "@/common/loader.svg";
 
 const THEME_TO_AI_KEY = {
   "skill-up": "practice",
@@ -39,7 +40,7 @@ const mapAiMenus = (menus) =>
     time: `${item.timeRequired ?? 0}분 소요`,
     cost: `예상 재료비 ${Number(item.price ?? 0).toLocaleString()}원`,
     difficulty: parseDifficulty(item.difficultyLevel),
-    image: eggFoodImg,
+    image: item.menuThumbnailUrl || eggFoodImg,
     matchRate: item.sameRate ?? null,
   }));
 
@@ -65,7 +66,6 @@ const mapAiMenus = (menus) =>
 
 const PageContainer = styled.div`
 background: #fffdfc;
-max-width: 390px;
 margin: 0 auto;
 min-height: 100vh;
 padding: 0 24px 100px;
@@ -133,7 +133,6 @@ flex-shrink: 0;
 width: 124px;
 height: 124px;
 border-radius: 18px;
-background: #f1f1f1;
 display: flex;
 align-items: center;
 justify-content: center;
@@ -141,9 +140,9 @@ overflow: hidden;
 }
 
 .thumb{
-width: 99px;
-height: 100px;
-border-radius: 50%;
+width: 100%;
+height: 100%;
+border-radius: 18px;
 object-fit: cover;
 box-shadow: 0px 0px 10px 0px rgba(61, 32, 0, 0.05), 0px 0px 40px 0px rgba(110, 58, 0, 0.13);
 }
@@ -355,6 +354,21 @@ const StartButtonPress = styled.div`
   }
 `;
 
+const LoadingOverlay = styled.div`
+   position: fixed;
+   inset: 0;
+   background: rgba(255, 255, 255, 0.7);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   z-index: 400;
+ `;
+
+ const LoadingSpinner = styled.img`
+   width: 40px;
+   height: 40px;
+ `;
+
 export default function HomeMenu() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -365,6 +379,7 @@ export default function HomeMenu() {
 
   const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
   const [recommendation, setRecommendation] = useState(location.state?.recommendation ?? null);
+  const [isLoading, setIsLoading] = useState(!location.state?.recommendation);
   const menuDishes = mapAiMenus(recommendation?.menus);
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
   const [isModalClosing, setIsModalClosing] = useState(false);
@@ -383,18 +398,23 @@ export default function HomeMenu() {
   useEffect(() => {
     if (location.state?.recommendation) {
       setRecommendation(location.state.recommendation);
+      setIsLoading(false);
       return undefined;
     }
     if (!userId) return undefined;
 
     const fetchRecommendation = async () => {
+      setIsLoading(true);
       try {
         const response = await getAiMealPlanRecommendation(userId);
         const payload = response.data ?? response;
+        console.log("AI 목적별 식단 추천 응답:", payload);
         setRecommendation(payload?.[THEME_TO_AI_KEY[mealId]] ?? null);
       } catch (error) {
         console.error("AI 목적별 식단 추천 조회 실패:", error);
-      }
+           } finally {
+       setIsLoading(false);
+     }
     };
 
     fetchRecommendation();
@@ -525,6 +545,11 @@ export default function HomeMenu() {
           </StartModalSheet>
         </StartModalOverlay>
       )}
+           {isLoading && (
+       <LoadingOverlay>
+         <LoadingSpinner src={loaderIcon} alt="로딩 중" />
+       </LoadingOverlay>
+     )}
     </PageContainer>
   );
 }

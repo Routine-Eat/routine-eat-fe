@@ -134,6 +134,25 @@ const RecipeListHeading = styled.p`
 const StartButtonWrap = styled.div`
   & > button {
     margin-top: 24px !important;
+    transition:
+      transform 100ms ease,
+      background-color 100ms ease,
+      color 100ms ease,
+      font-size 100ms ease;
+    transform-origin: center;
+  }
+
+  & > button:active:not(:disabled) {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & > button {
+      transition: none;
+    }
   }
 `;
 
@@ -365,6 +384,33 @@ const BoughtActionButton = styled.button`
   letter-spacing: -0.16px;
   background: ${({ $variant }) => ($variant === "confirm" ? "#96D960" : "#f5f5f6")};
   color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  ${({ $variant }) =>
+    $variant === "confirm"
+      ? `
+    &:active {
+      background: #36a73c;
+      color: #c6f5a6;
+      font-size: 15px;
+      transform: scale(0.97);
+    }
+  `
+      : ""}
+
+  ${({ $pressed, $variant }) =>
+    $pressed && $variant === "confirm"
+      ? `
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 15px;
+    transform: scale(0.97);
+  `
+      : ""}
 `;
 
 const toastFade = `
@@ -431,6 +477,7 @@ export default function HomeDietStart() {
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [isStopModalOpen, setIsStopModalOpen] = useState(false);
+  const [stopPressed, setStopPressed] = useState(false);
 
   useEffect(() => {
     if (!isMealPlanId || !userId) return undefined;
@@ -628,7 +675,17 @@ export default function HomeDietStart() {
               >
                 취소
               </BoughtActionButton>
-              <BoughtActionButton $variant="confirm" onClick={handleStopDiet}>
+              <BoughtActionButton
+                $variant="confirm"
+                $pressed={stopPressed}
+                onClick={() => {
+                  setStopPressed(true);
+                  window.setTimeout(() => {
+                    handleStopDiet();
+                    setStopPressed(false);
+                  }, 120);
+                }}
+              >
                 중단하기
               </BoughtActionButton>
             </BoughtActions>

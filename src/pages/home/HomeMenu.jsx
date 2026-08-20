@@ -331,6 +331,30 @@ const StartModalButton = styled.button`
   color: #444;
 `;
 
+const StartButtonPress = styled.div`
+  > button {
+    transition:
+      transform 100ms ease,
+      background-color 100ms ease,
+      color 100ms ease,
+      font-size 100ms ease;
+    transform-origin: center;
+  }
+
+  > button:active:not(:disabled) {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: translateX(-50%) scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    > button {
+      transition: none;
+    }
+  }
+`;
+
 export default function HomeMenu() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -462,9 +486,11 @@ export default function HomeMenu() {
         ))}
       </RecipeList>
 
-              <BottomFixedButton onClick={handleStartClick}>
-        식단 시작하기
-      </BottomFixedButton>
+      <StartButtonPress>
+        <BottomFixedButton onClick={handleStartClick}>
+          식단 시작하기
+        </BottomFixedButton>
+      </StartButtonPress>
             {isStartModalOpen && (
                <StartModalOverlay $closing={isModalClosing} onClick={closeStartModal}>
          <StartModalSheet $closing={isModalClosing} onClick={(e) => e.stopPropagation()}>

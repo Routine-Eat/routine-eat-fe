@@ -61,6 +61,12 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
 
   const [qty, setQty] = useState('');
   const [skipQty, setSkipQty] = useState(false);
+  const [confirmPressed, setConfirmPressed] = useState(false);
+
+  const pressConfirmButton = () => {
+    setConfirmPressed(true);
+    window.setTimeout(() => setConfirmPressed(false), 120);
+  };
 
   const isIngredient = type === 'ingredient';
   const isSeasoning = type === 'seasoning';
@@ -314,7 +320,12 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
               수량입력 안할래요
             </SkipRow>
 
-            <ConfirmBtn type="button" onClick={confirmQty}>
+            <ConfirmBtn
+              type="button"
+              $pressed={confirmPressed}
+              onPointerDown={pressConfirmButton}
+              onClick={confirmQty}
+            >
               입력완료
             </ConfirmBtn>
           </>
@@ -374,7 +385,9 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
             <ConfirmBtn
               type="button"
               $disabled={!draft.length}
+              $pressed={confirmPressed}
               disabled={!draft.length}
+              onPointerDown={pressConfirmButton}
               onClick={confirmRegister}
             >
               {draft.length ? `등록완료(${draft.length})` : '확인'}
@@ -549,6 +562,31 @@ const ConfirmBtn = styled.button`
   font-weight: 600;
   letter-spacing: -0.18px;
   cursor: ${({ $disabled }) => ($disabled ? 'default' : 'pointer')};
+  transform-origin: center;
+  touch-action: manipulation;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+  will-change: transform;
+
+  &:active:not(:disabled) {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  }
+
+  ${({ $pressed, $disabled }) =>
+    $pressed && !$disabled
+      ? `
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  `
+      : ''}
 `;
 
 const BackBtn = styled.button`

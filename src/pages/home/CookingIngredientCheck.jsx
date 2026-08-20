@@ -126,11 +126,28 @@ const ActionButton = styled.button`
   letter-spacing: -0.18px;
   background: ${({ $variant }) => ($variant === "primary" ? "#96D960" : "#e9e9e9")};
   color: ${({ $variant }) => ($variant === "primary" ? "#ffffff" : "#5a5a5b")};
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
 
    &:disabled {
    opacity: 0.6;
    cursor: not-allowed;
  }
+
+  ${({ $variant }) =>
+    $variant === "primary"
+      ? `
+    &:active:not(:disabled) {
+      background: #36a73c;
+      color: #c6f5a6;
+      font-size: 17px;
+      transform: scale(0.97);
+    }
+  `
+      : ""}
 `;
 
 const ReflectedModalOverlay = styled.div`
@@ -210,6 +227,18 @@ const ReflectedConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.16px;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 15px;
+    transform: scale(0.97);
+  }
 `;
 
 const CompleteModalOverlay = styled.div`
@@ -291,6 +320,18 @@ const CompleteConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.16px;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 15px;
+    transform: scale(0.97);
+  }
 `;
 
 
@@ -419,6 +460,18 @@ const SheetConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.18px;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  }
 `;
 
 /* ---- 2단계: 개별 재료 수량 입력 (node 1699:6462) ---- */
@@ -524,6 +577,18 @@ const DetailConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.18px;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  }
 `;
 
 /* "200G" / "1" -> 200 / 1. Secondary 단위·수량은 사용하지 않음 */

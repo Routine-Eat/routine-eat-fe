@@ -173,6 +173,18 @@ const StartBtn = styled.button`
   letter-spacing: -0.16px;
   color: #fff;
   cursor: pointer;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 15px;
+    transform: scale(0.97);
+  }
 `;
 
 /* —— 부족 재료 딤: 하단 정렬 —— */

@@ -821,6 +821,23 @@ const CompleteActionButton = styled.button`
   letter-spacing: -0.16px;
   background: ${({ $variant }) => ($variant === "confirm" ? "#96D960" : "#f5f5f6")};
   color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  ${({ $variant }) =>
+    $variant === "confirm"
+      ? `
+    &:active {
+      background: #36a73c;
+      color: #c6f5a6;
+      font-size: 15px;
+      transform: scale(0.97);
+    }
+  `
+      : ""}
 `;
 
 export default function HomeCookingStep() {

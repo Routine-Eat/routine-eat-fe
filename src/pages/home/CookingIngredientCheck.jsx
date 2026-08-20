@@ -16,7 +16,6 @@ import forkKnifeImg from "../../assets/images/forkKnife.svg";
 
 const PageContainer = styled.div`
   background: #fffefd;
-  max-width: 390px;
   margin: 0 auto;
   min-height: 100vh;
   position: relative;

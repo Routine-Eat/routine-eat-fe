@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { useUserStore } from "../../hooks/useUserStore";
 import starFilledIcon from "../../assets/icons/StarFilled.svg";
 import starEmptyIcon from "../../assets/icons/StarEmpty.svg";
@@ -22,6 +22,7 @@ import { getAiRecommendedRecipe, postAiRecipeRecommendAgain } from "../../api/re
 import { getAiMealPlanRecommendation } from "../../api/mealPlanApi";
 import carouselArrowIcon from "../../assets/icons/carouselArrow.svg";
 import { getIngredientIcon } from "@/constants/iconsMap";
+import arrowRightIcon from "../../assets/icons/arrowRight.svg";
 
 const ENERGY_OPTIONS = ["의욕 없음", "보통", "의욕 넘침"];
 
@@ -83,7 +84,6 @@ const DIFFICULTY_LABELS = [
 
 const HomeContainer = styled.div`
 background: #fffefd;
-max-width: 390px;
 margin: 0 auto;
 padding: 0 24px 40px;
 overflow-x: hidden;
@@ -169,6 +169,7 @@ letter-spacing: -0.4px;
    width: 16px;
    height: 16px;
    display: block;
+   margin-top: 2px;
  }
 
 `;
@@ -188,7 +189,7 @@ margin: 0;
 `;
 
 const ToggleClosed = styled.button`
-margin-top: 20px;
+margin-top: 36px;
 width: 100%;
 height: 59px;
 border-radius: 15px;
@@ -217,7 +218,7 @@ letter-spacing: -0.16px;
 `;
 
 const ToggleOpenCard = styled.div`
-margin-top: 20px;
+margin-top: 36px;
 width: 100%;
 border-radius: 24px;
 background: white;
@@ -289,12 +290,15 @@ gap: 4px;
 background: #f5f5f6;
 border-radius: 12px;
 padding: 4px;
+align-items: stretch;
+height: 48px;
+box-sizing: border-box;
 `;
 
 const EnergyOption = styled.button`
 flex: 1;
 text-align: center;
-padding: 10px 0;
+padding: 0;
 border-radius: 10px;
 border: none;
 cursor: pointer;
@@ -303,6 +307,16 @@ font-family: Wanted Sans Variable;
 font-weight: 600;
 color: #727272;
 background: transparent;
+height: 100%;
+box-sizing: border-box;
+display: flex;
+align-items: center;
+justify-content: center;
+appearance: none;
+-webkit-appearance: none;
+line-height: 1;
+margin: 0;
+
 
 &.active{
 background: #ffeca0;
@@ -475,7 +489,7 @@ color: #1a1a1a;
 font-size: 18px;
 font-family: Wanted Sans Variable;
 font-weight: 700;
-letter-spacing: -0.36px;
+letter-spacing: -0.4px;
 }
 
 .desc{
@@ -493,27 +507,63 @@ margin: 0;
 }
 `;
 
+ const slideUpModal = keyframes`
+   from { transform: translateY(100%); }
+   to { transform: translateY(0); }
+ `;
+
+ const slideDownModal = keyframes`
+   from { transform: translateY(0); }
+   to { transform: translateY(100%); }
+ `;
+
+ const fadeIn = keyframes`
+   from { opacity: 0; }
+   to { opacity: 1; }
+ `;
+
+ const fadeOut = keyframes`
+   from { opacity: 1; }
+   to { opacity: 0; }
+ `;
+
 const ModalOverlay = styled.div`
 position: fixed;
 inset: 0;
-background: rgba(0, 0, 0, 0.4);
+background: rgba(3, 3, 3, 0.15);
 display: flex;
-align-items: center;
+align-items: flex-end;
 justify-content: center;
 z-index: 100;
-padding: 20px;
+padding: 0 20px;
+animation: ${({ $closing }) => ($closing ? fadeOut : fadeIn)} 0.25s ease forwards;
 `;
+
+const ModalHandle = styled.div`
+   position: absolute;
+   top: 8px;
+   left: 50%;
+   transform: translateX(-50%);
+   width: 48px;
+   height: 4px;
+   border-radius: 34px;
+   background: #d9d9da;
+ `;
 
 const ModalBox = styled.div`
 position: relative;
 width: 100%;
-max-width: 350px;
+max-width: 372px;
 max-height: 85vh;
-overflow-y: auto;
 background: white;
 border-radius: 30px;
 box-shadow: 0px 0px 10px 0px rgba(107, 56, 0, 0.06), 0px 0px 40px 0px rgba(97, 51, 0, 0.05);
 padding: 45px 17px 24px;
+ margin-bottom: 20px;
+ box-sizing: border-box;
+ display: flex;
+ flex-direction: column;
+ animation: ${({ $closing }) => ($closing ? slideDownModal : slideUpModal)} 0.3s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 
 .modal-title{
 text-align: center;
@@ -521,6 +571,7 @@ color: #000000;
 font-size: 20px;
 font-family: Pretendard Variable;
 font-weight: 600;
+flex-shrink: 0;
 }
 
 .modal-subtitle{
@@ -530,10 +581,20 @@ color: #888;
 font-size: 15px;
 font-family: Pretendard Variable;
 font-weight: 400;
+flex-shrink: 0;
 }
 
 .ingredient-category{
 margin-top: 24px;
+ flex: 1;
+ min-height: 0;
+ overflow-y: auto;
+ scrollbar-width: none;
+ -ms-overflow-style: none;
+
+ &::-webkit-scrollbar {
+   display: none;
+ }
 
 .category-title{
 color: #6d6d6d;
@@ -547,6 +608,14 @@ margin-bottom: 12px;
 display: flex;
 flex-wrap: wrap;
 gap: 12px 4px;
+ max-height: 180px;
+ overflow-y: auto;
+ scrollbar-width: none;
+ -ms-overflow-style: none;
+
+ &::-webkit-scrollbar {
+   display: none;
+ }
 }
 }
 
@@ -555,6 +624,7 @@ margin-top: 24px;
 display: flex;
 gap: 8px;
 justify-content: center;
+flex-shrink: 0;
 }
 `;
 
@@ -948,6 +1018,7 @@ export default function Home() {
   const [difficulty, setDifficulty] = useState(4);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isIngredientModalOpen, setIsIngredientModalOpen] = useState(false);
+  const [isIngredientModalClosing, setIsIngredientModalClosing] = useState(false);
   const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
   const [applyPressed, setApplyPressed] = useState(false);
   const [confirmPressed, setConfirmPressed] = useState(false);
@@ -959,6 +1030,8 @@ export default function Home() {
   const [selectedIngredients, setSelectedIngredients] = useState([]);
     const carouselStartXRef = useRef(0);
   const carouselDraggingRef = useRef(false);
+   const carouselMovedRef = useRef(false);
+ const carouselPressedIndexRef = useRef(null);
 
     const [recommendedDish, setRecommendedDish] = useState(null);
     const [ownedIngredients, setOwnedIngredients] = useState([]); // 실제 보유 재료 목록
@@ -997,7 +1070,7 @@ export default function Home() {
             id: item.foodIngredientId,       // 서버가 이해하는 진짜 숫자 ID
             name: item.foodIngredientName,
             qty: item.primaryAmountValue != null
-              ? `${item.primaryAmountValue}${item.foodIngredientPrimaryUnit}`
+               ? `${item.primaryAmountValue}${item.foodIngredientPrimaryUnit?.toLowerCase()}`
               : "",
             icon: getIngredientIcon(item.foodIngredientName, item.foodIngredientType),
           }))
@@ -1033,12 +1106,20 @@ useEffect(() => {
   };
 
   const handleApply = () => {
-    setIsIngredientModalOpen(false);
+    closeIngredientModal();
   };
 
   const handleCancel = () => {
-    setIsIngredientModalOpen(false);
+    closeIngredientModal();
   };
+
+   const closeIngredientModal = () => {
+   setIsIngredientModalClosing(true);
+   setTimeout(() => {
+     setIsIngredientModalOpen(false);
+     setIsIngredientModalClosing(false);
+   }, 300); // ModalBox 애니메이션 시간과 맞춤
+ };
 
     const handleConfirmRecommend = () => {
     setIsConfirmModalOpen(false);
@@ -1072,13 +1153,16 @@ useEffect(() => {
     carouselDraggingRef.current = true;
     setIsCarouselDragging(true);
     carouselStartXRef.current = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
+    carouselMovedRef.current = false;
     e.currentTarget.setPointerCapture?.(e.pointerId);
   };
 
   const handleCarouselPointerMove = (e) => {
     if (!carouselDraggingRef.current) return;
     const clientX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
-    setCarouselDragX(clientX - carouselStartXRef.current);
+       const dx = clientX - carouselStartXRef.current;
+   if (Math.abs(dx) > 5) carouselMovedRef.current = true;
+   setCarouselDragX(dx);
   };
 
   const endCarouselDrag = () => {
@@ -1090,8 +1174,17 @@ useEffect(() => {
       goToCarouselIndex(carouselIndex + 1);
     } else if (carouselDragX >= CAROUSEL_SWIPE_THRESHOLD) {
       goToCarouselIndex(carouselIndex - 1);
+         } else if (!carouselMovedRef.current && carouselPressedIndexRef.current != null) {
+    const pressedIndex = carouselPressedIndexRef.current;
+     if (pressedIndex === carouselIndex) {
+       const dish = recommendedDishes[pressedIndex];
+       if (dish?.menuId) navigate(`/recipes/${dish.menuId}`);
+     } else {
+      goToCarouselIndex(pressedIndex);
+     }
     }
     setCarouselDragX(0);
+    carouselPressedIndexRef.current = null;
   };
 
    // 트랙패드 두 손가락 좌우 스와이프 대응
@@ -1172,7 +1265,9 @@ useEffect(() => {
                     $scale={scale}
                     $active={isActive}
                     $dragging={isCarouselDragging}
-                    onClick={() => !isCarouselDragging && goToCarouselIndex(index)}
+                     onPointerDown={() => {
+                    carouselPressedIndexRef.current = index;
+                  }}
                   >
                                         <CarouselThumbBox>
                       <img src={dish.menuThumbnailUrl || recipeImg} alt={dish.menuName} />
@@ -1206,7 +1301,10 @@ useEffect(() => {
                 alt={recommendedDish.menuName}
               />
             </RecipeThumbBox>
-            <RecipeName>{recommendedDish.menuName} →</RecipeName>
+                       <RecipeName>
+             {recommendedDish.menuName}
+             <img className="arrow-icon" src={arrowRightIcon} alt="" />
+           </RecipeName>
             <RecipeDesc $compact={isCompact}>
               <p>{recommendedDish.reason}</p>
             </RecipeDesc>
@@ -1361,8 +1459,9 @@ useEffect(() => {
       </ThemeGrid>
 
       {isIngredientModalOpen && (
-        <ModalOverlay onClick={handleCancel}>
-          <ModalBox onClick={(e) => e.stopPropagation()}>
+               <ModalOverlay $closing={isIngredientModalClosing} onClick={closeIngredientModal}>
+         <ModalBox $closing={isIngredientModalClosing} onClick={(e) => e.stopPropagation()}>
+            <ModalHandle />
             <div className="modal-title">원하는 재료 선택하기</div>
             <div className="modal-subtitle">보유한 재료 중 최대 3개까지 선택가능</div>
 
@@ -1377,6 +1476,11 @@ useEffect(() => {
                     $selected={selectedIngredients.includes(item.id)}
                     onClick={() => toggleIngredient(item.id)}
                   >
+                                       {item.icon && (
+                     <span className="chip-icon">
+                       <img src={item.icon} alt="" />
+                     </span>
+                   )}
                     <span className="chip-name">{item.name}</span>
                    <span className="chip-qty">{item.qty}</span>
                   </IngredientChip>

@@ -15,6 +15,7 @@ import { useCookingStore } from "../../hooks/useCookingStore";
    getCookingSessionAiHistory,
    postCookingSessionAi,
    getCurrentCookingStepTitles,
+   patchMoveToLastCookingStep,
  } from "../../api/cookingRecord";
 import styled, { keyframes } from "styled-components";
 import chevronNavIcon from "../../assets/icons/chevronNavIcon.svg";
@@ -39,7 +40,7 @@ background: #444;
 margin: 0 auto;
 min-height: 100vh;
 position: relative;
-padding-bottom: 60px;
+padding-bottom: 100px;
 animation: ${slideUp} 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 `;
 
@@ -245,6 +246,13 @@ box-shadow: 0px 0px 10px 0px rgba(3, 3, 3, 0.03), 0px 0px 40px 0px rgba(3, 3, 3,
 padding: 24px 28px 32px;
 overflow: hidden;
 position: relative;
+max-height: calc(100vh - 428px);
+overflow-y: auto;
+scrollbar-width: none;
+
+&::-webkit-scrollbar {
+  display: none;
+}
 .step-count{
 text-align: right;
 color: #5a5a5b;
@@ -538,6 +546,26 @@ height: 20px;
 }
 `;
 
+const GoToLastButton = styled.button`
+position: fixed;
+bottom: 20px;
+left: 50%;
+transform: translateX(-50%);
+width: 151px;
+height: 38px;
+border-radius: 14px;
+background: #f5f5f6;
+border: none;
+cursor: pointer;
+color: 700;
+font-size: 14px;
+font-family: Pretendard Variable;
+font-weight: 500;
+letter-spacing: -0.16px;
+z-index: 10;
+box-shadow: 0px 0px 10px 0px rgba(3, 3, 3, 0.08);
+`;
+
 const TutorialOverlay = styled.div`
 position: absolute;
 inset: 0;
@@ -697,6 +725,19 @@ const VoiceHintText = styled.div`
   }
 `;
 
+ const TopHintText = styled.div`
+   text-align: right;
+   color: #ffeca0;
+   font-size: 14px;
+   font-family: Wanted Sans Variable;
+   font-weight: 600;
+   line-height: 1.2;
+
+   p {
+     margin: 0;
+   }
+ `;
+
 const VoiceCapabilities = styled.div`
   position: absolute;
   top: 50%;
@@ -855,10 +896,12 @@ export default function HomeCookingStep() {
  const ANIM_DURATION = 900;
   const [stepTitles, setStepTitles] = useState([]); // [{ stepLevel, stepTitle }, ...]
     const [isDetailOpen, setIsDetailOpen] = useState(false);
-  const [isExampleImageOpen, setIsExampleImageOpen] = useState(false);
+  const [isExampleImageOpen, setIsExampleImageOpen] = useState(false);  
   const [isCompleteModalOpen, setIsCompleteModalOpen] = useState(false);
   const [isListening, setIsListening] = useState(false);
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+    const [hasSeenHistoryHint, setHasSeenHistoryHint] = useState(false);
+     const [hasUsedVoice, setHasUsedVoice] = useState(false);
   const longPressTimerRef = useRef(null);
   const longPressFiredRef = useRef(false);
     const [historyHeight, setHistoryHeight] = useState(null); // null이면 기본(80vh)
@@ -1151,6 +1194,7 @@ const parseMultipartAiResponse = (res) => {
       longPressFiredRef.current = true;
       setHistoryHeight(HISTORY_MIN_HEIGHT);
       setIsHistoryOpen(true);
+           setHasUsedVoice(true);
       fetchAiHistory(1, false);
     }, 500);
   };
@@ -1161,24 +1205,16 @@ const parseMultipartAiResponse = (res) => {
       longPressTimerRef.current = null;
     }
     if (!longPressFiredRef.current) {
-           setIsListening((prev) => {
-       const next = !prev;
-       if (next) {
-                  if (!isRecognizingRef.current) {
-           try {
-             recognitionRef.current?.start();
-             isRecognizingRef.current = true;
-           } catch (err) {
-             console.error("음성 인식 시작 실패:", err);
-           }
-         }
-       } else {
-                  if (isRecognizingRef.current) {
-           recognitionRef.current?.stop();
-         }
+           if (!isRecognizingRef.current) {
+       try {
+         recognitionRef.current?.start();
+         isRecognizingRef.current = true;
+         setIsListening(true);
+         setHasUsedVoice(true);
+       } catch (err) {
+         console.error("음성 인식 시작 실패:", err);
        }
-       return next;
-     });
+     }
     }
   };
 
@@ -1297,16 +1333,16 @@ const parseMultipartAiResponse = (res) => {
               <span className="title">{step.title}</span>
      </div>
      <div className="body">
-       <p style={{ margin: 0 }}>{step.content}</p>
+       <p style={{ margin: 0 }}>{formatWholeNumbers(step.content)}</p>
      </div>
-     {step.subContent && <p className="tip">{step.subContent}</p>}
+     {step.subContent && <p className="tip">{formatWholeNumbers(step.subContent)}</p>}
      {step.tips?.length > 0 && (
        <span className="link">{step.tips[0].cookingTipTitle}</span>
      )}
      <div className="ingredient-tags">
        {step.foodIngredients?.map((ing) => (
          <span className="tag" key={ing.cookingRecordFoodIngredientId}>
-           {ing.name} {ing.primaryAmountValue}{ing.primaryUnit}
+                  {ing.name} {ing.primaryAmountValue ?? ing.primaryUsedAmountValue}{(ing.primaryUnit ?? ing.secondaryUnit ?? "").toLowerCase()}
          </span>
        ))}
      </div>
@@ -1324,11 +1360,25 @@ const parseMultipartAiResponse = (res) => {
        ?.filter((tip) => tip.cookingTipType === "TEXT")
        .map((tip, i) => (
          <div className="detail-section" key={i}>
-           <p className="detail-body">{tip.cookingTipContent}</p>
-         </div>
+             <p className="detail-body">{formatWholeNumbers(tip.cookingTipContent)}</p> 
+                </div>
        ))}
    </>
  );
+
+  
+ // "40.0그램" -> "40g" 처럼, 소수점 0 제거 + 단위를 축약형으로 변환
+ const formatWholeNumbers = (text) => {
+   if (!text) return text;
+   let result = text.replace(/(\d+)\.0(?=\D|$)/g, "$1");
+   result = result
+     .replace(/그램/g, "g")
+     .replace(/밀리리터/g, "ml")
+     .replace(/리터/g, "L")
+     .replace(/큰술/g, "T")
+     .replace(/작은술/g, "t");
+   return result;
+ };
 
   const handleGoBackStep = () => {
     if (isFirstStep) return;
@@ -1339,7 +1389,10 @@ const parseMultipartAiResponse = (res) => {
       navigate(-1);
     } else {
            postPrevCookingStep(cookingRecordId, userLoginNumber)
-       .then((res) => setCookingStepData(res.data))
+              .then((res) => {
+         console.log("단계 전환 응답:", res.data);
+         setCookingStepData(res.data);
+       })
        .catch((err) => console.error("이전 단계 이동 실패:", err));
     }
   };
@@ -1356,9 +1409,22 @@ const parseMultipartAiResponse = (res) => {
        .catch((err) => console.error("요리 완료 처리 실패:", err));
     } else {
            postNextCookingStep(cookingRecordId, userLoginNumber)
-       .then((res) => setCookingStepData(res.data))
+              .then((res) => {
+         console.log("단계 전환 응답:", res.data);
+         setCookingStepData(res.data);
+       })
        .catch((err) => console.error("다음 단계 이동 실패:", err));
     }
+  };
+
+  const handleGoToLastStep = () => {
+    if (!cookingRecordId || !userLoginNumber || isLastStep) return;
+    captureOutgoing();
+    setDirection("next");
+    setAnimKey((k) => k + 1);
+    patchMoveToLastCookingStep(cookingRecordId, userLoginNumber)
+      .then((res) => setCookingStepData(res.data))
+      .catch((err) => console.error("마지막 단계로 이동 실패:", err));
   };
 
   const handleTouchStart = (e) => {
@@ -1533,7 +1599,17 @@ const parseMultipartAiResponse = (res) => {
       <TopBar>
         <BackButton onClick={() => navigate(-1)} />
                 <MicGroup>
-          {isListening && <VoiceWaveIcon src={micMoveIcon} alt="" />}
+                                    {isListening && (
+           <TopHintText>
+             <p>음성 인식 중...</p>
+           </TopHintText>
+         )}
+         {!isListening && !hasUsedVoice && (
+           <TopHintText>
+             <p>꾹 눌러</p>
+             <p>대화내역 보기</p>
+           </TopHintText>
+         )}
                     <MicCircle
             onMouseDown={handleMicPressStart}
             onMouseUp={handleMicPressEnd}
@@ -1607,16 +1683,18 @@ const parseMultipartAiResponse = (res) => {
               </button>
             )}
             {isExampleImageOpen &&
-              currentStep.tips
-                ?.filter((tip) => tip.cookingTipType === "IMAGE")
-                .map((tip, i) => (
-                  <img
-                    key={i}
-                    className="example-image"
-                    src={tip.cookingTipContent}
-                    alt={tip.cookingTipTitle}
-                  />
-                ))}
+                           
+                            currentStep.tips
+               ?.filter((tip) => tip.cookingTipType === "IMAGE")
+               .map((tip, i) => (
+                 <img
+                   key={i}
+                   className="example-image"
+                   src={tip.cookingTipContent}
+                   alt={tip.cookingTipTitle}
+                 />
+               ))}
+                {isExampleImageOpen && <div style={{ height: 100 }} />}
           </StepContent>
          </StepCard>
        )}
@@ -1636,9 +1714,9 @@ const parseMultipartAiResponse = (res) => {
               <span className="title">{currentStep.title}</span>
             </div>
             <div className="body">
-              <p style={{ margin: 0 }}>{currentStep.content}</p>
+               <p style={{ margin: 0 }}>{formatWholeNumbers(currentStep.content)}</p>
             </div>
-            {currentStep.subContent && <p className="tip">{currentStep.subContent}</p>}
+             {currentStep.subContent && <p className="tip">{formatWholeNumbers(currentStep.subContent)}</p>}
             {currentStep.tips?.length > 0 && (
               <button
                 className="link"
@@ -1656,7 +1734,7 @@ const parseMultipartAiResponse = (res) => {
             <div className="ingredient-tags">
               {currentStep.foodIngredients?.map((ing) => (
                 <span className="tag" key={ing.cookingRecordFoodIngredientId}>
-                  {ing.name} {ing.primaryAmountValue}{ing.primaryUnit}
+                  {ing.name} {ing.primaryAmountValue ?? ing.primaryUsedAmountValue}{(ing.primaryUnit ?? ing.secondaryUnit ?? "").toLowerCase()}
                 </span>
               ))}
             </div>
@@ -1681,13 +1759,23 @@ const parseMultipartAiResponse = (res) => {
             <img className="arrow" src={chevronRightIcon} alt="" />
           </CompleteButton>
         )}
+
+               
       </CardStack>
 
-      {showDownHint && (
+      {showDownHint && 
+      
+      (
         <NavHint $direction="down">
           <img src={chevronNavIcon} alt="" />
         </NavHint>
       )}
+
+           {cookingStepData && !isLastStep && (
+       <GoToLastButton onClick={handleGoToLastStep}>
+         마지막 단계로 이동
+       </GoToLastButton>
+     )}
 
       {tutorialStage === "swipe" && (
         <TutorialOverlay onClick={advanceTutorial}>

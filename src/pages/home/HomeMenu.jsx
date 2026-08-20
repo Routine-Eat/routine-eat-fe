@@ -39,7 +39,7 @@ const mapAiMenus = (menus) =>
     time: `${item.timeRequired ?? 0}분 소요`,
     cost: `예상 재료비 ${Number(item.price ?? 0).toLocaleString()}원`,
     difficulty: parseDifficulty(item.difficultyLevel),
-    image: eggFoodImg,
+    image: item.menuThumbnailUrl || eggFoodImg,
     matchRate: item.sameRate ?? null,
   }));
 
@@ -65,7 +65,6 @@ const mapAiMenus = (menus) =>
 
 const PageContainer = styled.div`
 background: #fffdfc;
-max-width: 390px;
 margin: 0 auto;
 min-height: 100vh;
 padding: 0 24px 100px;
@@ -133,7 +132,6 @@ flex-shrink: 0;
 width: 124px;
 height: 124px;
 border-radius: 18px;
-background: #f1f1f1;
 display: flex;
 align-items: center;
 justify-content: center;
@@ -141,9 +139,9 @@ overflow: hidden;
 }
 
 .thumb{
-width: 99px;
-height: 100px;
-border-radius: 50%;
+width: 100%;
+height: 100%;
+border-radius: 18px;
 object-fit: cover;
 box-shadow: 0px 0px 10px 0px rgba(61, 32, 0, 0.05), 0px 0px 40px 0px rgba(110, 58, 0, 0.13);
 }
@@ -391,6 +389,7 @@ export default function HomeMenu() {
       try {
         const response = await getAiMealPlanRecommendation(userId);
         const payload = response.data ?? response;
+        console.log("AI 목적별 식단 추천 응답:", payload);
         setRecommendation(payload?.[THEME_TO_AI_KEY[mealId]] ?? null);
       } catch (error) {
         console.error("AI 목적별 식단 추천 조회 실패:", error);

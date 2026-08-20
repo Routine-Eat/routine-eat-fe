@@ -34,7 +34,6 @@ import { getRecipeDetail } from "../../api/recipe";
 
 const PageContainer = styled.div`
   background: #fffefd;
-  max-width: 390px;
   margin: 0 auto;
   min-height: 100vh;
   position: relative;

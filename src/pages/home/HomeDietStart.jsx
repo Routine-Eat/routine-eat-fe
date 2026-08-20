@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
 import { getUserMealPlanDetail, patchUserMealPlanStatus } from "../../api/mealPlanApi";
+import { getRecipeDetail } from "@/api/recipe";
  import { DUMMY_DIET_PROGRESS, THEME_CARDS } from "../../constants/home/DummyHome.js";
 import eggFoodImg from "../../assets/images/EggFood.svg";
 import muscleIcon from "../../assets/icons/muscle.svg";
@@ -41,7 +42,6 @@ const mapPlanMenus = (list) =>
 
 const PageContainer = styled.div`
   background: #fffefd;
-  max-width: 390px;
   margin: 0 auto;
   min-height: 100vh;
   padding: 60px 24px 24px;
@@ -191,8 +191,7 @@ const MealRow = styled.div`
     flex-shrink: 0;
     width: 72px;
     height: 72px;
-    border-radius: 14px;
-    background: #f1f1f1;
+    border-radius: 14px;  
     display: flex;
     align-items: center;
     justify-content: center;
@@ -200,9 +199,9 @@ const MealRow = styled.div`
   }
 
   .thumb {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
+       width: 100%;
+   height: 100%;
+   border-radius: 14px;
     object-fit: cover;
     box-shadow: 0px 0px 10px 0px rgba(61, 32, 0, 0.05), 0px 0px 40px 0px rgba(110, 58, 0, 0.13);
   }
@@ -459,6 +458,7 @@ export default function HomeDietStart() {
   const navigate = useNavigate();
   const { mealId } = useParams();
   const userId = useUserStore((state) => state.userId);
+  const userLoginNumber = useUserStore((state) => state.userLoginNumber);
   const setMealPlanContext = useCookingStore((state) => state.setMealPlanContext);
   const setActiveMealPlanId = useCookingStore((state) => state.setActiveMealPlanId);
    const missingIngredientsByMenuId = useCookingStore((state) => state.missingIngredientsByMenuId);
@@ -492,13 +492,32 @@ export default function HomeDietStart() {
         const nextMeals = mapPlanMenus(payload.planMenuList);
         setMeals(nextMeals);
         setSelectedMealId(nextMeals.find((m) => !m.completed)?.id ?? nextMeals[0]?.id ?? null);
+               if (!userLoginNumber) return;
+
+       // API 응답에 이미지가 없어서, 메뉴별로 레시피 상세를 추가 조회해 이미지만 채워넣음
+       const withImages = await Promise.all(
+         nextMeals.map(async (meal) => {
+           try {
+             const detailRes = await getRecipeDetail(meal.id, {
+               userNumber: userLoginNumber,
+               servings: 1,
+             });
+             const detailPayload = detailRes.data ?? detailRes;
+             return { ...meal, image: detailPayload.recipeThumbnailUrl || meal.image };
+           } catch (err) {
+             console.error(`메뉴 ${meal.id} 이미지 조회 실패:`, err);
+             return meal;
+           }
+         })
+       );
+       setMeals(withImages);
       } catch (error) {
         console.error("사용자 식단 상세 조회 실패:", error);
       }
     };
 
     fetchMealPlanDetail();
-  }, [isMealPlanId, userId, mealId]);
+  }, [isMealPlanId, userId, userLoginNumber, mealId]);
 
   const showToast = (message) => {
     setToastMessage(message);

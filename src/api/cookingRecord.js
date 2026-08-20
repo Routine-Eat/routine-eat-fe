@@ -92,3 +92,12 @@ export const getCurrentCookingStep = (cookingRecordId, userNumber) =>
    APIService.public.get(`/cooking-records/current/cooking-steps`, {
      params: { userNumber },
    });
+
+  /* PATCH /cooking-records/{cookingRecordId}/cooking-session/cooking-steps/last
+   마지막 요리 단계로 변경 */
+export const patchMoveToLastCookingStep = (cookingRecordId, userNumber) =>
+  APIService.public.patch(
+    `/cooking-records/${cookingRecordId}/cooking-session/cooking-steps/last`,
+    null,
+    { params: { userNumber } }
+  );

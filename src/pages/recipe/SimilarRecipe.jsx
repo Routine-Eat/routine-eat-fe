@@ -13,18 +13,26 @@ import kimchiInner from '../../assets/recipe/kimchi-2.svg';
 import bagIcon from '../../assets/recipe/shopping-bag.svg';
 import { deleteFavoriteRecipe, postFavoriteRecipe } from '../../api/favoriteRecipe';
 import { getCanCookRecipe, getRecipeDetail } from '../../api/recipe';
+import { getUserFoodIngredients } from '../../api/userApi';
 import BackButton from '../../common/button/BackButton';
 import { useUserStore } from '../../hooks/useUserStore';
-import { addItemsToShopping } from '../../store/shoppingStore';
+import {
+  addItemsToShopping,
+  getCustomOwnedIngredients,
+} from '../../store/shoppingStore';
 import CookStartModal from './CookStartModal';
-import { EMPTY_RECIPE, mapRecipeDetail } from './mapRecipeDetail';
+import {
+  EMPTY_RECIPE,
+  mapRecipeDetail,
+  removeOwnedAdditionalIngredients,
+} from './mapRecipeDetail';
 
 const SERVINGS = ['1인분', '2인분', '3인분'];
 
 function SimilarRecipe() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { userLoginNumber } = useUserStore();
+  const { userId, userLoginNumber } = useUserStore();
   const [recipe, setRecipe] = useState(EMPTY_RECIPE);
   const [similar, setSimilar] = useState([]);
   const [serving, setServing] = useState(SERVINGS[0]);
@@ -48,20 +56,33 @@ function SimilarRecipe() {
 
     const fetchRecipeDetail = async () => {
       try {
-        const response = await getRecipeDetail(id, {
-          userNumber: userLoginNumber,
-          servings: Number.parseInt(serving, 10) || 1,
-        });
-        const mapped = mapRecipeDetail(response.data ?? response);
-        setRecipe(mapped);
-        setSimilar(mapped.similar);
+        const [recipeResponse, ownedResponse] = await Promise.all([
+          getRecipeDetail(id, {
+            userNumber: userLoginNumber,
+            servings: Number.parseInt(serving, 10) || 1,
+          }),
+          userId
+            ? getUserFoodIngredients(userId, 'OWN').catch((error) => {
+                console.error('보유 식재료 조회 실패:', error);
+                return null;
+              })
+            : Promise.resolve(null),
+        ]);
+        const mapped = mapRecipeDetail(recipeResponse.data ?? recipeResponse);
+        const ownedItems = [
+          ...(ownedResponse?.data?.foodIngredientList ?? []),
+          ...getCustomOwnedIngredients(userId),
+        ];
+        const filtered = removeOwnedAdditionalIngredients(mapped, ownedItems);
+        setRecipe(filtered);
+        setSimilar(filtered.similar);
       } catch (error) {
         console.error('레시피 상세 조회 실패:', error);
       }
     };
 
     fetchRecipeDetail();
-  }, [id, userLoginNumber, serving]);
+  }, [id, userId, userLoginNumber, serving]);
 
   const handleStartCooking = async () => {
     if (!id || !userLoginNumber) {
@@ -75,7 +96,14 @@ function SimilarRecipe() {
         servings: Number.parseInt(serving, 10) || 1,
       });
       const payload = response.data ?? response;
-      setCanCook(Boolean(payload.canCook));
+      const canStartImmediately = Boolean(payload.canCook);
+
+      if (canStartImmediately) {
+        navigate(`/cooking/${id}`);
+        return;
+      }
+
+      setCanCook(false);
       setCookOpen(true);
     } catch (error) {
       console.error('요리 가능 여부 조회 실패:', error);
@@ -90,7 +118,7 @@ function SimilarRecipe() {
 
       {/* 스크롤 본문 — 세로 컬럼 */}
       <Scroll>
-        {/* 히어로 — 둥근 회색 사각 + 원형 음식 */}
+        {/* 히어로 — 둥근 회색 사각 + 음식 이미지 */}
         <Hero>
           <HeroImg src={recipe.image} alt={recipe.title} />
         </Hero>
@@ -203,9 +231,10 @@ function SimilarRecipe() {
         {/* 유사 요리 — 제목 + 가로 스크롤 */}
         <SimilarTitle>이 레시피 재료와 유사한 요리</SimilarTitle>
         <SimilarRow>
-          {others.map((item) => (
+          {others.slice(0, 3).map((item) => (
             <SimilarCard key={item.id} onClick={() => navigate(`/similar-recipes/${item.id}`)}>
               <Thumb>
+                {item.image ? <ThumbImg src={item.image} alt="" /> : null}
                 <Heart
                   type="button"
                   aria-label="저장"
@@ -314,15 +343,11 @@ const Hero = styled.div`
   background: #f5f5f6;
 `;
 
-/* —— 히어로 안 원형 음식 사진 —— */
+/* —— 히어로 안 음식 사진: 네모칸을 채움 —— */
 const HeroImg = styled.img`
-  width: 140px;
-  height: 140px;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
-  border-radius: 50%;
-  box-shadow:
-    0 0 10px 0 rgba(61, 32, 0, 0.05),
-    0 0 40px 0 rgba(110, 58, 0, 0.13);
 `;
 
 /* —— 제목 행: 가로 space-between —— */
@@ -645,8 +670,16 @@ const Thumb = styled.div`
   position: relative;
   width: 124px;
   height: 104px;
+  overflow: hidden;
   border-radius: 10px;
   background: #f1f1f1;
+`;
+
+const ThumbImg = styled.img`
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 `;
 
 /* —— 하트 버튼 —— */

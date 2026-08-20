@@ -1,23 +1,34 @@
 import { useEffect, useRef, useState } from 'react';
 import styled from 'styled-components';
 
-/** 장보기 목록 — 기타 항목 추가 모달 */
-function AddShoppingItemModal({ open, onClose, onAdd }) {
+/** 장보기 목록 — 기타 항목 추가·수정 모달 */
+function AddShoppingItemModal({ open, onClose, onAdd, onSave, item = null }) {
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const nameRef = useRef(null);
+  const amountRef = useRef(null);
+  const isEdit = Boolean(item);
+  const isGramOnly = !isEdit || Boolean(item?.isCustom);
 
   useEffect(() => {
     if (!open) return;
-    setName('');
-    setAmount('');
-    const t = setTimeout(() => nameRef.current?.focus(), 0);
+    setName(item?.name ?? '');
+    setAmount(
+      isGramOnly
+        ? String(item?.amount ?? '').replace(/[^0-9.]/g, '')
+        : (item?.amount ?? '')
+    );
+    const t = setTimeout(
+      () => (isEdit ? amountRef.current : nameRef.current)?.focus(),
+      0
+    );
     return () => clearTimeout(t);
-  }, [open]);
+  }, [isEdit, isGramOnly, open, item]);
 
   if (!open) return null;
 
-  const canSubmit = name.trim().length > 0;
+  const canSubmit =
+    name.trim().length > 0 && (!isGramOnly || amount.trim().length > 0);
 
   const close = () => {
     setName('');
@@ -27,7 +38,9 @@ function AddShoppingItemModal({ open, onClose, onAdd }) {
 
   const submit = () => {
     if (!canSubmit) return;
-    onAdd(name.trim(), amount.trim());
+    const savedAmount = isGramOnly ? `${amount.trim()}g` : amount.trim();
+    if (isEdit) onSave?.(item.id, item.name, savedAmount);
+    else onAdd(name.trim(), savedAmount);
     close();
   };
 
@@ -40,8 +53,8 @@ function AddShoppingItemModal({ open, onClose, onAdd }) {
     <Overlay onClick={close}>
       {/* 모달 카드: 가로 312 둥근 직사각형(radius 22) */}
       <Card onClick={(e) => e.stopPropagation()}>
-        <Title>항목 추가</Title>
-        <Desc>기타 목록에 추가돼요</Desc>
+        <Title>{isEdit ? '항목 수정' : '항목 추가'}</Title>
+        <Desc>{isEdit ? '수량만 수정해요' : '기타 목록에 추가돼요'}</Desc>
 
         {/* 입력 — 항목명 / 수량 네모칸 두 개 */}
         <FieldRow>
@@ -50,14 +63,20 @@ function AddShoppingItemModal({ open, onClose, onAdd }) {
             value={name}
             onChange={(e) => setName(e.target.value)}
             onKeyDown={onKeyDown}
+            readOnly={isEdit}
             placeholder="항목 입력"
             maxLength={30}
           />
           <AmountInput
+            ref={amountRef}
             value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            onChange={(e) => {
+              const next = e.target.value;
+              if (!isGramOnly || /^\d*\.?\d*$/.test(next)) setAmount(next);
+            }}
             onKeyDown={onKeyDown}
-            placeholder="수량입력"
+            placeholder={isGramOnly ? '수량(g)' : '수량입력'}
+            inputMode={isGramOnly ? 'decimal' : undefined}
             maxLength={12}
           />
         </FieldRow>
@@ -68,7 +87,7 @@ function AddShoppingItemModal({ open, onClose, onAdd }) {
             취소
           </CancelBtn>
           <AddBtn type="button" $disabled={!canSubmit} onClick={submit}>
-            추가
+            {isEdit ? '수정' : '추가'}
           </AddBtn>
         </Actions>
       </Card>

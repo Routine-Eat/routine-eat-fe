@@ -6,6 +6,7 @@ import styled from 'styled-components';
 import { hasUnreadNotifications, pollNotifications } from '../../api/notificationApi';
 import notificationIcon from '../../assets/header/notification.svg';
 import shoppingBagIcon from '../../assets/header/shopping-bag.svg';
+import BackButton from '../../common/button/BackButton';
 import { useUserStore } from '../../hooks/useUserStore';
 
 const POLL_INTERVAL_MS = 5000;
@@ -37,31 +38,19 @@ function Header({ searchActive = false, onExitSearch }) {
     };
   }, [userLoginNumber]);
 
-  /* 피드 검색 중이면 공통 헤더 클릭 = 검색 닫기 */
-  const exitIfSearching = (e) => {
-    if (!searchActive) return;
-    e.preventDefault();
-    e.stopPropagation();
-    onExitSearch?.();
-  };
-
   return (
     // 공통 상단 헤더 — 피그마 1739:5501
-    <Bar
-      $searchActive={searchActive}
-      onClick={exitIfSearching}
-      role={searchActive ? 'button' : undefined}
-      aria-label={searchActive ? '검색 닫기' : undefined}
-    >
+    <Bar $searchActive={searchActive}>
+      <BackWrap $visible={searchActive} inert={searchActive ? undefined : true}>
+        <BackButton onClick={() => onExitSearch?.()} />
+      </BackWrap>
       <Actions>
-        {/* Frame 293 — 30×30, 에셋이 프레임을 채움 */}
-        <IconLink to="/notifications" aria-label="알림" onClick={exitIfSearching}>
+        <IconLink to="/notifications" aria-label="알림">
           <FullIcon src={notificationIcon} alt="" />
-          {hasUnread && <UnreadDot />}
+          {hasUnread && <UnreadDot aria-hidden />}
         </IconLink>
 
-        {/* tabler:shopping-bag — 30×30, Group inset + stroke overflow */}
-        <IconLink to="/shopping-list" aria-label="장바구니" onClick={exitIfSearching}>
+        <IconLink to="/shopping-list" aria-label="장바구니">
           <BagGroup>
             <BagOverflow>
               <FullIcon src={shoppingBagIcon} alt="" />
@@ -73,16 +62,46 @@ function Header({ searchActive = false, onExitSearch }) {
   );
 }
 
-/* 피그마 아이콘 top 24 / right 20 / gap 8 — 하단 여백만 축소 */
+const SEARCH_TRANSITION = '280ms cubic-bezier(0.22, 1, 0.36, 1)';
+
+/* 피그마 아이콘 top 24 / right 20 / gap 8 — 검색 시 뒤로가기 상단 28px */
 const Bar = styled.header`
   display: flex;
-  align-items: flex-start;
-  justify-content: flex-end;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
   flex-shrink: 0;
-  height: 62px;
-  padding: 24px 20px 0;
+  height: ${({ $searchActive }) => ($searchActive ? '76px' : '62px')};
+  padding: ${({ $searchActive }) => ($searchActive ? '28px 20px 0' : '24px 20px 0')};
   background: #fffefd;
-  cursor: ${({ $searchActive }) => ($searchActive ? 'pointer' : 'default')};
+  transition:
+    height ${SEARCH_TRANSITION},
+    padding ${SEARCH_TRANSITION};
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
+`;
+
+const BackWrap = styled.div`
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-start;
+  width: ${({ $visible }) => ($visible ? '48px' : '0')};
+  height: ${({ $visible }) => ($visible ? '48px' : '0')};
+  overflow: ${({ $visible }) => ($visible ? 'visible' : 'hidden')};
+  opacity: ${({ $visible }) => ($visible ? 1 : 0)};
+  transform: ${({ $visible }) => ($visible ? 'none' : 'scale(0.86)')};
+  transform-origin: left center;
+  pointer-events: ${({ $visible }) => ($visible ? 'auto' : 'none')};
+  transition:
+    opacity ${SEARCH_TRANSITION},
+    transform ${SEARCH_TRANSITION};
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+  }
 `;
 
 const Actions = styled.div`
@@ -110,11 +129,11 @@ const FullIcon = styled.img`
 
 const UnreadDot = styled.span`
   position: absolute;
-  top: 2px;
-  right: 3px;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
+  top: 0;
+  left: 22px;
+  width: 6px;
+  height: 6px;
+  border-radius: 10000px;
   background: #96d960;
 `;
 

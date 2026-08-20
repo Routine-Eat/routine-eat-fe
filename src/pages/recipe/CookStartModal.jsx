@@ -1,21 +1,18 @@
 import styled from 'styled-components';
 
-import chefIcon from '../../assets/recipe/chef.svg';
 import missingIcon from '../../assets/recipe/missing-ingredients.svg';
 
 /** 요리 시작 확인 — 가능: 피그마 1378:6893 / 부족: 피그마 2060:15461 */
 function CookStartModal({
-  title,
   open,
   onClose,
   onStart,
   canCook = true,
   missingIngredients = [],
 }) {
-  if (!open) return null;
+  if (!open || canCook) return null;
 
-  if (!canCook) {
-    return (
+  return (
       // 딤 오버레이: 화면 전체 반투명 사각 — 바텀시트용
       <SheetOverlay onClick={onClose}>
         {/* 바텀시트: 가로 350 둥근 사각(24), 하단 근처 */}
@@ -48,46 +45,8 @@ function CookStartModal({
           </SheetActions>
         </Sheet>
       </SheetOverlay>
-    );
-  }
-
-  return (
-    // 딤 오버레이: 화면 전체를 덮는 반투명 직사각형(고정 레이어)
-    <Overlay onClick={onClose}>
-      {/* 모달 카드: 가로 312 둥근 직사각형(radius 22), 흰 배경 + 회색 테두리 */}
-      <Card onClick={(e) => e.stopPropagation()}>
-        {/* 본문 묶음: 아이콘·텍스트를 세로로 쌓은 직사각형 영역 */}
-        <Body>
-          {/* 아이콘: 40×40 외곽 / 셰프 */}
-          <ChefWrap>
-            <Chef src={chefIcon} alt="" />
-          </ChefWrap>
-          {/* 텍스트 묶음: 제목·설명을 세로로 쌓은 직사각형 */}
-          <Texts>
-            {/* 제목: 두 줄 텍스트 블록(직사각형 텍스트 영역) */}
-            <Title>
-              ‘{title}’
-              <br />
-              요리모드를 시작할까요?
-            </Title>
-            {/* 보조 설명: 한 줄 텍스트 블록 */}
-            <Desc>중간에 이탈하면 기록으로 남지 않아요</Desc>
-          </Texts>
-        </Body>
-        {/* 버튼 행: 가로로 나란한 직사각형 두 개(갭 8) */}
-        <Actions>
-          {/* 취소: 가로 130×세로 48 둥근 직사각형(radius 12), 회색 채움 */}
-          <CancelBtn type="button" onClick={onClose}>
-            취소
-          </CancelBtn>
-          {/* 시작: 가로 130×세로 48 둥근 직사각형(radius 12), 초록 채움 */}
-          <StartBtn type="button" onClick={onStart}>
-            시작
-          </StartBtn>
-        </Actions>
-      </Card>
-    </Overlay>
   );
+
 }
 
 export default CookStartModal;

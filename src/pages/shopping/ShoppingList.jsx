@@ -4,12 +4,17 @@ import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 
 import checkCircleWhiteIcon from '../../assets/icons/checkCircleWhite.svg';
+import customIngredientIcon from '../../assets/pillButtonIcons/bowl_with_spoon.svg';
 import addItemIcon from '../../assets/shopping/add-item.svg';
 import checkOn from '../../assets/shopping/check-on.svg';
 import heartEmpty from '../../assets/shopping/heart-empty.svg';
 import heartFilled from '../../assets/shopping/heart-filled.svg';
 import marketIcon from '../../assets/shopping/market-icon.png';
-import { patchUserFoodIngredientStatus, postUserFoodIngredients } from '../../api/userApi';
+import {
+  patchUserFoodIngredientAmount,
+  patchUserFoodIngredientStatus,
+  postUserFoodIngredients,
+} from '../../api/userApi';
 import BackButton from '../../common/button/BackButton';
 import { MARKET_PRODUCTS, OTHER_GROUP_ID } from '../../constants/dummyShoppingList';
 import { useUserStore } from '../../hooks/useUserStore';
@@ -17,10 +22,17 @@ import {
   addOtherShoppingItem,
   getShoppingGroups,
   removeShoppingItems,
+  saveCustomOwnedIngredients,
   subscribeShopping,
+  updateShoppingItem,
 } from '../../store/shoppingStore';
 import AddShoppingItemModal from './AddShoppingItemModal';
 import ShoppingDoneModal from './ShoppingDoneModal';
+
+const getPrimaryAmountValue = (amount) => {
+  const value = parseFloat(String(amount ?? '').replaceAll(',', ''));
+  return Number.isNaN(value) ? null : value;
+};
 
 /** 장보기 목록 — 피그마 1854:2899 */
 function ShoppingList() {
@@ -31,6 +43,7 @@ function ShoppingList() {
   const [products, setProducts] = useState(MARKET_PRODUCTS);
   const [modalStep, setModalStep] = useState(null); // null | 'confirm'
   const [addOpen, setAddOpen] = useState(false);
+  const [editItem, setEditItem] = useState(null);
   const [isToastVisible, setIsToastVisible] = useState(false);
   const hasChecked = checked.size > 0;
 
@@ -50,12 +63,32 @@ function ShoppingList() {
     const on = checked.has(item.id);
     return (
       /* 재료 행 — 체크 + (재료명·수량) 한 카드 */
-      <ItemRow key={item.id} onClick={() => toggleItem(item.id)}>
-        <Check type="button" $on={on} aria-pressed={on}>
+      <ItemRow key={item.id}>
+        <Check
+          type="button"
+          $on={on}
+          aria-pressed={on}
+          aria-label={`${item.name} 선택`}
+          onClick={() => toggleItem(item.id)}
+        >
           {on && <CheckOn src={checkOn} alt="" />}
         </Check>
-        <ItemCard $on={on}>
-          <ItemName>{item.name}</ItemName>
+        <ItemCard
+          $on={on}
+          role="button"
+          tabIndex={0}
+          onClick={() => setEditItem(item)}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              setEditItem(item);
+            }
+          }}
+        >
+          <ItemNameWrap>
+            {item.isCustom && <CustomIngredientIcon src={customIngredientIcon} alt="" />}
+            <ItemName>{item.name}</ItemName>
+          </ItemNameWrap>
           <ItemAmount>{item.amount}</ItemAmount>
         </ItemCard>
       </ItemRow>
@@ -82,18 +115,39 @@ function ShoppingList() {
   };
 
   const finishSelected = async () => {
-    const foodIngredientList = groups
+    const selectedItems = groups
       .flatMap((group) => group.items)
-      .filter((item) => checked.has(item.id))
+      .filter((item) => checked.has(item.id));
+    const customItems = selectedItems.filter((item) => item.isCustom);
+    const serverItems = selectedItems.filter((item) => !item.isCustom);
+    const unresolvedItems = serverItems.filter(
+      (item) => !Number.isFinite(Number(item.foodIngredientId))
+    );
+    const foodIngredientList = serverItems
       .map((item) => Number(item.foodIngredientId))
       .filter((id) => Number.isFinite(id));
+    const foodIngredientAmountList = serverItems
+      .map((item) => ({
+        foodIngredientId: Number(item.foodIngredientId),
+        primaryAmountValue: getPrimaryAmountValue(item.amount),
+      }))
+      .filter(
+        (item) =>
+          Number.isFinite(item.foodIngredientId) && item.primaryAmountValue != null
+      );
+
+    setModalStep(null);
+
+    if (!userId) {
+      console.error('사용자 정보가 없습니다.');
+      return;
+    }
+
+    saveCustomOwnedIngredients(userId, [...customItems, ...unresolvedItems]);
+
+    let savedSuccessfully = true;
 
     if (foodIngredientList.length > 0) {
-      if (!userId) {
-        console.error('사용자 정보가 없습니다.');
-        return;
-      }
-
       try {
         await patchUserFoodIngredientStatus(userId, {
           relationType: 'OWN',
@@ -104,20 +158,38 @@ function ShoppingList() {
         try {
           await postUserFoodIngredients(userId, {
             relationType: 'OWN',
-            foodIngredientList: foodIngredientList.map((foodIngredientId) => ({
-              foodIngredientId,
-            })),
+            foodIngredientList: foodIngredientList.map((foodIngredientId) => {
+              const amount = foodIngredientAmountList.find(
+                (item) => item.foodIngredientId === foodIngredientId
+              );
+              return {
+                foodIngredientId,
+                primaryAmountValue: amount?.primaryAmountValue ?? null,
+              };
+            }),
           });
         } catch (createError) {
           console.error('사용자 식재료 보유 저장 실패:', createError);
-          return;
+          savedSuccessfully = false;
         }
       }
     }
 
-    clearCheckedItems();
-    setModalStep(null);
-    setIsToastVisible(true);
+    if (savedSuccessfully && foodIngredientAmountList.length > 0) {
+      try {
+        await patchUserFoodIngredientAmount(userId, {
+          foodIngredientList: foodIngredientAmountList,
+        });
+      } catch (error) {
+        console.error('사용자 식재료 수량 저장 실패:', error);
+        savedSuccessfully = false;
+      }
+    }
+
+    if (savedSuccessfully) {
+      setIsToastVisible(true);
+      clearCheckedItems();
+    }
   };
 
   useEffect(() => {
@@ -144,7 +216,14 @@ function ShoppingList() {
         {/* 목록 카드 — 둥근 흰 직사각형(radius 22) + 그림자 */}
         <ListCard>
           {/* 항목 추가 — 카드 우상단 텍스트+플러스 */}
-          <CardAdd type="button" aria-label="항목 추가" onClick={() => setAddOpen(true)}>
+          <CardAdd
+            type="button"
+            aria-label="항목 추가"
+            onClick={() => {
+              setEditItem(null);
+              setAddOpen(true);
+            }}
+          >
             <CardAddLabel>항목 추가</CardAddLabel>
             <CardAddIcon src={addItemIcon} alt="" />
           </CardAdd>
@@ -189,6 +268,7 @@ function ShoppingList() {
             <ProductCard key={product.id}>
               {/* 썸네일 — 124×104 둥근 직사각형(radius 10) */}
               <ProductThumb>
+                <ProductImage src={product.image} alt={product.name} />
                 {/* 하트 — 우상단 16×14 */}
                 <HeartBtn type="button" onClick={() => toggleLike(product.id)}>
                   <HeartImg src={product.liked ? heartFilled : heartEmpty} alt="" />
@@ -209,9 +289,14 @@ function ShoppingList() {
       </Scroll>
 
       <AddShoppingItemModal
-        open={addOpen}
-        onClose={() => setAddOpen(false)}
+        open={addOpen || Boolean(editItem)}
+        item={editItem}
+        onClose={() => {
+          setAddOpen(false);
+          setEditItem(null);
+        }}
         onAdd={(name, amount) => addOtherShoppingItem(name, amount)}
+        onSave={(id, name, amount) => updateShoppingItem(id, name, amount)}
       />
 
       <ShoppingDoneModal
@@ -353,7 +438,6 @@ const ItemRow = styled.div`
   gap: 8px;
   align-items: center;
   width: 100%;
-  cursor: pointer;
 `;
 
 /* —— 체크박스: 36×36 둥근 정사각(radius 10) —— */
@@ -369,7 +453,7 @@ const Check = styled.button`
   border: none;
   border-radius: 10px;
   background: ${({ $on }) => ($on ? 'transparent' : '#f5f5f6')};
-  pointer-events: none;
+  cursor: pointer;
 `;
 
 /* —— 선택 체크: 36×36 회색 둥근 정사각 SVG —— */
@@ -393,9 +477,24 @@ const ItemCard = styled.div`
   padding: 0 16px;
   border-radius: 10px;
   background: ${({ $on }) => ($on ? '#d6f3a1' : '#f5f5f6')};
+  cursor: pointer;
 `;
 
 /* —— 재료명 텍스트 —— */
+const ItemNameWrap = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+`;
+
+const CustomIngredientIcon = styled.img`
+  display: block;
+  flex-shrink: 0;
+  width: 19px;
+  height: 19px;
+`;
+
 const ItemName = styled.span`
   min-width: 0;
   overflow: hidden;
@@ -499,6 +598,13 @@ const ProductThumb = styled.div`
   overflow: hidden;
   border-radius: 10px;
   background: #f1f1f1;
+`;
+
+const ProductImage = styled.img`
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 `;
 
 /* —— 하트 버튼: 우상단 —— */
@@ -605,7 +711,7 @@ const Toast = styled.div`
   span {
     color: white;
     font-size: 14px;
-    font-weight: 600;
+    font-weight: 400;
     letter-spacing: -0.14px;
     line-height: 1.3;
     white-space: nowrap;

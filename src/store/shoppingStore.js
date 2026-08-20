@@ -3,15 +3,15 @@ import { OTHER_GROUP_ID } from '../constants/dummyShoppingList';
 import { useUserStore } from '../hooks/useUserStore';
 
 const OTHER_GROUP = { id: OTHER_GROUP_ID, title: '기타', items: [] };
+const CUSTOM_OWNED_KEY = 'custom-owned-food-ingredients';
+const SHOPPING_GROUPS_KEY = 'shopping-groups';
 
 function ensureOtherGroup(list) {
   if (list.some((g) => g.id === OTHER_GROUP_ID)) return list;
   return [...list, { ...OTHER_GROUP, items: [] }];
 }
 
-let groups = [{ ...OTHER_GROUP, items: [] }];
 const listeners = new Set();
-let idSeq = 100;
 
 function emit() {
   listeners.forEach((fn) => fn());
@@ -22,6 +22,56 @@ function nextId() {
   return `i${idSeq}`;
 }
 
+const getCustomOwnedKey = (userId) => `${CUSTOM_OWNED_KEY}:${userId}`;
+
+export function getCustomOwnedIngredients(userId) {
+  if (!userId) return [];
+
+  try {
+    const saved = localStorage.getItem(getCustomOwnedKey(userId));
+    const parsed = saved ? JSON.parse(saved) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveCustomOwnedIngredients(userId, items) {
+  if (!userId || items.length === 0) return;
+
+  const saved = getCustomOwnedIngredients(userId);
+  const next = [...saved];
+
+  items.forEach((item, index) => {
+    const existingIndex = next.findIndex(
+      (savedItem) => savedItem.name.trim() === item.name.trim()
+    );
+    const ownedItem = {
+      id: existingIndex >= 0
+        ? next[existingIndex].id
+        : `custom-${Date.now()}-${index}`,
+      name: item.name.trim(),
+      amount: item.amount,
+      type: 'OTHER',
+      category: 'ingredient',
+      isCustom: true,
+    };
+
+    if (existingIndex >= 0) next[existingIndex] = ownedItem;
+    else next.push(ownedItem);
+  });
+
+  localStorage.setItem(getCustomOwnedKey(userId), JSON.stringify(next));
+}
+
+export function removeCustomOwnedIngredients(userId, ids) {
+  if (!userId || ids.length === 0) return;
+
+  const idSet = new Set(ids);
+  const next = getCustomOwnedIngredients(userId).filter((item) => !idSet.has(item.id));
+  localStorage.setItem(getCustomOwnedKey(userId), JSON.stringify(next));
+}
+
 function normalizeGroups(list) {
   const recipeGroups = list.filter((g) => g.id !== OTHER_GROUP_ID);
   const other = list.find((g) => g.id === OTHER_GROUP_ID) ?? {
@@ -30,6 +80,25 @@ function normalizeGroups(list) {
   };
   return [...recipeGroups, { ...other, items: [...other.items] }];
 }
+
+function loadShoppingGroups() {
+  try {
+    const saved = localStorage.getItem(SHOPPING_GROUPS_KEY);
+    const parsed = saved ? JSON.parse(saved) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+let groups = ensureOtherGroup(normalizeGroups(loadShoppingGroups()));
+let idSeq = Math.max(
+  100,
+  ...groups
+    .flatMap((group) => group.items)
+    .map((item) => Number(String(item.id).replace(/^i/, '')))
+    .filter(Number.isFinite)
+);
 
 export function getShoppingGroups() {
   return groups;
@@ -42,6 +111,7 @@ export function subscribeShopping(listener) {
 
 export function setShoppingGroups(next) {
   groups = ensureOtherGroup(normalizeGroups(typeof next === 'function' ? next(groups) : next));
+  localStorage.setItem(SHOPPING_GROUPS_KEY, JSON.stringify(groups));
   emit();
 }
 
@@ -96,12 +166,27 @@ export function addItemsToShopping(title, items) {
 
     const group = prev[idx];
     const names = new Set(group.items.map((i) => i.name));
+    const normalizedByName = new Map(normalized.map((item) => [item.name, item]));
+    const repairedItems = [];
+    const existingItems = group.items.map((item) => {
+      const normalizedItem = normalizedByName.get(item.name);
+      if (item.foodIngredientId != null || normalizedItem?.foodIngredientId == null) {
+        return item;
+      }
+
+      const repaired = {
+        ...item,
+        foodIngredientId: normalizedItem.foodIngredientId,
+      };
+      repairedItems.push(repaired);
+      return repaired;
+    });
     const toAdd = normalized.filter((i) => !names.has(i.name));
-    added = toAdd;
-    if (!toAdd.length) return prev;
+    added = [...repairedItems, ...toAdd];
+    if (!added.length) return prev;
 
     const next = [...prev];
-    next[idx] = { ...group, items: [...group.items, ...toAdd] };
+    next[idx] = { ...group, items: [...existingItems, ...toAdd] };
     return next;
   });
 
@@ -109,7 +194,7 @@ export function addItemsToShopping(title, items) {
 }
 
 /** 기타 그룹에 항목 추가 */
-export function addOtherShoppingItem(name, amount) {
+export function addOtherShoppingItem(name, amount, foodIngredientId = null) {
   const trimmedName = name.trim();
   if (!trimmedName) return false;
 
@@ -117,7 +202,13 @@ export function addOtherShoppingItem(name, amount) {
 
   setShoppingGroups((prev) => {
     const otherIdx = prev.findIndex((g) => g.id === OTHER_GROUP_ID);
-    const item = { id: nextId(), name: trimmedName, amount: trimmedAmount };
+    const item = {
+      id: nextId(),
+      foodIngredientId,
+      name: trimmedName,
+      amount: trimmedAmount,
+      isCustom: true,
+    };
 
     if (otherIdx === -1) {
       return [...prev, { ...OTHER_GROUP, items: [item] }];
@@ -128,6 +219,25 @@ export function addOtherShoppingItem(name, amount) {
     next[otherIdx] = { ...other, items: [...other.items, item] };
     return next;
   });
+
+  return true;
+}
+
+/** 장보기 항목 이름·수량 수정 */
+export function updateShoppingItem(id, name, amount) {
+  const trimmedName = name.trim();
+  if (!id || !trimmedName) return false;
+
+  const trimmedAmount = amount.trim() || '1개';
+
+  setShoppingGroups((prev) =>
+    prev.map((group) => ({
+      ...group,
+      items: group.items.map((item) =>
+        item.id === id ? { ...item, name: trimmedName, amount: trimmedAmount } : item
+      ),
+    }))
+  );
 
   return true;
 }

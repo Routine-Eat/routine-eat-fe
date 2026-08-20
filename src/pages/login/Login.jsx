@@ -101,9 +101,9 @@ const PwInput = styled.div`
   width: 32px;
   height: 32px;
   aspect-ratio: 1/1;
-  background-color: ${({ $isInput }) => ($isInput ? '#FFE6BD' : '#f5f5f6')};
+  background-color: ${({ $isInput }) => ($isInput ? '#D6F3A1' : '#f5f5f6')};
   border-radius: 50%;
-  border: ${({ $isInput }) => ($isInput ? '2px solid #FF9B44' : '2px solid #d9d9da')};
+  border: ${({ $isInput }) => ($isInput ? '2px solid #C2EE73' : '2px solid #d9d9da')};
 `;
 const Explanation = styled.div`
   display: flex;
@@ -131,7 +131,7 @@ const LoginBtn = styled.button`
   align-items: center;
   gap: 10px;
   border-radius: 12px;
-  background: #ff9b44;
+  background: #96D960;
   color: #fff;
   text-align: center;
   font-family: 'Wanted Sans Variable';

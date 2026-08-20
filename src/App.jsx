@@ -16,6 +16,7 @@ import HomeCookingStep from './pages/home/HomeCookingStep';
 import HomeDietStart from './pages/home/HomeDietStart';
 import HomeMenu from './pages/home/HomeMenu';
 import Market from './pages/market/Market';
+import CookingRecordDetail from './pages/mypage/CookingRecordDetail';
 import Mypage from './pages/mypage/Mypage';
 import Notification from './pages/notification/Notification';
 import Onboarding from './pages/onboarding/Onboarding';
@@ -35,14 +36,12 @@ function OnboardingGate() {
       navigate('/login', { replace: true });
       return;
     }
-    if (userSkillLevel === null && pathname !== '/onboarding') {
-      navigate('/onboarding', { replace: true });
-      return;
-    }
+    
   }, [navigate, pathname, userSkillLevel]);
 
   return null;
 }
+
 
 function App() {
   return (
@@ -63,11 +62,12 @@ function App() {
           <Route path="/shopping-list" element={<ShoppingList />} />
           <Route path="/market" element={<Market />} />
           <Route path="/mypage" element={<Mypage />} />
+          <Route path="/cooking-records/:cookingRecordId" element={<CookingRecordDetail />} />
+          <Route path="/diet-start/:mealId" element={<HomeDietStart />} />
         </Route>
 
         {/* 홈 → 요리 진행 관련 페이지 */}
         <Route path="/menu/:mealId" element={<HomeMenu />} />
-        <Route path="/diet-start/:mealId" element={<HomeDietStart />} />
         <Route path="/cooking/:mealId" element={<HomeCooking />} />
         <Route path="/cooking/:mealId/step" element={<HomeCookingStep />} />
         <Route path="/cooking/:mealId/complete" element={<CookingComplete />} />

@@ -26,7 +26,7 @@ const StyledButton = styled.button`
   font-weight: 600;
   letter-spacing: -0.18px;
   box-shadow: 0px 0px 10px 0px rgba(3, 3, 3, 0.06), 0px 0px 40px 0px rgba(3, 3, 3, 0.08);
-  background: ${({ $disabled }) => ($disabled ? "#e0e0e0" : "#72d472")};
+  background: ${({ $disabled }) => ($disabled ? "#e0e0e0" : "#96D960")};
   color: ${({ $disabled }) => ($disabled ? "#a0a0a0" : "white")};
 
   &:disabled {

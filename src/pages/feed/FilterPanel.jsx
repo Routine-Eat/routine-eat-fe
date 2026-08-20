@@ -6,7 +6,7 @@ import checkBoxIcon from '../../assets/feed/check-box.svg';
 import starEmpty from '../../assets/feed/star-empty.svg';
 import starFilled from '../../assets/feed/star-filled.svg';
 
-const TIME_OPTIONS = ['15분 이하', '15분~30분', '30분 이상', '상관없음'];
+const TIME_OPTIONS = ['15분 이하', '15분~30분', '30분 이상', '시간 상관없어요'];
 const CATEGORY_OPTIONS = ['전체', '한식', '중식', '양식', '일식', '기타'];
 
 /* 별 개수별 멘트 — Frame 323 */
@@ -19,7 +19,7 @@ const DIFF_HINTS = {
 };
 
 export const DEFAULT_FILTER = {
-  cookTime: '상관없음',
+  cookTime: '시간 상관없어요',
   difficulty: 3,
   difficultyAny: true,
   category: '전체',
@@ -123,7 +123,7 @@ function FilterPanel({ open, value, onApply, onClose }) {
               onApply(DEFAULT_FILTER);
             }}
           >
-            초기화
+            선택 초기화
           </ResetBtn>
           <ApplyBtn
             type="button"
@@ -338,7 +338,7 @@ const ApplyBtn = styled.button`
   height: 48px;
   border: none;
   border-radius: 10px;
-  background: #72d472;
+  background: #96D960;
   font-family: 'Wanted Sans', sans-serif;
   font-size: 15px;
   font-weight: 500;

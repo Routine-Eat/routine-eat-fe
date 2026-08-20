@@ -6,6 +6,9 @@ import faceGoodIcon from "../../assets/icons/faceGood.svg";
 import faceNeutralIcon from "../../assets/icons/faceNeutral.svg";
 import faceBadIcon from "../../assets/icons/faceBad.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
+import { useCookingStore } from "../../hooks/useCookingStore";
+import { useUserStore } from "../../hooks/useUserStore";
+import { getCookingRecordFoodIngredients } from "../../api/cookingRecord";
 
 const PageContainer = styled.div`
   background: #fffefd;
@@ -86,10 +89,39 @@ const OPTIONS = [
   { id: "bad", icon: faceBadIcon, label: "어려웠어요" },
 ];
 
+const DIFFICULTY_LEVEL_MAP = {
+  good: "LEVEL_1",
+  ok: "LEVEL_3",
+  bad: "LEVEL_5",
+};
+
 export default function CookingReview() {
   const navigate = useNavigate();
   const { mealId } = useParams();
   const [selected, setSelected] = useState(null);
+    const cookingRecordId = useCookingStore((state) => state.cookingRecordId);
+  const userLoginNumber = useUserStore((state) => state.userLoginNumber);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleComplete = () => {
+    if (!cookingRecordId || !userLoginNumber) {
+      console.error("cookingRecordId 또는 userLoginNumber가 없습니다.");
+      return;
+    }
+    setIsLoading(true);
+    getCookingRecordFoodIngredients(cookingRecordId, userLoginNumber)
+      .then((res) => {
+        console.log("이번 요리 사용 재료 조회:", res.data);
+        navigate(`/cooking/${mealId}/review/ingredients`, {
+          state: {
+            difficultyLevel: DIFFICULTY_LEVEL_MAP[selected],
+            foodIngredients: res.data,
+          },
+        });
+      })
+      .catch((err) => console.error("사용 재료 조회 실패:", err))
+      .finally(() => setIsLoading(false));
+  };
 
   return (
     <PageContainer>
@@ -111,7 +143,7 @@ export default function CookingReview() {
           </OptionButton>
         ))}
       </OptionList>
-            <BottomFixedButton onClick={() => navigate(`/cooking/${mealId}/review/ingredients`)}>
+            <BottomFixedButton onClick={handleComplete} disabled={!selected || isLoading}>
         완료
       </BottomFixedButton>
     </PageContainer>

@@ -1,11 +1,42 @@
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 import styled from 'styled-components';
 
+import { hasUnreadNotifications, pollNotifications } from '../../api/notificationApi';
 import notificationIcon from '../../assets/header/notification.svg';
 import shoppingBagIcon from '../../assets/header/shopping-bag.svg';
+import { useUserStore } from '../../hooks/useUserStore';
+
+const POLL_INTERVAL_MS = 5000;
 
 function Header({ searchActive = false, onExitSearch }) {
+  const userLoginNumber = useUserStore((state) => state.userLoginNumber);
+  const [hasUnread, setHasUnread] = useState(false);
+
+  useEffect(() => {
+    if (!userLoginNumber) return undefined;
+
+    let cancelled = false;
+
+    const tick = async () => {
+      try {
+        const response = await pollNotifications(userLoginNumber);
+        if (!cancelled) setHasUnread(hasUnreadNotifications(response));
+      } catch (error) {
+        console.error('알림 폴링 실패:', error);
+      }
+    };
+
+    tick();
+    const timerId = setInterval(tick, POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearInterval(timerId);
+    };
+  }, [userLoginNumber]);
+
   /* 피드 검색 중이면 공통 헤더 클릭 = 검색 닫기 */
   const exitIfSearching = (e) => {
     if (!searchActive) return;
@@ -26,6 +57,7 @@ function Header({ searchActive = false, onExitSearch }) {
         {/* Frame 293 — 30×30, 에셋이 프레임을 채움 */}
         <IconLink to="/notifications" aria-label="알림" onClick={exitIfSearching}>
           <FullIcon src={notificationIcon} alt="" />
+          {hasUnread && <UnreadDot />}
         </IconLink>
 
         {/* tabler:shopping-bag — 30×30, Group inset + stroke overflow */}
@@ -74,6 +106,16 @@ const FullIcon = styled.img`
   width: 100%;
   height: 100%;
   max-width: none;
+`;
+
+const UnreadDot = styled.span`
+  position: absolute;
+  top: 2px;
+  right: 3px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #96d960;
 `;
 
 /* 피그마 Group: inset 13.33% 17.51% 13.33% 20% */

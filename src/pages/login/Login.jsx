@@ -6,13 +6,15 @@ import styled from 'styled-components';
 import { getUserByLoginNumber, postCreateUser } from '@/api/userApi';
 import { useUserStore } from '@/hooks/useUserStore';
 
+import LogoIcon from "@/assets/common/logo.svg"
+
 export default function Login() {
   const [password, setPassword] = useState('');
   const userLogin = useUserStore((state) => state.login);
   const navigate = useNavigate();
 
   const onLogin = async (password) => {
-    if (password.length < 1) {
+    if (password.length < 4) {
       console.log('비밀번호를 입력해주세요.');
       return;
     }
@@ -38,7 +40,8 @@ export default function Login() {
   };
   return (
     <Contents>
-      <Logo>Routine-Eat</Logo>
+      <Box>
+      <Logo src={LogoIcon}/>
       <PwBox>
         <Pw>비밀번호를 입력해주세요</Pw>
         <InputGroup>
@@ -63,8 +66,10 @@ export default function Login() {
           심사용 로그인은 <span style={{ fontWeight: 700 }}>0825</span>를 입력해주세요
           </p>
         </Explanation>
-        <LoginBtn onClick={() => onLogin(password)}>로그인</LoginBtn>
+        
       </BtnBox>
+      </Box>
+      <LoginBtn onClick={() => onLogin(password)}>로그인</LoginBtn>
     </Contents>
   );
 }
@@ -74,19 +79,18 @@ const Contents = styled.div`
   flex-direction: column;
   height: 100%;
   align-items: center;
-  padding: 133px 23px 200px 23px;
+  padding: 133px 23px 20px 23px;
   justify-content: space-between;
 `;
-const Logo = styled.div`
-  color: var(--900, #030303);
-  text-align: center;
-  font-family: 'Google Sans Flex';
-  font-size: 30px;
-  font-style: normal;
-  font-weight: 700;
-  line-height: 130%; /* 39px */
-  letter-spacing: -0.3px;
+const Logo = styled.img`
 `;
+const Box=styled.div`
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  justify-content: space-between;
+  height: 350px;
+`
 const Pw = styled.div`
   color: var(--900, #030303);
   text-align: center;
@@ -139,6 +143,7 @@ const LoginBtn = styled.button`
   font-style: normal;
   font-weight: 500;
   border: none;
+  margin-top: auto;
 `;
 const PwBox = styled.div`
   display: flex;

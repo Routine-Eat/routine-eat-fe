@@ -3,6 +3,7 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 
 import styled, { keyframes } from 'styled-components';
 
+import adBannerImg from '../../assets/feed/ad-banner.png';
 import chevronIcon from '../../assets/feed/chevron.svg';
 import filterIcon from '../../assets/feed/filter.svg';
 import foodImg from '../../assets/feed/food.png';
@@ -10,6 +11,7 @@ import searchIcon from '../../assets/feed/search.svg';
 import toTopChevronIcon from '../../assets/feed/to-top-chevron.svg';
 import { deleteFavoriteRecipe, postFavoriteRecipe } from '../../api/favoriteRecipe';
 import { deleteRecipeSearchHistory, getRecipeSearchHistory, getRecipes, searchRecipes } from '../../api/recipe';
+import loaderSvg from '../../common/loader.svg';
 import MenuCard from '../../common/menuCard/MenuCard';
 import { useUserStore } from '../../hooks/useUserStore';
 import Header from '../../layout/header/Header';
@@ -130,7 +132,9 @@ function Feed() {
   const [headerShown, setHeaderShown] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(0);
   const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [sections, setSections] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [submitted, setSubmitted] = useState('');
   const [searchMode, setSearchMode] = useState(false);
@@ -166,6 +170,9 @@ function Feed() {
   useEffect(() => {
     if (!userLoginNumber) return undefined;
 
+    let cancelled = false;
+    setLoading(true);
+
     const fetchRecipes = async () => {
       try {
         const response = await getRecipes({
@@ -177,18 +184,27 @@ function Feed() {
           category: CATEGORY_MAP[filter.category],
           sortType: sortBy === SORTS[1] ? 'FOOD_INTEGRATION' : 'DEFAULT',
         });
+        if (cancelled) return;
         const payload = response.data ?? response;
         setSections(buildFeedSections(payload));
       } catch (error) {
         console.error('레시피 목록 조회 실패:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchRecipes();
+    return () => {
+      cancelled = true;
+    };
   }, [userLoginNumber, filter, sortBy]);
 
   useEffect(() => {
     if (!userLoginNumber || !showResults) return undefined;
+
+    let cancelled = false;
+    setSearchLoading(true);
 
     const fetchSearchRecipes = async () => {
       try {
@@ -202,14 +218,20 @@ function Feed() {
           category: CATEGORY_MAP[filter.category],
           sortType: sortBy === SORTS[1] ? 'FOOD_INTEGRATION' : 'DEFAULT',
         });
+        if (cancelled) return;
         const payload = response.data ?? response;
         setSearchResults((payload.content ?? []).map(mapRecipeCard));
       } catch (error) {
         console.error('레시피 검색 실패:', error);
+      } finally {
+        if (!cancelled) setSearchLoading(false);
       }
     };
 
     fetchSearchRecipes();
+    return () => {
+      cancelled = true;
+    };
   }, [userLoginNumber, showResults, submittedWord, filter, sortBy]);
 
   useEffect(() => {
@@ -512,7 +534,12 @@ function Feed() {
       )}
 
       {/* 검색어 입력 후 — 정렬 + 2열 결과 (피그마 1353:3642) */}
-      {showResults && (
+      {showResults && searchLoading && (
+        <LoaderWrap>
+          <LoaderImg src={loaderSvg} alt="" />
+        </LoaderWrap>
+      )}
+      {showResults && !searchLoading && (
         <ResultGrid>
           {searchResults.map((r) => (
             <MenuCard
@@ -533,9 +560,19 @@ function Feed() {
       {/* 기본 피드 — 섹션 가로 스크롤 */}
       {!showResults && (
         <FeedBody $open={!searchMode} aria-hidden={searchMode} inert={searchMode ? true : undefined}>
-          {sections.map((block, i) => {
+          {loading ? (
+            <LoaderWrap>
+              <LoaderImg src={loaderSvg} alt="" />
+            </LoaderWrap>
+          ) : (
+            <>
+              {sections.map((block, i) => {
               if (block.type === 'banner') {
-                return <Banner key={block.id}>광고 배너</Banner>;
+                return (
+                  <Banner key={block.id}>
+                    <BannerImg src={adBannerImg} alt="웜도시락 소불고기 곤드레밥 마켓에서 구매하기" />
+                  </Banner>
+                );
               }
 
               const prev = sections[i - 1];
@@ -585,6 +622,8 @@ function Feed() {
                 <ToTopChevron src={toTopChevronIcon} alt="" />
               </ToTopBtn>
             </ToTopWrap>
+            </>
+          )}
         </FeedBody>
       )}
     </Page>
@@ -602,6 +641,24 @@ const Page = styled.div`
   overflow-y: auto;
   padding-bottom: 28px;
   background: #fffefd;
+`;
+
+const LoaderWrap = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+`;
+
+const LoaderImg = styled.img`
+  display: block;
+  width: 40px;
+  height: 40px;
 `;
 
 const HeaderSpacer = styled.div`
@@ -623,7 +680,6 @@ const FeedTop = styled.div`
     left: 0;
     right: 0;
     width: 100%;
-    max-width: 390px;
     margin: 0 auto;
     transform: translateY(${$shown ? '0' : '-100%'});
     transition: ${$shown ? `transform ${HEADER_SLIDE_MS}ms cubic-bezier(0.22, 1, 0.36, 1)` : 'none'};
@@ -962,19 +1018,19 @@ const CardRow = styled.div`
   }
 `;
 
-/* —— 광고 배너: 가로 full 회색 사각 —— */
+/* —— 광고 배너: 가로 full —— */
 const Banner = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
   flex-shrink: 0;
   width: 100%;
-  height: 118px;
   margin: 28px 0;
-  background: #e9e9e9;
-  font-size: 18px;
-  font-weight: 600;
-  color: #000;
+  overflow: hidden;
+`;
+
+const BannerImg = styled.img`
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
 `;
 
 const ToTopWrap = styled.div`

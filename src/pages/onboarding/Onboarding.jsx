@@ -31,6 +31,7 @@ function Onboarding() {
   const [step, setStep] = useState(1);
   const [cookingLevel, setCookingLevel] = useState(null);
   const [dislikedIds, setDislikedIds] = useState([]);
+  const [dislikeCatalog, setDislikeCatalog] = useState([]);
   const [toolIds, setToolIds] = useState([]);
   const [ingredients, setIngredients] = useState([]);
   const [seasonings, setSeasonings] = useState([]);
@@ -45,13 +46,42 @@ function Onboarding() {
   };
 
   const toggleDislike = (id) => {
+    const key = String(id);
     setDislikedIds((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]
+      prev.some((item) => String(item) === key)
+        ? prev.filter((item) => String(item) !== key)
+        : [...prev, id]
     );
   };
 
+  const selectDislikes = (ids) => {
+    setDislikedIds((prev) => {
+      const next = new Set(prev);
+      ids.forEach((id) => next.add(id));
+      return [...next];
+    });
+  };
+
+  const deselectDislikes = (ids) => {
+    const remove = new Set(ids.map((id) => String(id)));
+    setDislikedIds((prev) => prev.filter((id) => !remove.has(String(id))));
+  };
+
   const toggleTool = (id) => {
-    setToolIds((prev) => (prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]));
+    const key = String(id);
+    setToolIds((prev) =>
+      prev.some((item) => String(item) === key)
+        ? prev.filter((item) => String(item) !== key)
+        : [...prev, id]
+    );
+  };
+
+  const removeIngredient = (id) => {
+    setIngredients((prev) => prev.filter((item) => item.id !== id));
+  };
+
+  const removeSeasoning = (id) => {
+    setSeasonings((prev) => prev.filter((item) => item.id !== id));
   };
 
   /* 식재료/조미료 등록 병합(같은 id면 덮어씀) */
@@ -202,7 +232,15 @@ function Onboarding() {
         {step === 1 && <FirstStep selected={cookingLevel} onSelect={setCookingLevel} />}
 
         {/* 2단계 */}
-        {step === 2 && <SecondStep selectedIds={dislikedIds} onToggle={toggleDislike} />}
+        {step === 2 && (
+          <SecondStep
+            selectedIds={dislikedIds}
+            onToggle={toggleDislike}
+            onSelectMany={selectDislikes}
+            onClearMany={deselectDislikes}
+            onCatalogChange={setDislikeCatalog}
+          />
+        )}
 
         {/* 3단계 */}
         {step === 3 && <ThirdStep selectedIds={toolIds} onToggle={toggleTool} />}
@@ -214,13 +252,21 @@ function Onboarding() {
             seasonings={seasonings}
             onSaveIngredients={(items) => setIngredients((prev) => mergeById(prev, items))}
             onSaveSeasonings={(items) => setSeasonings((prev) => mergeById(prev, items))}
+            onRemoveIngredient={removeIngredient}
+            onRemoveSeasoning={removeSeasoning}
           />
         )}
       </Body>
 
       {/* 하단 확인 버튼 — 화면 하단에 고정 */}
       <Footer $tall={showSelected}>
-        {step === 2 && <SelectedChips selectedIds={dislikedIds} onRemove={toggleDislike} />}
+        {step === 2 && (
+          <SelectedChips
+            selectedIds={dislikedIds}
+            catalog={dislikeCatalog}
+            onRemove={toggleDislike}
+          />
+        )}
 
         {step === 3 && <SelectedToolChips selectedIds={toolIds} onRemove={toggleTool} />}
 
@@ -249,12 +295,15 @@ const Page = styled.div`
 `;
 
 const TopBar = styled.div`
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
   flex-shrink: 0;
-  width: 346px;
-  margin: 30px 0 0 22px;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: 30px;
+  padding: 0 29px 0 22px;
 `;
 
 const Body = styled.div`
@@ -266,9 +315,14 @@ const Body = styled.div`
 `;
 
 const Progress = styled.div`
+  position: absolute;
+  left: 50%;
+  top: 50%;
   display: flex;
   align-items: center;
   gap: 4px;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
 `;
 
 const Dot = styled.span`

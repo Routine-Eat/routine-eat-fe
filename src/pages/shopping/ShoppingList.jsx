@@ -519,8 +519,12 @@ const ItemAmount = styled.span`
 /* —— 액션 행: 가로 직사각형 —— */
 const Actions = styled.div`
   display: flex;
-  gap: 8px;
-  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  box-sizing: border-box;
+  width: calc(100% + 48px);
+  margin: 0 -24px;
+  padding: 0 25px 0 24px;
 `;
 
 /* —— 전체 선택/삭제: 흰 테두리 둥근 직사각형 132×48 —— */

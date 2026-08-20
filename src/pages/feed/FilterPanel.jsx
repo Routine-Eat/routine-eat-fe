@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import styled, { keyframes } from 'styled-components';
 
@@ -57,7 +58,7 @@ function FilterPanel({ open, value, onApply, onClose }) {
 
   const patch = (next) => setDraft((prev) => ({ ...prev, ...next }));
 
-  return (
+  return createPortal(
     // 필터 오버레이 — 딤 + 바텀시트
     <Overlay $closing={closing} onClick={onClose}>
       {/* 필터 모달 — 사방 둥근 흰 사각 */}
@@ -166,7 +167,8 @@ function FilterPanel({ open, value, onApply, onClose }) {
           </ApplyBtn>
         </Footer>
       </Modal>
-    </Overlay>
+    </Overlay>,
+    document.body
   );
 }
 
@@ -216,6 +218,8 @@ const Overlay = styled.div`
   display: flex;
   align-items: flex-end;
   justify-content: center;
+  width: 100vw;
+  max-width: none;
   padding: 0 15px 32px;
   overflow: hidden;
   background: rgba(3, 3, 3, 0.15);

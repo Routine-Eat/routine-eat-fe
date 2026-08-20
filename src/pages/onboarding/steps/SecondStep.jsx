@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import styled from 'styled-components';
 
-import { getExceptionFoodIngredients, postInitFoodIngredients } from '@/api/foodIngredientApi';
+import { getExceptionFoodIngredients, getFoodIngredients, postInitFoodIngredients } from '@/api/foodIngredientApi';
 import PillButton from '@/common/PillButton';
 
 import broccoli from '../../../assets/onboarding/allergies/broccoli.svg';
@@ -63,24 +63,51 @@ const EXTRA = [
 export const INGREDIENTS = [...RECOMMENDED, ...EXTRA];
 const ALL = INGREDIENTS;
 
+const unwrapList = (response) => {
+  if (Array.isArray(response)) return response;
+  if (Array.isArray(response?.data)) return response.data;
+  if (Array.isArray(response?.content)) return response.content;
+  if (Array.isArray(response?.data?.content)) return response.data.content;
+  return [];
+};
+
+const mapFoodIngredient = (item) => ({
+  id: item.foodIngredientId ?? item.id,
+  name: item.foodIngredientName ?? item.name,
+  type: item.foodIngredientType ?? item.type,
+});
+
 /* 제외 대표 식재료 → 화면용. SecondaryUnit / 수량은 사용하지 않음 */
-const mapExceptionIngredients = (data) =>
-  (data ?? []).map((item) => {
-    const dummyItem = INGREDIENTS.find(
-      (ingredient) => ingredient.name === item.foodIngredientName
-    );
+const mapExceptionIngredients = (data) => unwrapList(data).map(mapFoodIngredient).filter((item) => item.id && item.name);
 
-    return {
-      id: item.foodIngredientId,
-      name: item.foodIngredientName,
-      type: item.foodIngredientType,
-      icon: dummyItem?.icon,
-    };
-  });
+const sameId = (a, b) => String(a) === String(b);
 
-/* 이름 길이순 → 같으면 한글 자음순 */
-const byLengthThenKo = (a, b) =>
-  a.name.length - b.name.length || a.name.localeCompare(b.name, 'ko');
+const hasId = (ids, id) => ids.some((item) => sameId(item, id));
+
+const byNameKo = (a, b) => a.name.localeCompare(b.name, 'ko');
+
+const CATEGORIES = [
+  { type: 'POTATO_AND_STARCH', name: '전분류' },
+  { type: 'NUT_AND_SEED', name: '견과' },
+  { type: 'GRAIN', name: '곡류' },
+  { type: 'FRUIT', name: '과일류' },
+  { type: 'SUGAR', name: '당류' },
+  { type: 'LEGUME', name: '두류' },
+  { type: 'PROCESSED_LEGUME', name: '콩가공품' },
+  { type: 'MUSHROOM', name: '버섯류' },
+  { type: 'MILK', name: '유제품' },
+  { type: 'FAT_AND_OIL', name: '유지류' },
+  { type: 'MEAT', name: '육류' },
+  { type: 'VEGETABLE', name: '채소류' },
+  { type: 'SEAWEED', name: '해조류' },
+  { type: 'FISH_AND_OTHER_SEAFOOD', name: '수산물' },
+  { type: 'SHELLFISH', name: '패류' },
+  { type: 'CRAB', name: '갑각류' },
+  { type: 'CEPHALOPOD', name: '두족류' },
+  { type: 'EGG', name: '난류' },
+  { type: 'SEASONING', name: '양념' },
+  { type: 'OTHER', name: '기타' },
+];
 
 /* 재료 아이콘(단일이미지 또는 겹친 레이어) */
 export function IngredientIcon({ icon }) {
@@ -98,21 +125,22 @@ export function IngredientIcon({ icon }) {
   return <IconImg src={icon} alt="" />;
 }
 
-function SecondStep({ selectedIds, onToggle }) {
+function SecondStep({ selectedIds, onToggle, onSelectMany, onClearMany, onCatalogChange }) {
   const [query, setQuery] = useState('');
   const [items, setItems] = useState(RECOMMENDED);
+  const [activeCategory, setActiveCategory] = useState(null);
 
   /* 제외 대표 식재료 조회 API — 목록이 없으면 세팅 후 재조회 */
   useEffect(() => {
     const fetchExceptionIngredients = async () => {
       try {
         let response = await getExceptionFoodIngredients();
-        let mapped = mapExceptionIngredients(response.data);
+        let mapped = mapExceptionIngredients(response);
 
         if (mapped.length === 0) {
           await postInitFoodIngredients();
           response = await getExceptionFoodIngredients();
-          mapped = mapExceptionIngredients(response.data);
+          mapped = mapExceptionIngredients(response);
         }
 
         if (mapped.length > 0) {
@@ -126,14 +154,133 @@ function SecondStep({ selectedIds, onToggle }) {
     fetchExceptionIngredients();
   }, []);
 
-  const q = query.trim();
+  useEffect(() => {
+    onCatalogChange?.(items);
+  }, [items, onCatalogChange]);
 
-  const visible = useMemo(() => {
-    if (!q) {
-      return [...items].sort(byLengthThenKo);
+  const mergeItems = (mapped) => {
+    const valid = mapped.filter((item) => item.id && item.name);
+    if (valid.length === 0) return;
+
+    setItems((prev) => {
+      const map = new Map(prev.map((item) => [String(item.id), item]));
+      valid.forEach((item) => map.set(String(item.id), item));
+      return [...map.values()];
+    });
+  };
+
+  useEffect(() => {
+    if (!activeCategory) return undefined;
+
+    let cancelled = false;
+
+    const fetchCategoryItems = async () => {
+      const categoryName = CATEGORIES.find((category) => category.type === activeCategory)?.name;
+
+      const mergeFetched = (response) => {
+        const mapped = unwrapList(response)
+          .map(mapFoodIngredient)
+          .filter((item) => !item.type || item.type === activeCategory)
+          .map((item) => ({ ...item, type: item.type || activeCategory }));
+
+        if (!cancelled) mergeItems(mapped);
+      };
+
+      try {
+        const byType = await getFoodIngredients(undefined, { foodIngredientType: activeCategory });
+        mergeFetched(byType);
+      } catch (error) {
+        console.error('대분류 식재료 조회 실패:', error);
+      }
+
+      if (cancelled || !categoryName) return;
+
+      try {
+        const byName = await getFoodIngredients(categoryName);
+        mergeFetched(byName);
+      } catch (error) {
+        console.error('대분류 이름 검색 실패:', error);
+      }
+    };
+
+    fetchCategoryItems();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeCategory]);
+
+  /* 검색어로 전체 식재료 조회 — 대분류를 먼저 열지 않아도 결과가 나오게 */
+  useEffect(() => {
+    const q = query.trim();
+    if (!q) return undefined;
+
+    let cancelled = false;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await getFoodIngredients(q);
+        if (cancelled) return;
+        mergeItems(unwrapList(response).map(mapFoodIngredient));
+      } catch (error) {
+        console.error('식재료 검색 실패:', error);
+      }
+    }, 200);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [query]);
+
+  const scrollRef = useRef(null);
+  const scrollTopRef = useRef(0);
+
+  const q = query.trim();
+  const isSearching = Boolean(q);
+  const isCategoryOpen = Boolean(activeCategory) && !isSearching;
+
+  useLayoutEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollTopRef.current;
     }
-    return items.filter((item) => item.name.includes(q)).sort(byLengthThenKo);
-  }, [q, items]);
+  }, [activeCategory, isCategoryOpen]);
+
+  const categoryItems = useMemo(() => {
+    if (!activeCategory) return [];
+    return items.filter((item) => item.type === activeCategory).sort(byNameKo);
+  }, [activeCategory, items]);
+
+  const visibleCategoryItems = useMemo(
+    () => categoryItems.filter((item) => !hasId(selectedIds, item.id)),
+    [categoryItems, selectedIds]
+  );
+
+  const searchItems = useMemo(() => {
+    if (!isSearching) return [];
+    return items
+      .filter((item) => item.name.includes(q))
+      .filter((item) => !hasId(selectedIds, item.id))
+      .sort(byNameKo);
+  }, [isSearching, items, q, selectedIds]);
+
+  const toggleCategory = (type) => {
+    if (isSearching) return;
+    scrollTopRef.current = scrollRef.current?.scrollTop ?? 0;
+    setActiveCategory((prev) => (prev === type ? null : type));
+  };
+
+  const handleSearchChange = (value) => {
+    if (activeCategory) return;
+    setQuery(value);
+  };
+
+  const allCategorySelected =
+    categoryItems.length > 0 && categoryItems.every((item) => hasId(selectedIds, item.id));
+
+  const toggleSelectAllInCategory = () => {
+    const ids = categoryItems.map((item) => item.id);
+    if (allCategorySelected) onClearMany(ids);
+    else onSelectMany(ids);
+  };
 
   return (
     /* 2단계 본문 세로 스크롤 영역 */
@@ -151,15 +298,16 @@ function SecondStep({ selectedIds, onToggle }) {
       </Header>
 
       {/* 검색 입력 박스(라운드 사각형) */}
-      <SearchBox>
+      <SearchBox $dimmed={isCategoryOpen}>
         {/* 검색 돋보기 아이콘(22×22) */}
         <SearchIcon src={searchIcon} alt="" />
         {/* 검색 입력 필드 */}
         <SearchInput
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           placeholder="피하고 싶은 재료 검색"
           aria-label="재료 검색"
+          disabled={isCategoryOpen}
         />
         {q && (
           /* 검색어 지우기 투명 버튼 */
@@ -170,25 +318,71 @@ function SecondStep({ selectedIds, onToggle }) {
         )}
       </SearchBox>
 
-      {/* 재료 선택 알약 칩 줄(줄바꿈) */}
-      <ChipRow>
-        {visible.map((item) => (
-          <PillButton
-            key={item.id}
-            kind="INGREDIENT"
-            detailType={item.type}
-            name={item.name}
-            isSelected={selectedIds.includes(item.id)}
-            onClick={() => onToggle(item.id)}
-          />
-        ))}
-      </ChipRow>
+      <Content>
+        <ScrollBody ref={scrollRef}>
+          {isSearching ? (
+            <ChipRow>
+              {searchItems.map((item) => (
+                <PillButton
+                  key={item.id}
+                  kind="INGREDIENT"
+                  detailType={item.type}
+                  name={item.name}
+                  isSelected={hasId(selectedIds, item.id)}
+                  onClick={() => onToggle(item.id)}
+                />
+              ))}
+            </ChipRow>
+          ) : (
+            <>
+              <ChipRow>
+                {CATEGORIES.map((category) => (
+                  <PillButton
+                    key={category.type}
+                    kind="INGREDIENT"
+                    detailType={category.type}
+                    name={category.name}
+                    isSelected={activeCategory === category.type}
+                    onMouseDown={(event) => event.preventDefault()}
+                    onClick={() => toggleCategory(category.type)}
+                  />
+                ))}
+              </ChipRow>
+
+              <Detail $open={isCategoryOpen}>
+                <DetailInner>
+                  <Divider />
+                  <SubChipRow>
+                    <SelectAllBtn
+                      type="button"
+                      onClick={toggleSelectAllInCategory}
+                      disabled={!categoryItems.length}
+                      $on={allCategorySelected}
+                    >
+                      전체선택
+                    </SelectAllBtn>
+                    {visibleCategoryItems.map((item) => (
+                      <PillButton
+                        key={item.id}
+                        kind="INGREDIENT"
+                        detailType={item.type}
+                        name={item.name}
+                        onClick={() => onToggle(item.id)}
+                      />
+                    ))}
+                  </SubChipRow>
+                </DetailInner>
+              </Detail>
+            </>
+          )}
+        </ScrollBody>
+      </Content>
     </Wrap>
   );
 }
 
-/* 하단 선택 칩 목록(X + 아이콘 + 이름, 여러 줄) */
-export function SelectedChips({ selectedIds, onRemove }) {
+/* 하단 선택 칩 목록(X + 아이콘 + 이름, 한 줄 가로 스크롤) */
+export function SelectedChips({ selectedIds, onRemove, catalog = [] }) {
   const [items, setItems] = useState(ALL);
 
   /* 선택된 ID와 이름을 연결하기 위해 실제 API 데이터 조회 */
@@ -196,7 +390,7 @@ export function SelectedChips({ selectedIds, onRemove }) {
     const fetchExceptionIngredients = async () => {
       try {
         const response = await getExceptionFoodIngredients();
-        const mapped = mapExceptionIngredients(response.data);
+        const mapped = mapExceptionIngredients(response);
 
         if (mapped.length > 0) {
           setItems(mapped);
@@ -209,12 +403,19 @@ export function SelectedChips({ selectedIds, onRemove }) {
     fetchExceptionIngredients();
   }, []);
 
-  const selected = selectedIds.map((id) => items.find((item) => item.id === id)).filter(Boolean);
+  const selected = selectedIds
+    .map((id) => {
+      const fromCatalog = catalog.find((item) => sameId(item.id, id));
+      if (fromCatalog) return fromCatalog;
+      return items.find((item) => sameId(item.id, id));
+    })
+    .filter(Boolean)
+    .sort(byNameKo);
 
-  if (!selected.length) return null;
+  if (!selectedIds.length) return null;
 
   return (
-    /* 선택 칩 줄바꿈 행 */
+    /* 선택 칩 한 줄 가로 스크롤 */
     <SelectedRow>
       {selected.map((item) => (
         <PillButton
@@ -278,7 +479,6 @@ const SearchBox = styled.div`
   align-items: center;
   flex-shrink: 0;
   width: 100%;
-  max-width: 340px;
   height: 48px;
   margin: 37px auto 0;
   border-radius: 12px;
@@ -286,6 +486,17 @@ const SearchBox = styled.div`
   box-shadow:
     0 0 8px rgba(3, 3, 3, 0.05),
     0 0 30px rgba(3, 3, 3, 0.05);
+  pointer-events: ${({ $dimmed }) => ($dimmed ? 'none' : 'auto')};
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: #fffefd;
+    opacity: ${({ $dimmed }) => ($dimmed ? 0.55 : 0)};
+    pointer-events: none;
+  }
 `;
 
 /* 검색 돋보기 아이콘(22×22) */
@@ -331,16 +542,97 @@ const ClearImg = styled.img`
 `;
 
 /* 재료 칩 래핑 줄(검색·확인 버튼 사이 세로 스크롤) */
+const Content = styled.div`
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  margin-top: 28px;
+  overflow: hidden;
+`;
+
+const ScrollBody = styled.div`
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  box-sizing: content-box;
+  margin-right: -64px;
+  padding-right: 64px;
+  overflow-x: hidden;
+  overflow-y: scroll;
+  overflow-anchor: none;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
+    background: transparent;
+  }
+`;
+
 const ChipRow = styled.div`
   display: flex;
   flex-wrap: wrap;
+  align-items: flex-start;
   align-content: flex-start;
-  flex: 1;
-  min-height: 0;
+  flex-shrink: 0;
+  width: 100%;
+  min-width: 0;
   gap: 12px 4px;
-  margin-top: 28px;
-  padding: 16px 12px 24px;
-  overflow-y: auto;
+  padding: 16px 12px 8px;
+  contain: layout;
+  transform: translateZ(0);
+`;
+
+const Detail = styled.div`
+  display: grid;
+  flex-shrink: 0;
+  grid-template-rows: ${({ $open }) => ($open ? '1fr' : '0fr')};
+`;
+
+const DetailInner = styled.div`
+  min-height: 0;
+  overflow: hidden;
+`;
+
+const Divider = styled.div`
+  flex-shrink: 0;
+  width: calc(100% - 24px);
+  height: 1px;
+  margin: 8px 12px;
+  background: #ececec;
+`;
+
+const SubChipRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  flex-shrink: 0;
+  gap: 12px 4px;
+  padding: 8px 12px 24px;
+`;
+
+const SelectAllBtn = styled.button`
+  align-self: flex-start;
+  height: 36px;
+  padding: 0 14px;
+  border: 2px solid ${({ $on }) => ($on ? '#c2ee73' : '#d9d9da')};
+  border-radius: 30px;
+  background: ${({ $on }) => ($on ? '#d6f3a1' : '#fff')};
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #030303;
+  cursor: pointer;
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: default;
+  }
 `;
 
 /* 겹친 아이콘용 정사각 프레임(19×19) */
@@ -366,13 +658,27 @@ const IconImg = styled.img`
   }
 `;
 
-/* 하단 선택 칩 줄바꿈 행 */
+/* 하단 선택 칩 한 줄 가로 스크롤 */
 const SelectedRow = styled.div`
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 8px;
   width: 100%;
-  margin-bottom: 24px;
+  margin: -16px -12px 8px;
+  padding: 16px 12px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+
+  & > * {
+    flex-shrink: 0;
+  }
+
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 `;
 
 export default SecondStep;

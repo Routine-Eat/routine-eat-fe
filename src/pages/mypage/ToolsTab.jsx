@@ -245,20 +245,18 @@ const ChipRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 12px 4px;
-  max-width: 350px;
 `;
 
 /* —— 하단 바: 상단 둥근 흰 직사각형 —— */
 const BottomBar = styled.div`
-  position: fixed;
-  left: 50%;
+  position: absolute;
+  left: 0;
+  right: 0;
   bottom: 0;
   z-index: 15;
   box-sizing: border-box;
   width: 100%;
-  max-width: 390px;
   padding: 28px 24px 32px;
-  transform: translateX(-50%);
   border-radius: 22px 22px 0 0;
   background: #fff;
   box-shadow: 0 -1px 14.6px 0 rgba(201, 201, 189, 0.25);

@@ -106,7 +106,6 @@ const LevelBtn = styled.button`
   justify-content: center;
   gap: 4px;
   width: 100%;
-  max-width: 350px;
   height: 102px;
   margin: 0 auto;
   padding: 15px 0;

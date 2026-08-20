@@ -16,8 +16,11 @@ import fireIcon from "../../assets/icons/fire.svg";
 import cometIcon from "../../assets/icons/comet.svg";
 import checkBadgeIcon from "../../assets/icons/checkBadge.svg";
 import chevronDarkGrayIcon from "../../assets/icons/chevronDarkGray.svg";
+import sparkleIcon from "../../assets/icons/sparkle.svg";
 import { getAiRecommendedRecipe, postAiRecipeRecommendAgain } from "../../api/recipe";
 import { getAiMealPlanRecommendation } from "../../api/mealPlanApi";
+import carouselArrowIcon from "../../assets/icons/carouselArrow.svg";
+import { getIngredientIcon } from "@/constants/iconsMap";
 
 const ENERGY_OPTIONS = ["의욕 없음", "보통", "의욕 넘침"];
 
@@ -35,6 +38,32 @@ function getParticle(word) {
   if (code < 0 || code > 11171) return "가";
   const hasBatchim = code % 28 !== 0;
   return hasBatchim ? "이" : "가";
+}
+
+ function containsKorean(text) {
+   return /[가-힣]/.test(text);
+ }
+
+ function getTextWidth(text, font) {
+   const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+   const context = canvas.getContext("2d");
+   context.font = font;
+   return context.measureText(text).width;
+ }
+
+ const CAROUSEL_NAME_MAX_WIDTH = 160;
+ const INGREDIENT_TEXT_MAX_WIDTH = 220;
+ const THEME_DESC_LINE_WIDTH = 134; 
+const THEME_DESC_MAX_LINES = 2;
+const THEME_DESC_FONT_SIZES = [12.5, 11, 9.5, 8.5]; // 큰 것부터 순서대로 시도
+
+function getThemeDescFontSize(text) {
+  for (const size of THEME_DESC_FONT_SIZES) {
+    const width = getTextWidth(text, `500 ${size}px 'Wanted Sans Variable'`);
+    const lines = Math.ceil(width / THEME_DESC_LINE_WIDTH);
+    if (lines <= THEME_DESC_MAX_LINES) return size;
+  }
+  return THEME_DESC_FONT_SIZES[THEME_DESC_FONT_SIZES.length - 1]; // 그래도 안 맞으면 제일 작은 값 사용
 }
 
 const CAROUSEL_CARD_WIDTH = 216;
@@ -91,6 +120,7 @@ box-shadow: 0px 0px 20px 0px rgba(72, 28, 0, 0.15), 0px 0px 10px 0px rgba(72, 28
 display: flex;
 flex-direction: column;
 padding-bottom: 18px;
+cursor: pointer;
 
 &::after{
 content: "";
@@ -135,11 +165,11 @@ letter-spacing: -0.4px;
 const RecipeDesc = styled.div`
 margin: 6px 18px 0;
 color: #805200;
-font-size: 12px;
+font-size: ${({ $compact }) => ($compact ? "10.5px" : "12px")};
 font-family: Wanted Sans Variable;
 font-weight: 500;
 letter-spacing: -0.24px;
-line-height: 1.4;
+line-height: ${({ $compact }) => ($compact ? "1.3" : "1.4")};
 
 p{
 margin: 0;
@@ -341,7 +371,7 @@ const SelectedIngredientButton = styled.button`
 
   .ingredient-name {
     color: #2c0500;
-    font-size: 14px;
+    font-size: ${({ $compact }) => ($compact ? "12px" : "14px")};
     font-family: Wanted Sans Variable;
     font-weight: 600;
     letter-spacing: 0.14px;
@@ -350,7 +380,7 @@ const SelectedIngredientButton = styled.button`
 
   .suffix {
     color: #8f765c;
-    font-size: 12px;
+    font-size: ${({ $compact }) => ($compact ? "10.5px" : "12px")};
     font-family: Wanted Sans Variable;
     font-weight: 600;
     letter-spacing: 0.12px;
@@ -363,6 +393,7 @@ const SelectedIngredientButton = styled.button`
     height: 14px;
     display: block;
     flex-shrink: 0;
+    transform: rotate(-90deg);
   }
 `;
 
@@ -439,11 +470,11 @@ letter-spacing: -0.36px;
 .desc{
 width: 100%;
 color: #727272;
-font-size: 12.5px;
+font-size: ${({ $fontSize }) => `${$fontSize}px`};
 font-family: Wanted Sans Variable;
 font-weight: 500;
 letter-spacing: -0.3px;
-line-height: 1.3;
+line-height: 1.25;
 
 p{
 margin: 0;
@@ -676,7 +707,7 @@ const CarouselCard = styled.div`
       : "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease, filter 0.35s ease"};
   transform: ${({ $x, $scale }) => `translateX(${$x}px) scale(${$scale})`};
   opacity: ${({ $active }) => ($active ? 1 : 0.55)};
-  filter: ${({ $active }) => ($active ? "none" : "saturate(0.5)")};
+  filter: none;
   z-index: ${({ $active }) => ($active ? 2 : 1)};
   box-shadow: 0px 0px 12px 0px rgba(72, 28, 0, 0.06),
     0px 0px 20px 0px rgba(46, 46, 46, 0.25);
@@ -726,10 +757,13 @@ const CarouselCardName = styled.p`
   margin: 0;
   width: 160px;
   color: ${({ $active }) => ($active ? "#481c00" : "#444")};
-  font-size: 20px;
+  font-size: ${({ $compact }) => ($compact ? "14px" : "20px")};
   font-family: Wanted Sans Variable;
   font-weight: 700;
   letter-spacing: -0.4px;
+     white-space: nowrap;
+   overflow: hidden;
+   text-overflow: ellipsis;
 `;
 
 const CarouselCardDesc = styled.div`
@@ -753,12 +787,10 @@ const CarouselArrowButton = styled.button`
   position: absolute;
   top: 50%;
   transform: translateY(-50%);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: white;
+  width: 40px;
+  height: 40px;
   border: none;
-  box-shadow: 0px 2px 8px rgba(0, 0, 0, 0.18);
+  background: none;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -774,11 +806,12 @@ const CarouselArrowButton = styled.button`
   }
 
   img {
-        width: 8px;
-    height: 14px;
+        width: 14px;
+    height: 28px;
     display: block;
     margin: auto;
     object-fit: contain;
+    filter: drop-shadow(0px 1px 3px rgba(0, 0, 0, 0.5));
   }
 
   &.left img {
@@ -842,7 +875,7 @@ export default function Home() {
             qty: item.primaryAmountValue != null
               ? `${item.primaryAmountValue}${item.foodIngredientPrimaryUnit}`
               : "",
-            icon: null, // 서버가 아이콘을 안 주므로 일단 비워둠 (필요하면 종류별 아이콘 매핑 추가 가능)
+            icon: getIngredientIcon(item.foodIngredientName, item.foodIngredientType),
           }))
         );
       })
@@ -892,8 +925,8 @@ export default function Home() {
     const goToCarouselIndex = (nextIndex) => {
     const count = recommendedDishes.length;
     if (count === 0) return;
-    const clamped = Math.max(0, Math.min(count - 1, nextIndex));
-    setCarouselIndex(clamped);
+         const wrapped = (nextIndex + count) % count;
+     setCarouselIndex(wrapped);
   };
 
   const handleCarouselPointerDown = (e) => {
@@ -942,11 +975,17 @@ export default function Home() {
               onPointerCancel={endCarouselDrag}
             >
               {recommendedDishes.map((dish, index) => {
-                const offset = index - carouselIndex;
+                               const count = recommendedDishes.length;
+               let offset = index - carouselIndex;
+               if (offset > count / 2) offset -= count;
+               if (offset < -count / 2) offset += count;
                 const isActive = offset === 0;
                 const baseX = offset * CAROUSEL_SIDE_OFFSET;
                 const x = baseX + (isCarouselDragging ? carouselDragX : 0);
                 const scale = isActive ? 1 : CAROUSEL_SIDE_SCALE;
+                               const menuName = dish.menuName || "";
+               const fullWidth = getTextWidth(menuName, "700 20px 'Wanted Sans Variable'");
+               const isNameCompact = fullWidth > CAROUSEL_NAME_MAX_WIDTH;
 
                 return (
                   <CarouselCard
@@ -960,7 +999,9 @@ export default function Home() {
                                         <CarouselThumbBox>
                       <img src={dish.menuThumbnailUrl || recipeImg} alt={dish.menuName} />
                     </CarouselThumbBox>
-                     <CarouselCardName $active={isActive}>{dish.menuName}</CarouselCardName>
+                                        <CarouselCardName $active={isActive} $compact={isNameCompact}>
+                     {dish.menuName}
+                   </CarouselCardName>
                     <CarouselCardDesc $active={isActive}>
                        <p>{dish.reason}</p>
                     </CarouselCardDesc>
@@ -969,31 +1010,35 @@ export default function Home() {
               })}
             </CarouselTrack>
 
-            {carouselIndex > 0 && (
-              <CarouselArrowButton
-                className="left"
-                onClick={() => goToCarouselIndex(carouselIndex - 1)}
-              >
-                <img src={chevronDarkGrayIcon} alt="이전" />
-              </CarouselArrowButton>
-            )}
-            {carouselIndex < recommendedDishes.length - 1 && (
-              <CarouselArrowButton
-                className="right"
-                onClick={() => goToCarouselIndex(carouselIndex + 1)}
-              >
-                <img src={chevronDarkGrayIcon} alt="다음" />
-              </CarouselArrowButton>
-            )}
+                       {recommendedDishes.length > 1 && (
+             <>
+               <CarouselArrowButton
+                 className="left"
+                 onClick={() => goToCarouselIndex(carouselIndex - 1)}
+               >
+                 <img src={carouselArrowIcon} alt="이전" />
+               </CarouselArrowButton>
+               <CarouselArrowButton
+                 className="right"
+                 onClick={() => goToCarouselIndex(carouselIndex + 1)}
+               >
+                 <img src={carouselArrowIcon} alt="다음" />
+               </CarouselArrowButton>
+             </>
+           )}
           </CarouselWrap>
         </>
       ) : (
         <>
-          <Title>오늘의 추천 레시피예요</Title>
-          <Subtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</Subtitle>
+          <Title>오늘 만들기 좋은 한 끼예요</Title>
+          <Subtitle>집에 있는 재료와 요리 경험을 반영했어요.</Subtitle>
           
 {recommendedDish && (
-          <RecipeCardWrap>
+   (() => {
+   const reasonLength = (recommendedDish.reason || "").length;
+   const isCompact = reasonLength > 45;
+   return (
+          <RecipeCardWrap onClick={() => navigate(`/recipes/${recommendedDish.recipeId}`)}>
             <RecipeThumbBox>
                             <img
                 src={recommendedDish.menuThumbnailUrl || recipeImg}
@@ -1001,10 +1046,12 @@ export default function Home() {
               />
             </RecipeThumbBox>
             <RecipeName>{recommendedDish.menuName}</RecipeName>
-            <RecipeDesc>
+            <RecipeDesc $compact={isCompact}>
               <p>{recommendedDish.reason}</p>
             </RecipeDesc>
           </RecipeCardWrap>
+             );
+ })()
 )}
         </>
       )}
@@ -1061,35 +1108,57 @@ export default function Home() {
               </DifficultyRow>
             </div>
 
-                        {selectedIngredientObjects.length === 0 ? (
-              <IngredientButton onClick={() => setIsIngredientModalOpen(true)}>
-                <span className="label">원하는 재료 선택하기</span>
-                <img className="chevron" src={chevronDarkGrayIcon} alt="" />
-              </IngredientButton>
-            ) : (
-              <SelectedIngredientButton onClick={() => setIsIngredientModalOpen(true)}>
-                <div className="left">
-                  {selectedIngredientObjects[0].icon && (
-                    <img
-                      className="ingredient-icon"
-                      src={selectedIngredientObjects[0].icon}
-                      alt=""
-                    />
-                  )}
-                  <div className="ingredient-text">
-                    <span className="ingredient-name">
-                      {selectedIngredientObjects[0].name}
-                      {selectedIngredientObjects.length > 1 &&
-                        ` 외 ${selectedIngredientObjects.length - 1}개`}
-                    </span>
-                    <span className="suffix">
-                      {getParticle(selectedIngredientObjects[0].name)} 포함된 레시피 추천할게요
-                    </span>
-                  </div>
-                </div>
-                <img className="chevron" src={chevronBrownIcon} alt="" />
-              </SelectedIngredientButton>
-            )}
+                                   <div>
+             <div className="field-label">
+               <img className="field-icon" src={sparkleIcon} alt="" />
+               꼭 쓰고싶은 재료
+             </div>
+             {selectedIngredientObjects.length === 0 ? (
+               <IngredientButton onClick={() => setIsIngredientModalOpen(true)}>
+                 <span className="label">원하는 재료 선택하기</span>
+                 <img className="chevron" src={chevronDarkGrayIcon} alt="" />
+               </IngredientButton>
+             ) : (
+                             (() => {
+                const nameText =
+                  selectedIngredientObjects[0].name +
+                  (selectedIngredientObjects.length > 1
+                    ? ` 외 ${selectedIngredientObjects.length - 1}개`
+                    : "");
+                const suffixText = `${getParticle(selectedIngredientObjects[0].name)} 포함된 레시피 추천할게요`;
+                               const nameWidth = getTextWidth(nameText, "600 14px 'Wanted Sans Variable'");
+               const suffixWidth = getTextWidth(suffixText, "600 12px 'Wanted Sans Variable'");
+               const isCompact = nameWidth + suffixWidth + 4 > INGREDIENT_TEXT_MAX_WIDTH;
+                return (
+                <SelectedIngredientButton
+                  $compact={isCompact}
+                  onClick={() => setIsIngredientModalOpen(true)}
+                >
+                 <div className="left">
+                   {selectedIngredientObjects[0].icon && (
+                     <img
+                       className="ingredient-icon"
+                       src={selectedIngredientObjects[0].icon}
+                       alt=""
+                     />
+                   )}
+                   <div className="ingredient-text">
+                     <span className="ingredient-name">
+                       {selectedIngredientObjects[0].name}
+                       {selectedIngredientObjects.length > 1 &&
+                         ` 외 ${selectedIngredientObjects.length - 1}개`}
+                     </span>
+                     <span className="suffix">
+                       {getParticle(selectedIngredientObjects[0].name)} 포함된 레시피 추천할게요
+                     </span>
+                   </div>
+                 </div>
+                 <img className="chevron" src={chevronBrownIcon} alt="" />
+               </SelectedIngredientButton>
+                );
+              })()
+             )}
+           </div>
           </DetailSection>
 
                     <RecommendButton onClick={() => setIsConfirmModalOpen(true)}>
@@ -1098,19 +1167,20 @@ export default function Home() {
         </ToggleOpenCard>
       )}
 
-      <ThemeSectionTitle>오늘의 추천 식단이에요</ThemeSectionTitle>
-      <ThemeSectionSubtitle>집에 있는 재료와 요리 수준, 선호도를 고려했어요</ThemeSectionSubtitle>
+      <ThemeSectionTitle>오늘 시작하기 좋은 세 끼 식단이에요</ThemeSectionTitle>
+      <ThemeSectionSubtitle>집에 있는 재료와 선호도, 경험을 반영했어요.</ThemeSectionSubtitle>
 
       <ThemeGrid>
         {THEME_CARDS.map((theme) => {
-          const recommendation = mealPlanRecommendations?.[THEME_TO_AI_KEY[theme.id]] ?? null;
-          if (theme.id === "max-ingredient" && !recommendation) return null;
+                   const recommendation = mealPlanRecommendations?.[THEME_TO_AI_KEY[theme.id]] ?? null;
+         const desc = theme.desc;
 
-          const desc = recommendation?.reason ? [recommendation.reason] : theme.desc;
-
+         const descFullText = desc.join(" ");
+         const descFontSize = getThemeDescFontSize(descFullText);
           return (
             <ThemeCard
               key={theme.id}
+              $fontSize={descFontSize}
               onClick={() =>
                 navigate(`/menu/${theme.id}`, {
                   state: { recommendation },

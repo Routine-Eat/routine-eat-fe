@@ -7,12 +7,12 @@ import { patchUserFoodIngredientAmount } from "@/api/userApi";
 import { useUserStore } from "@/hooks/useUserStore";
 import { useCookingStore } from "../../hooks/useCookingStore";
 import { patchCookingResult } from "../../api/cookingRecord";
-import { patchPlanMenuCompleted } from "../../api/mealPlanApi";
-
+import { patchPlanMenuCompleted, getUserMealPlanDetail, patchUserMealPlanStatus } from "../../api/mealPlanApi";
 import BackButton from "../../common/button/BackButton";
 import checkBadgeGreenIcon from "../../assets/icons/checkCircleWhite.svg";
 import arrowLeftIcon from "../../assets/icons/arrowLeft.svg";
 import forkKnifeImg from "../../assets/images/forkKnife.svg";
+
 
 const PageContainer = styled.div`
   background: #fffefd;
@@ -117,6 +117,11 @@ const ActionButton = styled.button`
   letter-spacing: -0.18px;
   background: ${({ $variant }) => ($variant === "primary" ? "#96D960" : "#e9e9e9")};
   color: ${({ $variant }) => ($variant === "primary" ? "#ffffff" : "#5a5a5b")};
+
+   &:disabled {
+   opacity: 0.6;
+   cursor: not-allowed;
+ }
 `;
 
 const ReflectedModalOverlay = styled.div`
@@ -620,6 +625,7 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
   };
 
     const handleFinalComplete = async () => {
+      console.log("!!! handleFinalComplete 진입함 !!!");
     setIsCompleteModalOpen(false);
     const nextDietId = mealPlanId ?? mealId;
     if (userId && planMenuId) {
@@ -630,7 +636,35 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
       }
     }
     clearCookingSession();
-    navigate(`/diet-start/${nextDietId}`);
+       let isMealPlanDone = false;
+   if (userId && nextDietId) {
+     try {
+       const res = await getUserMealPlanDetail(userId, nextDietId);
+       const detail = res.data ?? res;
+       console.log("식단 상세 응답:", detail);
+              const planMenuList = detail?.planMenuList ?? [];
+       isMealPlanDone =
+         detail?.mealPlanStatus === "DONE" ||
+         (planMenuList.length > 0 && planMenuList.every((m) => m.planMenuCompleted));
+         console.log("isMealPlanDone 계산 결과:", isMealPlanDone);
+               if (isMealPlanDone && detail?.mealPlanStatus !== "DONE") {
+        try {
+          await patchUserMealPlanStatus(nextDietId, userId, "DONE");
+        } catch (error) {
+          console.error("식단 완료 상태 수정 실패:", error);
+        }
+      }
+     } catch (error) {
+       console.error("식단 상태 재조회 실패:", error);
+     }
+   }
+
+      if (isMealPlanDone) {
+        console.log("activeMealPlanId를 null로 초기화합니다");
+     useCookingStore.getState().setActiveMealPlanId(null);
+   }
+
+   navigate(isMealPlanDone ? "/" : `/diet-start/${nextDietId}`);
   };
 
   const closeEditModal = () => {
@@ -697,8 +731,8 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
       <FootNote>조미료는 반영되지 않아요</FootNote>
 
       <BottomButtonGroup>
-        <ActionButton onClick={handleUsedDifferently}>다르게 썼어요</ActionButton>
-        <ActionButton $variant="primary" onClick={handleUsedAsIs}>
+               <ActionButton onClick={handleUsedDifferently} disabled={isSaving}>다르게 썼어요</ActionButton>
+       <ActionButton $variant="primary" onClick={handleUsedAsIs} disabled={isSaving}>
           그대로 사용했어요
         </ActionButton>
       </BottomButtonGroup>

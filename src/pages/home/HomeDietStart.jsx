@@ -13,6 +13,7 @@ import checkCircleWhiteIcon from "../../assets/icons/checkCircleWhite.svg";
 import forkKnifeIcon from "../../assets/images/forkKnife.svg";
 import { useUserStore } from "../../hooks/useUserStore";
 import { useCookingStore } from "../../hooks/useCookingStore";
+import { addOtherShoppingItem } from "../../store/shoppingStore";
 
 const MEAL_PLAN_THEME = {
   PRACTICE: "skill-up",
@@ -525,6 +526,9 @@ export default function HomeDietStart() {
   };
 
   const handleAddToShoppingList = () => {
+       missingIngredients.forEach((name) => {
+     addOtherShoppingItem(name, "");
+   });
     showToast("재료를 장보기 목록에 추가했어요");
   };
 

@@ -13,6 +13,7 @@ import { getAiMealPlanRecommendation, postUserMealPlan } from "../../api/mealPla
 import { useUserStore } from "../../hooks/useUserStore";
 import { useCookingStore } from "../../hooks/useCookingStore";
 import loaderIcon from "@/common/loader.svg";
+import { addOtherShoppingItem } from "../../store/shoppingStore";
 
 const THEME_TO_AI_KEY = {
   "skill-up": "practice",
@@ -455,6 +456,9 @@ export default function HomeMenu() {
   };
 
   const handleAddToShoppingList = () => {
+     missingIngredients.forEach((name) => {
+     addOtherShoppingItem(name, "");
+   });
     closeStartModal();
     navigate("/shopping-list");
   };

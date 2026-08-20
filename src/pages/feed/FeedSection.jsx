@@ -8,6 +8,7 @@ import toTopChevronIcon from '../../assets/feed/to-top-chevron.svg';
 import { deleteFavoriteRecipe, postFavoriteRecipe } from '../../api/favoriteRecipe';
 import { getRecipes } from '../../api/recipe';
 import BackButton from '../../common/button/BackButton';
+import loaderSvg from '../../common/loader.svg';
 import MenuCard from '../../common/menuCard/MenuCard';
 import { useUserStore } from '../../hooks/useUserStore';
 import { DEFAULT_FILTER } from './FilterPanel';
@@ -81,6 +82,7 @@ function FeedSection() {
   const sentinelRef = useRef(null);
   const loadingRef = useRef(false);
   const [recipes, setRecipes] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(1);
   const [hasNext, setHasNext] = useState(true);
   const config = SECTION_CONFIG[sectionId] ?? SECTION_CONFIG.simple;
@@ -93,6 +95,7 @@ function FeedSection() {
       if (!userLoginNumber || loadingRef.current) return;
 
       loadingRef.current = true;
+      if (replace) setLoading(true);
       try {
         const response = await getRecipes({
           userNumber: userLoginNumber,
@@ -121,6 +124,7 @@ function FeedSection() {
         setHasNext(false);
       } finally {
         loadingRef.current = false;
+        if (replace) setLoading(false);
       }
     },
     [
@@ -203,22 +207,30 @@ function FeedSection() {
           <BackButton onClick={() => navigate(-1)} />
           <Title>{title}</Title>
         </PageHeader>
-        <RecipeGrid>
-          {recipes.map((recipe) => (
-            <MenuCard
-              key={recipe.id}
-              image={recipe.image}
-              title={recipe.title}
-              time={recipe.time}
-              utilization={recipe.utilization}
-              difficulty={recipe.difficulty}
-              isSaved={recipe.isSaved}
-              onClick={() => navigate(`/recipes/${recipe.id}`)}
-              onToggleSave={() => toggleSave(recipe.id)}
-            />
-          ))}
-        </RecipeGrid>
-        <Sentinel ref={sentinelRef} aria-hidden />
+        {loading ? (
+          <LoaderWrap>
+            <LoaderImg src={loaderSvg} alt="" />
+          </LoaderWrap>
+        ) : (
+          <>
+            <RecipeGrid>
+              {recipes.map((recipe) => (
+                <MenuCard
+                  key={recipe.id}
+                  image={recipe.image}
+                  title={recipe.title}
+                  time={recipe.time}
+                  utilization={recipe.utilization}
+                  difficulty={recipe.difficulty}
+                  isSaved={recipe.isSaved}
+                  onClick={() => navigate(`/recipes/${recipe.id}`)}
+                  onToggleSave={() => toggleSave(recipe.id)}
+                />
+              ))}
+            </RecipeGrid>
+            <Sentinel ref={sentinelRef} aria-hidden />
+          </>
+        )}
       </Scroll>
 
       <ToTopButton
@@ -242,6 +254,24 @@ const Page = styled.div`
   min-height: 0;
   overflow: hidden;
   background: #fffefd;
+`;
+
+const LoaderWrap = styled.div`
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 15;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+`;
+
+const LoaderImg = styled.img`
+  display: block;
+  width: 40px;
+  height: 40px;
 `;
 
 const PageHeader = styled.header`

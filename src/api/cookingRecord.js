@@ -73,7 +73,10 @@ export const patchCookingResult = (userNumber, { tasteRating, difficultyLevel, c
 
   return APIService.public.patch(`/cooking-records`, formData, {
     params: { userNumber },
-    headers: { "Content-Type": "multipart/form-data" },
+       headers: {
+     "Content-Type": undefined, // 인스턴스 기본값(application/x-www-form-urlencoded)을 지워야
+                                 // 브라우저가 boundary 포함해서 multipart/form-data를 자동 설정함
+   },
   });
 };
 
@@ -89,3 +92,12 @@ export const getCurrentCookingStep = (cookingRecordId, userNumber) =>
    APIService.public.get(`/cooking-records/current/cooking-steps`, {
      params: { userNumber },
    });
+
+  /* PATCH /cooking-records/{cookingRecordId}/cooking-session/cooking-steps/last
+   마지막 요리 단계로 변경 */
+export const patchMoveToLastCookingStep = (cookingRecordId, userNumber) =>
+  APIService.public.patch(
+    `/cooking-records/${cookingRecordId}/cooking-session/cooking-steps/last`,
+    null,
+    { params: { userNumber } }
+  );

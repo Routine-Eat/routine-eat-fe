@@ -1,50 +1,32 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 
 import { getUserStatistics } from '../../api/userApi';
-import BackButton from '../../common/button/BackButton';
-import { useUserStore } from '../../hooks/useUserStore';
 import closeX from '../../assets/notification/close-x.svg';
-import ingDumpling from '../../assets/notification/ing-dumpling.svg';
-import ingEgg from '../../assets/notification/ing-egg.svg';
-import ingMeat from '../../assets/notification/ing-meat.svg';
-import ingOnion from '../../assets/notification/ing-onion.svg';
 import starEmpty from '../../assets/notification/star-empty.svg';
 import starFilled from '../../assets/notification/star-filled.svg';
+import PillButton from '../../common/PillButton';
+import BackButton from '../../common/button/BackButton';
+import { useUserStore } from '../../hooks/useUserStore';
 
-const DUMMY_REPORT = {
-  count: 10,
-  recipes: ['계란 야채 볶음밥', '매운 오징어덮밥', '진한 양파 짜장면'],
-  ingredients: [
-    { name: '양파', icon: ingOnion, rotate: 11.8 },
-    { name: '달걀', icon: ingEgg, rotate: -11.23 },
-    { name: '만두', icon: ingDumpling, rotate: 4.07 },
-    { name: '우삼겹', icon: ingMeat, rotate: 0 },
-  ],
-  difficulty: 3,
+const EMPTY_REPORT = {
+  count: 0,
+  recipes: [],
+  ingredients: [],
+  difficulty: 0,
 };
-
-const INGREDIENT_ICONS = [
-  { keys: ['양파'], icon: ingOnion },
-  { keys: ['달걀', '계란'], icon: ingEgg },
-  { keys: ['만두'], icon: ingDumpling },
-  { keys: ['우삼겹', '고기'], icon: ingMeat },
-];
 
 const ROTATES = [11.8, -11.23, 4.07, 0];
-
-const iconForName = (name = '') => {
-  const found = INGREDIENT_ICONS.find((item) => item.keys.some((key) => name.includes(key)));
-  return found?.icon ?? ingOnion;
-};
 
 function NotificationReportModal({ contentId, onClose }) {
   const navigate = useNavigate();
   const userId = useUserStore((state) => state.userId);
   const [step, setStep] = useState(0);
-  const [report, setReport] = useState(DUMMY_REPORT);
+  const [report, setReport] = useState(EMPTY_REPORT);
+  const [animatedDifficulty, setAnimatedDifficulty] = useState(0);
+  const [closing, setClosing] = useState(false);
 
   useEffect(() => {
     if (!userId || !contentId) return undefined;
@@ -55,29 +37,52 @@ function NotificationReportModal({ contentId, onClose }) {
         const payload = response.data ?? response;
         const recipes = (payload.recipeReport?.recipeList ?? []).map((item) => item.recipeName);
         const ingredients = (payload.mostUsedFoodIngredientList ?? []).map((item, index) => ({
-          name: item.foodIngredientName,
-          icon: iconForName(item.foodIngredientName),
-          rotate: ROTATES[index % ROTATES.length],
+            name: item.foodIngredientName,
+            detailType: item.foodIngredientType,
+            rotate: ROTATES[index % ROTATES.length],
         }));
         const difficulty = Number(String(payload.averageDifficultyLevel ?? '').replace('LEVEL_', ''));
 
         setReport({
-          count: payload.recipeReport?.count ?? DUMMY_REPORT.count,
-          recipes: recipes.length ? recipes : DUMMY_REPORT.recipes,
-          ingredients: ingredients.length ? ingredients : DUMMY_REPORT.ingredients,
-          difficulty: Number.isFinite(difficulty) && difficulty > 0 ? difficulty : DUMMY_REPORT.difficulty,
+          count: recipes.length || Number(payload.recipeReport?.count) || 0,
+          recipes,
+          ingredients,
+          difficulty: Number.isFinite(difficulty) && difficulty > 0 ? difficulty : 0,
         });
       } catch (error) {
         console.error('사용자 통계 조회 실패:', error);
-        setReport(DUMMY_REPORT);
+        setReport(EMPTY_REPORT);
       }
     };
 
     fetchReport();
   }, [userId, contentId]);
 
+  useEffect(() => {
+    if (step !== 2) {
+      setAnimatedDifficulty(0);
+      return undefined;
+    }
+
+    const target = Math.min(5, Math.max(0, report.difficulty));
+    const timers = Array.from({ length: target }, (_, index) =>
+      window.setTimeout(
+        () => setAnimatedDifficulty(index + 1),
+        180 + index * 320
+      )
+    );
+
+    return () => timers.forEach((timer) => window.clearTimeout(timer));
+  }, [step, report.difficulty]);
+
+  const handleClose = () => {
+    if (closing) return;
+    setClosing(true);
+    window.setTimeout(onClose, 280);
+  };
+
   return (
-    <Overlay onClick={onClose}>
+    <Overlay $closing={closing} onClick={handleClose}>
       <Stage onClick={(e) => e.stopPropagation()}>
         {step > 0 && (
           <SideBtn $side="left">
@@ -85,7 +90,7 @@ function NotificationReportModal({ contentId, onClose }) {
           </SideBtn>
         )}
 
-        <Card $tall={step === 0}>
+        <Card key={step} $tall={step === 0} $closing={closing}>
           {step === 0 && (
             <>
               <CardTitle>여태까지 루틴잇을 통해</CardTitle>
@@ -94,8 +99,10 @@ function NotificationReportModal({ contentId, onClose }) {
                 <CountText>의 레시피를 요리했어요</CountText>
               </CountRow>
               <RecipeList>
-                {report.recipes.slice(0, 3).map((name, index) => (
-                  <RecipeChip key={`${name}-${index}`}>{name}</RecipeChip>
+                {report.recipes.map((name, index) => (
+                  <RecipeChip key={`${name}-${index}`} $index={index}>
+                    {name}
+                  </RecipeChip>
                 ))}
               </RecipeList>
             </>
@@ -105,10 +112,19 @@ function NotificationReportModal({ contentId, onClose }) {
             <>
               <CardTitle>최근 가장 많이 요리한 재료는?</CardTitle>
               <IngredientField>
-                {report.ingredients.slice(0, 4).map((item) => (
-                  <IngChip key={item.name} $rotate={item.rotate}>
-                    <IngIcon src={item.icon} alt="" />
-                    {item.name}
+                {report.ingredients.slice(0, 4).map((item, index) => (
+                  <IngChip
+                    key={item.name}
+                    $rotate={item.rotate}
+                    $index={index}
+                  >
+                    <PillButton
+                      kind="INGREDIENT"
+                      detailType={item.detailType}
+                      name={item.name}
+                      isSelected={false}
+                      deleteAvailable={false}
+                    />
                   </IngChip>
                 ))}
               </IngredientField>
@@ -121,13 +137,14 @@ function NotificationReportModal({ contentId, onClose }) {
               <StarRow>
                 {Array.from({ length: 5 }, (_, i) => (
                   <StarImg
-                    key={i}
-                    src={i < report.difficulty ? starFilled : starEmpty}
+                    key={`${i}-${i < animatedDifficulty}`}
+                    src={i < animatedDifficulty ? starFilled : starEmpty}
                     alt=""
+                    $filled={i < animatedDifficulty}
                   />
                 ))}
               </StarRow>
-              <Score>{report.difficulty}점</Score>
+              <Score>{animatedDifficulty}점</Score>
               <ScoreHint>더 높은 난이도에 도전해볼까요?</ScoreHint>
               <ChallengeBtn
                 type="button"
@@ -148,7 +165,10 @@ function NotificationReportModal({ contentId, onClose }) {
 
       <CloseBtn
         type="button"
-        onClick={onClose}
+        onClick={(event) => {
+          event.stopPropagation();
+          handleClose();
+        }}
         aria-label="닫기"
         $visible={step === 2}
       >
@@ -170,6 +190,9 @@ const Overlay = styled.div`
   justify-content: center;
   gap: 20px;
   background: rgba(3, 3, 3, 0.15);
+  opacity: ${({ $closing }) => ($closing ? 0 : 1)};
+  transition: opacity 280ms ease;
+  pointer-events: ${({ $closing }) => ($closing ? 'none' : 'auto')};
 `;
 
 const Stage = styled.div`
@@ -178,7 +201,6 @@ const Stage = styled.div`
   align-items: center;
   justify-content: center;
   width: 100%;
-  max-width: 390px;
 `;
 
 const SideBtn = styled.div`
@@ -189,11 +211,33 @@ const SideBtn = styled.div`
   transform: translateY(-50%) ${({ $side }) => ($side === 'right' ? 'scaleX(-1)' : 'none')};
 `;
 
+const reportCardEnter = keyframes`
+  0% {
+    opacity: 0;
+    transform: translate3d(18px, 0, 0) scale(0.97);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+`;
+
+const reportCardExit = keyframes`
+  0% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 12px, 0) scale(0.94);
+  }
+`;
+
 const Card = styled.div`
   position: relative;
   box-sizing: border-box;
   width: 350px;
-  height: ${({ $tall }) => ($tall ? '288px' : '286px')};
+  height: ${({ $tall }) => ($tall ? '320px' : '286px')};
   padding: 44px 20px 20px;
   overflow: hidden;
   border-radius: 28px;
@@ -202,6 +246,14 @@ const Card = styled.div`
     0 0 10px 0 rgba(107, 56, 0, 0.06),
     0 0 40px 0 rgba(97, 51, 0, 0.05),
     inset 0 0 5px 0 #fff;
+  animation: ${({ $closing }) => ($closing ? reportCardExit : reportCardEnter)}
+    ${({ $closing }) => ($closing ? '280ms ease' : '360ms cubic-bezier(0.22, 1, 0.36, 1)')}
+    both;
+  will-change: transform, opacity;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 const CardTitle = styled.p`
@@ -246,19 +298,49 @@ const CountText = styled.span`
 const RecipeList = styled.div`
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
+  width: calc(100% + 40px);
+  max-height: 200px;
   gap: 8px;
   align-items: center;
-  margin-top: 20px;
+  margin: 0 -20px;
+  padding: 20px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
+`;
+
+const recipeChipPop = keyframes`
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.88);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(2px) scale(1.04);
+  }
+  78% {
+    transform: translateY(-1px) scale(0.985);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 `;
 
 const RecipeChip = styled.div`
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   width: 268px;
   height: 48px;
   border-radius: 14px;
-  background: #fff6b4;
+  background: ${({ $index }) => ['#fff6b4', '#fff9d2', '#fffcec'][$index] ?? '#fffcec'};
   box-shadow:
     0 0 8px 0 rgba(3, 3, 3, 0.05),
     0 0 30px 0 rgba(3, 3, 3, 0.05);
@@ -266,56 +348,111 @@ const RecipeChip = styled.div`
   font-weight: 700;
   letter-spacing: -0.16px;
   color: #481c00;
+  transform-origin: center;
+  animation: ${recipeChipPop} 560ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: ${({ $index }) => $index * 180}ms;
+  will-change: transform, opacity;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 const IngredientField = styled.div`
-  position: relative;
-  height: 160px;
-  margin-top: 28px;
+  position: absolute;
+  right: 12px;
+  bottom: 16px;
+  left: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  gap: 8px 6px;
+  align-items: end;
+  justify-content: center;
+  pointer-events: none;
+`;
+
+const ingredientDrop = keyframes`
+  0% {
+    opacity: 0;
+    transform:
+      translate3d(var(--drop-x), var(--drop-height), 0)
+      rotate(var(--final-rotate))
+      scale(0.96);
+  }
+  90% {
+    opacity: 1;
+    transform:
+      translate3d(0, 0, 0)
+      rotate(var(--final-rotate))
+      scaleX(1.012)
+      scaleY(0.975);
+  }
+  96% {
+    opacity: 1;
+    transform:
+      translate3d(0, -5px, 0)
+      rotate(var(--final-rotate))
+      scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translate3d(0, 0, 0) rotate(var(--final-rotate)) scale(1);
+  }
 `;
 
 const IngChip = styled.div`
-  position: absolute;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 15px;
-  border-radius: 1000px;
-  background: #fff;
-  box-shadow:
-    0 0 8px 0 rgba(3, 3, 3, 0.05),
-    0 0 30px 0 rgba(3, 3, 3, 0.05);
-  font-size: 20px;
-  font-weight: 600;
-  color: #1a1a1a;
-  transform: rotate(${({ $rotate }) => $rotate}deg);
+  position: relative;
+  max-width: calc(100% - 16px);
+  --final-rotate: ${({ $rotate }) => $rotate}deg;
+  --drop-x: ${({ $index }) => [-18, 14, -12, 16][$index] ?? 0}px;
+  --drop-height: ${({ $index }) => [-210, -265, -225, -280][$index] ?? -220}px;
+  transform: rotate(var(--final-rotate));
+  transform-origin: center;
+  animation: ${ingredientDrop} 900ms cubic-bezier(0.48, 0.04, 0.88, 0.38) both;
+  animation-delay: ${({ $index }) => [0, 190, 260, 80][$index] ?? 0}ms;
+  backface-visibility: hidden;
+  will-change: transform, opacity;
+
+  > button {
+    max-width: 100%;
+    padding: 8px 14px;
+    overflow: hidden;
+    font-size: 17px;
+    white-space: nowrap;
+  }
+
+  > button > img {
+    width: 24px;
+    height: 24px;
+  }
 
   &:nth-child(1) {
-    left: 25px;
-    top: 84px;
+    grid-row: 2;
+    grid-column: 1;
+    justify-self: end;
   }
 
   &:nth-child(2) {
-    left: 92px;
-    top: 32px;
+    grid-row: 1;
+    grid-column: 1;
+    justify-self: end;
   }
 
   &:nth-child(3) {
-    left: 220px;
-    top: 32px;
+    grid-row: 1;
+    grid-column: 2;
+    justify-self: start;
   }
 
   &:nth-child(4) {
-    left: 170px;
-    top: 90px;
+    grid-row: 2;
+    grid-column: 2;
+    justify-self: start;
   }
-`;
 
-const IngIcon = styled.img`
-  display: block;
-  width: 28px;
-  height: 28px;
-  object-fit: contain;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 const StarRow = styled.div`
@@ -326,10 +463,32 @@ const StarRow = styled.div`
   margin-top: 16px;
 `;
 
+const starFill = keyframes`
+  0% {
+    opacity: 0.25;
+    transform: scale(0.55) rotate(-12deg);
+  }
+  62% {
+    opacity: 1;
+    transform: scale(1.2) rotate(5deg);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+`;
+
 const StarImg = styled.img`
   display: block;
   width: 32px;
   height: 32px;
+  animation: ${({ $filled }) => ($filled ? starFill : 'none')} 360ms
+    cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: center;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 const Score = styled.p`

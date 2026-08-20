@@ -7,16 +7,15 @@ import { patchUserFoodIngredientAmount } from "@/api/userApi";
 import { useUserStore } from "@/hooks/useUserStore";
 import { useCookingStore } from "../../hooks/useCookingStore";
 import { patchCookingResult } from "../../api/cookingRecord";
-import { patchPlanMenuCompleted } from "../../api/mealPlanApi";
-
+import { patchPlanMenuCompleted, getUserMealPlanDetail, patchUserMealPlanStatus } from "../../api/mealPlanApi";
 import BackButton from "../../common/button/BackButton";
 import checkBadgeGreenIcon from "../../assets/icons/checkCircleWhite.svg";
 import arrowLeftIcon from "../../assets/icons/arrowLeft.svg";
 import forkKnifeImg from "../../assets/images/forkKnife.svg";
 
+
 const PageContainer = styled.div`
   background: #fffefd;
-  max-width: 390px;
   margin: 0 auto;
   min-height: 100vh;
   position: relative;
@@ -69,6 +68,15 @@ const IngredientBox = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+   justify-content: flex-start;
+ max-height: 240px;
+ overflow-y: auto;
+ scrollbar-width: none;
+ -ms-overflow-style: none;
+
+ &::-webkit-scrollbar {
+   display: none;
+ }
 `;
 
 const IngredientChip = styled.div`
@@ -117,6 +125,28 @@ const ActionButton = styled.button`
   letter-spacing: -0.18px;
   background: ${({ $variant }) => ($variant === "primary" ? "#96D960" : "#e9e9e9")};
   color: ${({ $variant }) => ($variant === "primary" ? "#ffffff" : "#5a5a5b")};
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+   &:disabled {
+   opacity: 0.6;
+   cursor: not-allowed;
+ }
+
+  ${({ $variant }) =>
+    $variant === "primary"
+      ? `
+    &:active:not(:disabled) {
+      background: #36a73c;
+      color: #c6f5a6;
+      font-size: 17px;
+      transform: scale(0.97);
+    }
+  `
+      : ""}
 `;
 
 const ReflectedModalOverlay = styled.div`
@@ -196,6 +226,18 @@ const ReflectedConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.16px;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 15px;
+    transform: scale(0.97);
+  }
 `;
 
 const CompleteModalOverlay = styled.div`
@@ -277,6 +319,18 @@ const CompleteConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.16px;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 15px;
+    transform: scale(0.97);
+  }
 `;
 
 
@@ -314,7 +368,7 @@ const SheetContent = styled.div`
   display: flex;
   flex-direction: column;
   flex: 1;
-  justify-content: center;
+  justify-content: flex-start;
   gap: 24px;
   width: 100%;
 `;
@@ -349,6 +403,15 @@ const SheetIngredientBox = styled.div`
   flex-wrap: wrap;
   gap: 8px;
   width: 100%;
+   justify-content: flex-start;
+ max-height: 160px;
+ overflow-y: auto;
+ scrollbar-width: none;
+ -ms-overflow-style: none;
+
+ &::-webkit-scrollbar {
+   display: none;
+ }
 `;
 
 const SheetIngredientChip = styled.button`
@@ -396,6 +459,18 @@ const SheetConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.18px;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  }
 `;
 
 /* ---- 2단계: 개별 재료 수량 입력 (node 1699:6462) ---- */
@@ -501,6 +576,18 @@ const DetailConfirmButton = styled.button`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.18px;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  &:active {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  }
 `;
 
 /* "200G" / "1" -> 200 / 1. Secondary 단위·수량은 사용하지 않음 */
@@ -620,6 +707,7 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
   };
 
     const handleFinalComplete = async () => {
+      console.log("!!! handleFinalComplete 진입함 !!!");
     setIsCompleteModalOpen(false);
     const nextDietId = mealPlanId ?? mealId;
     if (userId && planMenuId) {
@@ -630,7 +718,35 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
       }
     }
     clearCookingSession();
-    navigate(`/diet-start/${nextDietId}`);
+       let isMealPlanDone = false;
+   if (userId && nextDietId) {
+     try {
+       const res = await getUserMealPlanDetail(userId, nextDietId);
+       const detail = res.data ?? res;
+       console.log("식단 상세 응답:", detail);
+              const planMenuList = detail?.planMenuList ?? [];
+       isMealPlanDone =
+         detail?.mealPlanStatus === "DONE" ||
+         (planMenuList.length > 0 && planMenuList.every((m) => m.planMenuCompleted));
+         console.log("isMealPlanDone 계산 결과:", isMealPlanDone);
+               if (isMealPlanDone && detail?.mealPlanStatus !== "DONE") {
+        try {
+          await patchUserMealPlanStatus(nextDietId, userId, "DONE");
+        } catch (error) {
+          console.error("식단 완료 상태 수정 실패:", error);
+        }
+      }
+     } catch (error) {
+       console.error("식단 상태 재조회 실패:", error);
+     }
+   }
+
+      if (isMealPlanDone) {
+        console.log("activeMealPlanId를 null로 초기화합니다");
+     useCookingStore.getState().setActiveMealPlanId(null);
+   }
+
+   navigate(isMealPlanDone ? "/" : `/diet-start/${nextDietId}`);
   };
 
   const closeEditModal = () => {
@@ -657,7 +773,7 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
   };
 
   const handleListCancel = () => {
-    setIngredients(INITIAL_INGREDIENTS);
+   setIngredients(mapApiIngredientsToState(apiFoodIngredients));
     closeEditModal();
   };
 
@@ -697,8 +813,8 @@ const [ingredients, setIngredients] = useState(() => mapApiIngredientsToState(ap
       <FootNote>조미료는 반영되지 않아요</FootNote>
 
       <BottomButtonGroup>
-        <ActionButton onClick={handleUsedDifferently}>다르게 썼어요</ActionButton>
-        <ActionButton $variant="primary" onClick={handleUsedAsIs}>
+               <ActionButton onClick={handleUsedDifferently} disabled={isSaving}>다르게 썼어요</ActionButton>
+       <ActionButton $variant="primary" onClick={handleUsedAsIs} disabled={isSaving}>
           그대로 사용했어요
         </ActionButton>
       </BottomButtonGroup>

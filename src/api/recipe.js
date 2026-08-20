@@ -44,3 +44,7 @@ export const searchRecipes = ({ userNumber, searchWord, cursor = 1, size = 10, t
 // 최근 검색 기록 조회 (최신순 최대 5개)
 export const getRecipeSearchHistory = (userNumber) =>
   APIService.public.get(`/recipes/searchHistory`, { params: { userNumber } });
+
+// 최근 검색 기록 전체 삭제
+export const deleteRecipeSearchHistory = (userNumber) =>
+  APIService.public.delete(`/recipes/searchHistory`, { params: { userNumber } });

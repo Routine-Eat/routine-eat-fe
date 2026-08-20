@@ -150,29 +150,33 @@ const IconBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
   border: none;
   background: transparent;
-  font-size: 22px;
-  color: #232323;
   cursor: pointer;
 `;
 
 /* 편집 연필 아이콘 이미지 */
 const EditImg = styled.img`
+  display: block;
   width: 20px;
   height: 20px;
+  filter: brightness(3.9714);
 `;
 
-/* 선택 모드 "완료" 텍스트 버튼 — 피그마 #777 13px */
+/* 선택 모드 "완료" 텍스트 버튼 */
 const DoneBtn = styled.button`
   border: none;
   background: transparent;
   padding: 0;
-  font-size: 13px;
+  font-family: inherit;
+  font-size: 16px;
   font-weight: 500;
+  line-height: 1.3;
   color: #777;
+  text-align: center;
   white-space: nowrap;
   cursor: pointer;
 `;

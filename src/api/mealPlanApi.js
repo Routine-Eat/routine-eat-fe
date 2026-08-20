@@ -22,11 +22,15 @@ export const getAiMealPlanRecommendation = (userId) =>
 
 /* /api/v1/meal-plans/{mealPlanId}/users/{userId} 사용자-식단 상태 수정 API */
 export const patchUserMealPlanStatus = (mealPlanId, userId, status) =>
-  APIService.public.patch(`/meal-plans/${mealPlanId}/users/${userId}`, status);
+    APIService.public.patch(`/meal-plans/${mealPlanId}/users/${userId}`, status, {
+    headers: { "Content-Type": "application/json" },
+  });
 
 /* /api/v1/meal-plans/userId/{userId}/plan-menus/{planMenuId} 식단 메뉴 완료 여부 수정 API */
 export const patchPlanMenuCompleted = (userId, planMenuId, completed) =>
-  APIService.public.patch(`/meal-plans/userId/${userId}/plan-menus/${planMenuId}`, completed);
+      APIService.public.patch(`/meal-plans/userId/${userId}/plan-menus/${planMenuId}`, completed, {
+     headers: { "Content-Type": "application/json" },
+   });
 
 /* /api/v1/meal-plans/{userId} 사용자-식단 저장 API */
 export const postUserMealPlan = (userId, mealPlanData) =>

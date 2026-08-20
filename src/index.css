@@ -1,6 +1,6 @@
 @font-face {
-  font-family: 'Wanted Sans';
-  src: url('./assets/fonts/WantedSansVariable.ttf') format('truetype');
+  font-family: 'Wanted Sans Variable';
+  src: url('./assets/fonts/WantedSansVariable.woff2') format('woff2');
   font-weight: 100 900;
   font-style: normal;
   font-display: swap;
@@ -20,15 +20,15 @@ body {
 body {
   background-color: #f3f4f6;
   color: #111111;
-  font-family: 'Wanted Sans', sans-serif;
+  font-family: 'Wanted Sans Variable', sans-serif;
 
   display: flex;
   justify-content: center;
 }
 
 #root {
-  width: 100%;
-  max-width: 390px;
+  width: 100dvw;
+  max-width: 500px;
   min-height: 100dvh;
   background-color: #ffffff;
 }

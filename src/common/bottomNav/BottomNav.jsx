@@ -10,9 +10,10 @@ import navMarket from '../../assets/icons/nav/nav-market.svg';
 import navMarketActive from '../../assets/icons/nav/nav-market-active.svg';
 import navMypage from '../../assets/icons/nav/nav-mypage.svg';
 import navMypageActive from '../../assets/icons/nav/nav-mypage-active.svg';
+import { useCookingStore } from '../../hooks/useCookingStore';
 
 const LINKS = [
-  { to: '/', label: '홈', icon: navHome, activeIcon: navHomeActive },
+  { key: 'home', label: '홈', icon: navHome, activeIcon: navHomeActive },
   { to: '/feed', label: '둘러보기', icon: navFeed, activeIcon: navFeedActive },
   { to: '/mypage', label: '마이', icon: navMypage, activeIcon: navMypageActive },
   { to: '/market', label: '마켓', icon: navMarket, activeIcon: navMarketActive },
@@ -20,17 +21,20 @@ const LINKS = [
 
 function BottomNav({ feedSearchActive = false, onExitFeedSearch }) {
   const { pathname } = useLocation();
+    const activeMealPlanId = useCookingStore((state) => state.activeMealPlanId);
+  const homeTo = activeMealPlanId ? `/diet-start/${activeMealPlanId}` : '/';
 
   return (
     <Nav>
       {LINKS.map((link) => {
+        const to = link.key === 'home' ? homeTo : link.to;
         const isFeed = link.to === '/feed';
-        const active = pathname === link.to;
+         const active = link.key === 'home' ? pathname === homeTo : pathname === link.to;
 
         return (
           <NavLink
-            key={link.to}
-            to={link.to}
+             key={link.key ?? link.to}
+            to={to}
             $active={active}
             onClick={(e) => {
               if (isFeed && feedSearchActive && pathname === '/feed') {
@@ -52,7 +56,7 @@ function BottomNav({ feedSearchActive = false, onExitFeedSearch }) {
 
 const Nav = styled.nav`
   position: fixed;
-  bottom: 40px;
+  bottom: 24px;
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;

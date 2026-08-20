@@ -1,14 +1,39 @@
-import React, { useState, useRef } from "react";
+ import React, { useState, useRef, useEffect, useLayoutEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
 import cameraIcon from "../../assets/icons/camera2.svg";
 import checkIcon from "../../assets/icons/checkRounded.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
 import { useCookingStore } from "../../hooks/useCookingStore";
+import { useUserStore } from "../../hooks/useUserStore";
+import { getRecipeDetail } from "../../api/recipe";
+
+ // 텍스트가 박스 폭을 넘으면 넘지 않을 때까지 폰트 크기를 줄여주는 훅
+ function useShrinkToFit(text, { max = 20, min = 12, step = 1 } = {}) {
+   const ref = useRef(null);
+   const [fontSize, setFontSize] = useState(max);
+
+   useLayoutEffect(() => {
+     const el = ref.current;
+     if (!el) return;
+
+     let size = max;
+     el.style.fontSize = `${size}px`;
+     el.style.whiteSpace = "nowrap";
+
+     while (el.scrollWidth > el.clientWidth && size > min) {
+       size -= step;
+       el.style.fontSize = `${size}px`;
+     }
+
+     setFontSize(size);
+      }, [text, max, min, step]);
+
+   return { ref, fontSize };
+ }
 
 const PageContainer = styled.div`
   background: #fffefd;
-  max-width: 390px;
   margin: 0 auto;
   min-height: 100vh;
   position: relative;
@@ -16,6 +41,22 @@ const PageContainer = styled.div`
   flex-direction: column;
   align-items: center;
   padding: 60px 24px 120px;
+
+  > button:last-child {
+    transition:
+      transform 100ms ease,
+      background-color 100ms ease,
+      color 100ms ease,
+      font-size 100ms ease;
+    transform-origin: center;
+  }
+
+  > button:last-child:active:not(:disabled) {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: translateX(-50%) scale(0.97);
+  }
 `;
 
 const Headline = styled.p`
@@ -105,7 +146,6 @@ const DishInfo = styled.div`
 const DishName = styled.p`
   margin: 0;
   color: #481c00;
-  font-size: 20px;
   font-family: Wanted Sans Variable;
   font-weight: 700;
   letter-spacing: -0.4px;
@@ -122,8 +162,10 @@ const DishMeta = styled.div`
 
   p {
     margin: 0;
-    white-space: nowrap;
   }
+
+ .comment {
+ }
 `;
 
 const SkipRow = styled.button`
@@ -170,10 +212,38 @@ export default function CookingComplete() {
   const fileInputRef = useRef(null);
   const setPhotoFile = useCookingStore((state) => state.setPhotoFile);
 
-  const dishName = "꾸덕한 오징어볶음";
-  const completedDate = "8월 21일";
-  const comment = "정말 아름다운 오징어볶음이에요";
+    const userLoginNumber = useUserStore((state) => state.userLoginNumber);
+   const [dishName, setDishName] = useState("");
+   const completedDate = (() => {
+       const today = new Date();
+       return `${today.getMonth() + 1}월 ${today.getDate()}일`;
+   })();
 
+      // 한글 단어 끝 받침 유무에 따라 "이에요"/"예요" 선택
+   const getHasBatchim = (word) => {
+       if (!word) return false;
+       const lastChar = word.charCodeAt(word.length - 1);
+       if (lastChar < 0xac00 || lastChar > 0xd7a3) return false; // 한글 완성형 범위 밖
+       return (lastChar - 0xac00) % 28 !== 0;
+   };
+
+   const comment = dishName
+       ? `정말 아름다운 ${dishName}${getHasBatchim(dishName) ? "이에요" : "예요"}`
+       : "";
+
+         const dishNameFit = useShrinkToFit(dishName, { max: 20, min: 14 });
+  const commentFit = useShrinkToFit(comment, { max: 14, min: 10 });
+
+   useEffect(() => {
+       if (!mealId || !userLoginNumber) return;
+
+       getRecipeDetail(mealId, { userNumber: userLoginNumber, servings: 1 })
+           .then((response) => {
+               const payload = response.data ?? response;
+               setDishName(payload.recipeName ?? "");
+           })
+           .catch((error) => console.error("레시피 이름 조회 실패:", error));
+   }, [mealId, userLoginNumber]);
   const handlePhotoBoxClick = () => {
     fileInputRef.current?.click();
   };
@@ -211,10 +281,18 @@ export default function CookingComplete() {
           onChange={handleFileChange}
         />
         <DishInfo>
-          <DishName>{dishName}</DishName>
-          <DishMeta>
+                   <DishName ref={dishNameFit.ref} style={{ fontSize: dishNameFit.fontSize, whiteSpace: "nowrap" }}>
+           {dishName}
+         </DishName>
+         <DishMeta>
             <p>{completedDate} 완성!</p>
-            <p>{comment}</p>
+                     <p
+             ref={commentFit.ref}
+             className="comment"
+             style={{ fontSize: commentFit.fontSize, whiteSpace: "nowrap" }}
+           >
+             {comment}
+           </p>
           </DishMeta>
         </DishInfo>
       </PhotoCardWrap>

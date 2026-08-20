@@ -13,6 +13,14 @@ font-family: Pretendard Variable;
 font-weight: 600;
 cursor: pointer;
 margin-top: auto;
+transition: transform 100ms ease, background-color 100ms ease, color 100ms ease, font-size 100ms ease;
+
+&:active {
+  background: #36a73c;
+  color: #c6f5a6;
+  font-size: 15px;
+  transform: scale(0.97);
+}
 `;
 
 export default function BottomNextButton({ onClick, children = "다음" }) {

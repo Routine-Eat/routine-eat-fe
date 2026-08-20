@@ -121,13 +121,13 @@ export const THEME_CARDS = [
     id: "quick",
     icon: alarmIcon,
     title: "간편 요리 식단",
-    desc: ["빠른 시간 안에 만드는, ", "설거지가 적은 간단한 요리"],
+    desc: ["빠른 시간 안에 만들어요, ", "설거지가 적어요"],
   },
   {
     id: "one-ingredient",
     icon: liftingIcon,
     title: "한 가지 재료 털기",
-    desc: ["아직 문장 작성 미완료..."],
+    desc: ["한 재료를 세 끼에 ", "다양하게 써요"],
   },
   {
     id: "skill-up",
@@ -139,7 +139,7 @@ export const THEME_CARDS = [
     id: "max-ingredient",
     icon: sparkleIcon,
     title: "재료 최대치 활용",
-    desc: ["가지고 있는 재료를 활용해 최소 비용으로 만드는 요리"],
+    desc: ["집에 있는 재료를 먼저 ", "써서 추가 구매를 줄여요"],
   },
 ];
 

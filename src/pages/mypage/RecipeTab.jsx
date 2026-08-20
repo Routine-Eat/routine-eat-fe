@@ -8,10 +8,9 @@ import { getCookingRecords } from '@/api/cookingRecord';
 import { deleteUserMealPlan, getUserMealPlans } from '@/api/mealPlanApi';
 import { useUserStore } from '@/hooks/useUserStore';
 
-import arrowIcon from '../../assets/mypage/arrow.svg';
-import cartIcon from '../../assets/mypage/cart.svg';
 import trashIcon from '../../assets/mypage/trash.svg';
 import MenuCard from '../../common/menuCard/MenuCard';
+import MarketBrowseButton from './MarketBrowseButton';
 import { DUMMY_MEAL_RECORDS } from '../../constants/dummyMeals';
 
 const FILTERS = [
@@ -23,11 +22,11 @@ const FILTERS = [
 const FILTER_IDS = FILTERS.map((f) => f.id);
 
 const DIFFICULTY_FEEDBACK = {
-  1: '아주 간단해요',
-  2: '간단한 편이에요',
-  3: '과정이 조금 있어요',
-  4: '과정이 많은 편이에요',
-  5: '과정이 꽤 복잡해요',
+  1: '쉬웠어요',
+  2: '보통이었어요',
+  3: '보통이었어요',
+  4: '어려웠어요',
+  5: '어려웠어요',
 };
 
 const formatMealPlanDate = (value) => {
@@ -66,10 +65,11 @@ const mapCookingRecords = (content) =>
 
     return {
       id: item.recipeId,
-      cookingRecordId: item.cookingRecordId,
+      cookingRecordId: item.cookingRecordId ?? item.id,
       title: item.menuName,
       image: item.thumbnailUrl,
       isSaved: Boolean(item.isFavoriteRecipe),
+      userDifficultyLevel: item.userDifficultyLevel,
       completedDate: formatCompletedDate(item.completedAt),
       feedback: DIFFICULTY_FEEDBACK[level] ?? '',
       ingredientCount:
@@ -108,23 +108,23 @@ function RecipeTab() {
   const [mealRecords, setMealRecords] = useState(DUMMY_MEAL_RECORDS);
 
   /* 찜한 레시피 조회 API */
-  useEffect(() => {
+  const fetchFavoriteRecipes = async () => {
     if (!userLoginNumber) return;
 
-    const fetchFavoriteRecipes = async () => {
-      try {
-        const response = await getFavoriteRecipes({
-          userNumber: userLoginNumber,
-          cursor: 1,
-          size: 10,
-        });
-        const content = response.data?.content ?? response.content ?? [];
-        setSavedRecipes(mapFavoriteRecipes(content));
-      } catch (error) {
-        console.error('찜한 레시피 조회 실패:', error);
-      }
-    };
+    try {
+      const response = await getFavoriteRecipes({
+        userNumber: userLoginNumber,
+        cursor: 1,
+        size: 10,
+      });
+      const content = response.data?.content ?? response.content ?? [];
+      setSavedRecipes(mapFavoriteRecipes(content));
+    } catch (error) {
+      console.error('찜한 레시피 조회 실패:', error);
+    }
+  };
 
+  useEffect(() => {
     fetchFavoriteRecipes();
   }, [userLoginNumber]);
 
@@ -180,12 +180,36 @@ function RecipeTab() {
   }, [filter, completedRecipes, savedRecipes]);
 
   const patchSaved = (recipeId, isSaved) => {
+    const source =
+      completedRecipes.find((item) => item.id === recipeId) ??
+      savedRecipes.find((item) => item.id === recipeId);
+
     setCompletedRecipes((prev) =>
       prev.map((item) => (item.id === recipeId ? { ...item, isSaved } : item))
     );
+
     if (!isSaved) {
       setSavedRecipes((prev) => prev.filter((item) => item.id !== recipeId));
+      return;
     }
+
+    setSavedRecipes((prev) => {
+      if (prev.some((item) => item.id === recipeId)) return prev;
+      if (!source) return prev;
+      return [
+        {
+          id: source.id,
+          title: source.title,
+          image: source.image,
+          time: source.time ?? '',
+          utilization: source.utilization ?? '',
+          difficulty:
+            Number.isFinite(source.difficulty) && source.difficulty > 0 ? source.difficulty : 1,
+          isSaved: true,
+        },
+        ...prev,
+      ];
+    });
   };
 
   const toggleSave = async (id) => {
@@ -211,9 +235,11 @@ function RecipeTab() {
     try {
       await postFavoriteRecipe(id, userLoginNumber);
       patchSaved(id, true);
+      fetchFavoriteRecipes();
     } catch (error) {
       if (error.response?.status === 409) {
         patchSaved(id, true);
+        fetchFavoriteRecipes();
         return;
       }
       console.error('레시피 찜 등록 실패:', error);
@@ -292,13 +318,23 @@ function RecipeTab() {
               completedDate={recipe.completedDate}
               feedback={recipe.feedback}
               ingredientCount={recipe.ingredientCount}
-              onClick={() =>
-                navigate(
-                  filter === 'completed' && recipe.cookingRecordId
-                    ? `/cooking-records/${recipe.cookingRecordId}`
-                    : `/recipes/${recipe.id}`
-                )
-              }
+              onClick={() => {
+                if (filter !== 'completed') {
+                  navigate(`/recipes/${recipe.id}`);
+                  return;
+                }
+
+                navigate(`/cooking-records/${recipe.cookingRecordId ?? recipe.id}`, {
+                  state: {
+                    canFetchDetail: Boolean(recipe.cookingRecordId),
+                    record: {
+                      menuName: recipe.title,
+                      thumbnailUrl: recipe.image,
+                      userDifficultyLevel: recipe.userDifficultyLevel,
+                    },
+                  },
+                });
+              }}
               onToggleSave={() => toggleSave(recipe.id)}
             />
           ))}
@@ -307,12 +343,7 @@ function RecipeTab() {
 
       {/* 하단 고정 바: 상단 둥근 흰 직사각형 */}
       <BottomBar>
-        {/* CTA: 초록 둥근 직사각형 348×48 */}
-        <ShopBtn type="button" onClick={() => navigate('/market')}>
-          <CartIcon src={cartIcon} alt="" />
-          필요한 재료 사러 갈까요?
-          <ArrowIcon src={arrowIcon} alt="" />
-        </ShopBtn>
+        <MarketBrowseButton onClick={() => navigate('/market')} />
       </BottomBar>
     </Wrap>
   );
@@ -457,48 +488,15 @@ const MealDate = styled.p`
 
 /* —— 하단 바: 상단 둥근 흰 직사각형 —— */
 const BottomBar = styled.div`
-  position: fixed;
-  left: 50%;
-  bottom: 56px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 15;
   box-sizing: border-box;
   width: 100%;
-  max-width: 390px;
-  padding: 34px 21px 20px;
-  transform: translateX(-50%);
+  padding: 28px 24px 32px;
   border-radius: 22px 22px 0 0;
   background: #fff;
   box-shadow: 0 -1px 14.6px 0 rgba(201, 201, 189, 0.25);
-`;
-
-/* —— CTA: 초록 둥근 직사각형 —— */
-const ShopBtn = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  width: 100%;
-  height: 48px;
-  border: none;
-  border-radius: 10px;
-  background: #96D960;
-  color: #fff;
-  font-size: 16px;
-  font-weight: 600;
-  line-height: 1.3;
-  cursor: pointer;
-`;
-
-/* —— 장바구니 아이콘: 22×22 정사각 —— */
-const CartIcon = styled.img`
-  width: 22px;
-  height: 22px;
-  object-fit: contain;
-`;
-
-/* —— 화살표 아이콘: 16×16 정사각(90° 회전) —— */
-const ArrowIcon = styled.img`
-  width: 16px;
-  height: 16px;
-  transform: rotate(90deg);
 `;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import styled from "styled-components";
+import styled, { keyframes } from "styled-components";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import starFilledIcon from "../../assets/icons/StarFilled.svg";
 import { THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
@@ -11,6 +11,8 @@ import starEmptyIcon from "../../assets/icons/StarEmpty.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
 import { getAiMealPlanRecommendation, postUserMealPlan } from "../../api/mealPlanApi";
 import { useUserStore } from "../../hooks/useUserStore";
+import { useCookingStore } from "../../hooks/useCookingStore";
+import loaderIcon from "@/common/loader.svg";
 
 const THEME_TO_AI_KEY = {
   "skill-up": "practice",
@@ -38,13 +40,32 @@ const mapAiMenus = (menus) =>
     time: `${item.timeRequired ?? 0}분 소요`,
     cost: `예상 재료비 ${Number(item.price ?? 0).toLocaleString()}원`,
     difficulty: parseDifficulty(item.difficultyLevel),
-    image: eggFoodImg,
+    image: item.menuThumbnailUrl || eggFoodImg,
     matchRate: item.sameRate ?? null,
   }));
 
+   const sheetSlideUp = keyframes`
+   from { opacity: 0; transform: translateY(60px); }
+   to { opacity: 1; transform: translateY(0); }
+ `;
+
+ const sheetSlideDown = keyframes`
+   from { opacity: 1; transform: translateY(0); }
+   to { opacity: 0; transform: translateY(60px); }
+ `;
+
+ const overlayFadeIn = keyframes`
+   from { opacity: 0; }
+   to { opacity: 1; }
+ `;
+
+ const overlayFadeOut = keyframes`
+   from { opacity: 1; }
+   to { opacity: 0; }
+ `;
+
 const PageContainer = styled.div`
 background: #fffdfc;
-max-width: 390px;
 margin: 0 auto;
 min-height: 100vh;
 padding: 0 24px 100px;
@@ -112,7 +133,6 @@ flex-shrink: 0;
 width: 124px;
 height: 124px;
 border-radius: 18px;
-background: #f1f1f1;
 display: flex;
 align-items: center;
 justify-content: center;
@@ -120,9 +140,9 @@ overflow: hidden;
 }
 
 .thumb{
-width: 99px;
-height: 100px;
-border-radius: 50%;
+width: 100%;
+height: 100%;
+border-radius: 18px;
 object-fit: cover;
 box-shadow: 0px 0px 10px 0px rgba(61, 32, 0, 0.05), 0px 0px 40px 0px rgba(110, 58, 0, 0.13);
 }
@@ -193,12 +213,14 @@ const StartModalOverlay = styled.div`
   justify-content: center;
   z-index: 200;
   padding: 0 20px 20px;
+  animation: ${({ $closing }) => ($closing ? overlayFadeOut : overlayFadeIn)} 0.25s ease;
 `;
 
 const StartModalSheet = styled.div`
   position: relative;
   width: 100%;
   max-width: 350px;
+  max-height: 480px;
   background: white;
   border-radius: 24px;
   overflow: hidden;
@@ -207,6 +229,7 @@ const StartModalSheet = styled.div`
   display: flex;
   flex-direction: column;
   gap: 24px;
+  animation: ${({ $closing }) => ($closing ? sheetSlideDown : sheetSlideUp)} 0.3s cubic-bezier(0.22, 1, 0.36, 1);
 `;
 
 const DragHandle = styled.div`
@@ -259,7 +282,17 @@ const ChipRow = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  justify-content: center;
+ justify-content: flex-start;
+  max-height: 140px;
+ overflow-y: auto;
+ padding-right: 4px;
+
+  scrollbar-width: none;
+ -ms-overflow-style: none;
+
+ &::-webkit-scrollbar {
+   display: none;
+ }
 `;
 
 const MissingChip = styled.div`
@@ -297,33 +330,91 @@ const StartModalButton = styled.button`
   color: #444;
 `;
 
+const StartButtonPress = styled.div`
+  > button {
+    transition:
+      transform 100ms ease,
+      background-color 100ms ease,
+      color 100ms ease,
+      font-size 100ms ease;
+    transform-origin: center;
+  }
+
+  > button:active:not(:disabled) {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: translateX(-50%) scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    > button {
+      transition: none;
+    }
+  }
+`;
+
+const LoadingOverlay = styled.div`
+   position: fixed;
+   inset: 0;
+   background: rgba(255, 255, 255, 0.7);
+   display: flex;
+   align-items: center;
+   justify-content: center;
+   z-index: 400;
+ `;
+
+ const LoadingSpinner = styled.img`
+   width: 40px;
+   height: 40px;
+ `;
+
 export default function HomeMenu() {
   const navigate = useNavigate();
   const location = useLocation();
   const { mealId } = useParams();
   const userId = useUserStore((state) => state.userId);
+  const setMissingIngredientsByMenuId = useCookingStore((state) => state.setMissingIngredientsByMenuId);
+
 
   const theme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
   const [recommendation, setRecommendation] = useState(location.state?.recommendation ?? null);
+  const [isLoading, setIsLoading] = useState(!location.state?.recommendation);
   const menuDishes = mapAiMenus(recommendation?.menus);
   const [isStartModalOpen, setIsStartModalOpen] = useState(false);
-  const missingIngredients = MISSING_INGREDIENTS;
+  const [isModalClosing, setIsModalClosing] = useState(false);
+  const missingIngredients = Array.from(
+   new Set((recommendation?.menus ?? []).flatMap((item) => item.missingIngredients ?? []))
+ );
+  
+  const closeStartModal = () => {
+   setIsModalClosing(true);
+   setTimeout(() => {
+     setIsStartModalOpen(false);
+     setIsModalClosing(false);
+   }, 250);
+ };
 
   useEffect(() => {
     if (location.state?.recommendation) {
       setRecommendation(location.state.recommendation);
+      setIsLoading(false);
       return undefined;
     }
     if (!userId) return undefined;
 
     const fetchRecommendation = async () => {
+      setIsLoading(true);
       try {
         const response = await getAiMealPlanRecommendation(userId);
         const payload = response.data ?? response;
+        console.log("AI 목적별 식단 추천 응답:", payload);
         setRecommendation(payload?.[THEME_TO_AI_KEY[mealId]] ?? null);
       } catch (error) {
         console.error("AI 목적별 식단 추천 조회 실패:", error);
-      }
+           } finally {
+       setIsLoading(false);
+     }
     };
 
     fetchRecommendation();
@@ -336,6 +427,11 @@ export default function HomeMenu() {
     }
 
     try {
+           const map = {};
+     (recommendation?.menus ?? []).forEach((item) => {
+       map[item.menuId] = item.missingIngredients ?? [];
+     });
+     setMissingIngredientsByMenuId(map);
       const response = await postUserMealPlan(userId, {
         mealPlanType: recommendation?.type ?? THEME_TO_TYPE[mealId],
         mealPlanStatus: "PROGRESS",
@@ -359,12 +455,12 @@ export default function HomeMenu() {
   };
 
   const handleAddToShoppingList = () => {
-    setIsStartModalOpen(false);
+    closeStartModal();
     navigate("/shopping-list");
   };
 
   const handleProceedWithoutAdding = () => {
-    setIsStartModalOpen(false);
+    closeStartModal();
     startMealPlan();
   };
 
@@ -375,7 +471,7 @@ export default function HomeMenu() {
       </Header>
 
        <PageTitle>{theme.title}</PageTitle>
-      <PageSubtitle>{recommendation?.reason || theme.desc.join("")}</PageSubtitle>
+      <PageSubtitle>{theme.desc.join("")}</PageSubtitle>
 
       <RecipeList>
         {menuDishes.map((recipe, idx) => (
@@ -410,12 +506,14 @@ export default function HomeMenu() {
         ))}
       </RecipeList>
 
-              <BottomFixedButton onClick={handleStartClick}>
-        식단 시작하기
-      </BottomFixedButton>
+      <StartButtonPress>
+        <BottomFixedButton onClick={handleStartClick}>
+          식단 시작하기
+        </BottomFixedButton>
+      </StartButtonPress>
             {isStartModalOpen && (
-        <StartModalOverlay onClick={() => setIsStartModalOpen(false)}>
-          <StartModalSheet onClick={(e) => e.stopPropagation()}>
+               <StartModalOverlay $closing={isModalClosing} onClick={closeStartModal}>
+         <StartModalSheet $closing={isModalClosing} onClick={(e) => e.stopPropagation()}>
             <DragHandle>
               <img src={dragHandleBar} alt="" />
             </DragHandle>
@@ -425,8 +523,8 @@ export default function HomeMenu() {
                 <img src={shoppingCartIcon} alt="" />
               </CartIconBox>
               <ModalHeadingText>
-                <p>식단에 포함된 재료가 부족해요.</p>
-                <p>장보기 목록에 추가할까요?</p>
+                <p>해당 재료가 부족해요</p>
+               <p>그래도 레시피를 시작할까요?</p>
               </ModalHeadingText>
             </ModalHeadingBox>
 
@@ -447,6 +545,11 @@ export default function HomeMenu() {
           </StartModalSheet>
         </StartModalOverlay>
       )}
+           {isLoading && (
+       <LoadingOverlay>
+         <LoadingSpinner src={loaderIcon} alt="로딩 중" />
+       </LoadingOverlay>
+     )}
     </PageContainer>
   );
 }

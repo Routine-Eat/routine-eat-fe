@@ -2,11 +2,13 @@ import React, { useState, useEffect } from "react";
 import styled from "styled-components";
 import { useNavigate, useParams } from "react-router-dom";
 import { getUserMealPlanDetail, patchUserMealPlanStatus } from "../../api/mealPlanApi";
-import { DUMMY_DIET_PROGRESS, THEME_CARDS, MISSING_INGREDIENTS } from "../../constants/home/DummyHome.js";
+import { getRecipeDetail } from "@/api/recipe";
+ import { DUMMY_DIET_PROGRESS, THEME_CARDS } from "../../constants/home/DummyHome.js";
 import eggFoodImg from "../../assets/images/EggFood.svg";
 import muscleIcon from "../../assets/icons/muscle.svg";
 import BottomFixedButton from "../../common/button/BottomFixedButton";
 import chefIcon from "../../assets/icons/chef.svg";
+import checkTabIcon from "../../assets/icons/checkTab.svg";
 import checkCircleWhiteIcon from "../../assets/icons/checkCircleWhite.svg";
 import forkKnifeIcon from "../../assets/images/forkKnife.svg";
 import { useUserStore } from "../../hooks/useUserStore";
@@ -18,6 +20,8 @@ const MEAL_PLAN_THEME = {
   ONE_INGREDIENT: "one-ingredient",
   MAX_INGREDIENT: "max-ingredient",
 };
+
+const MEAL_TAB_LABELS = ["한 끼", "두 끼", "세 끼"];
 
 const mapPlanMenus = (list) =>
   (list ?? []).map((item) => {
@@ -38,7 +42,6 @@ const mapPlanMenus = (list) =>
 
 const PageContainer = styled.div`
   background: #fffefd;
-  max-width: 390px;
   margin: 0 auto;
   min-height: 100vh;
   padding: 60px 24px 24px;
@@ -47,7 +50,7 @@ const PageContainer = styled.div`
 
 const StopLink = styled.button`
   position: absolute;
-  right: 8px;
+  right:8px;
   top: 24px;
   background: none;
   border: none;
@@ -71,7 +74,7 @@ const IconBox = styled.div`
 `;
 
 const PageTitle = styled.p`
-  margin: 12px 0 0;
+  margin: 0px 0 0;
   color: #481c00;
   font-size: 22px;
   font-family: Wanted Sans Variable;
@@ -96,17 +99,27 @@ const MealTabs = styled.div`
 
 const MealTab = styled.div`
   flex: 1;
-  height: 68px;
+  height: 63px;
   border-radius: 10px;
   background: ${({ $done }) => ($done ? "#d6f3a1" : "#f5f5f6")};
   border: ${({ $done }) => ($done ? "2px solid #c2ee73" : "none")};
   display: flex;
-  align-items: center;
-  justify-content: center;
+   flex-direction: column;
+ align-items: center;
+ justify-content: flex-start;
+ padding-top: 6px;
+ padding-bottom: 6px;
+ gap: 6px;
   color: #727272;
   font-size: 14px;
   font-family: Wanted Sans Variable;
   font-weight: 600;
+
+   .check-icon {
+   width: 20px;
+   height: 14px;
+   display: block;
+ }
 `;
 
 const RecipeListHeading = styled.p`
@@ -116,6 +129,31 @@ const RecipeListHeading = styled.p`
   font-family: Wanted Sans Variable;
   font-weight: 600;
   letter-spacing: -0.36px;
+`;
+
+const StartButtonWrap = styled.div`
+  & > button {
+    margin-top: 24px !important;
+    transition:
+      transform 100ms ease,
+      background-color 100ms ease,
+      color 100ms ease,
+      font-size 100ms ease;
+    transform-origin: center;
+  }
+
+  & > button:active:not(:disabled) {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    & > button {
+      transition: none;
+    }
+  }
 `;
 
 const EmptyNotice = styled.p`
@@ -153,8 +191,7 @@ const MealRow = styled.div`
     flex-shrink: 0;
     width: 72px;
     height: 72px;
-    border-radius: 14px;
-    background: #f1f1f1;
+    border-radius: 14px;  
     display: flex;
     align-items: center;
     justify-content: center;
@@ -162,9 +199,9 @@ const MealRow = styled.div`
   }
 
   .thumb {
-    width: 60px;
-    height: 60px;
-    border-radius: 50%;
+       width: 100%;
+   height: 100%;
+   border-radius: 14px;
     object-fit: cover;
     box-shadow: 0px 0px 10px 0px rgba(61, 32, 0, 0.05), 0px 0px 40px 0px rgba(110, 58, 0, 0.13);
   }
@@ -209,7 +246,8 @@ const MealRow = styled.div`
 `;
 
 const MissingSection = styled.div`
-  margin-top: 40px;
+  margin-top: 64px;
+  margin-bottom: 71px;
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -345,6 +383,33 @@ const BoughtActionButton = styled.button`
   letter-spacing: -0.16px;
   background: ${({ $variant }) => ($variant === "confirm" ? "#96D960" : "#f5f5f6")};
   color: ${({ $variant }) => ($variant === "confirm" ? "#ffffff" : "#8b8b8b")};
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+
+  ${({ $variant }) =>
+    $variant === "confirm"
+      ? `
+    &:active {
+      background: #36a73c;
+      color: #c6f5a6;
+      font-size: 15px;
+      transform: scale(0.97);
+    }
+  `
+      : ""}
+
+  ${({ $pressed, $variant }) =>
+    $pressed && $variant === "confirm"
+      ? `
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 15px;
+    transform: scale(0.97);
+  `
+      : ""}
 `;
 
 const toastFade = `
@@ -393,7 +458,10 @@ export default function HomeDietStart() {
   const navigate = useNavigate();
   const { mealId } = useParams();
   const userId = useUserStore((state) => state.userId);
+  const userLoginNumber = useUserStore((state) => state.userLoginNumber);
   const setMealPlanContext = useCookingStore((state) => state.setMealPlanContext);
+  const setActiveMealPlanId = useCookingStore((state) => state.setActiveMealPlanId);
+   const missingIngredientsByMenuId = useCookingStore((state) => state.missingIngredientsByMenuId);
   const isMealPlanId = /^\d+$/.test(String(mealId));
 
   const dummyTheme = THEME_CARDS.find((t) => t.id === mealId) || THEME_CARDS[0];
@@ -404,11 +472,12 @@ export default function HomeDietStart() {
   const [selectedMealId, setSelectedMealId] = useState(
     () => (isMealPlanId ? null : dummyMeals.find((m) => !m.completed)?.id)
   );
-  const missingIngredients = MISSING_INGREDIENTS;
+  const missingIngredients = missingIngredientsByMenuId?.[selectedMealId] ?? [];
   const [isBoughtModalOpen, setIsBoughtModalOpen] = useState(false);
   const [isToastVisible, setIsToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [isStopModalOpen, setIsStopModalOpen] = useState(false);
+  const [stopPressed, setStopPressed] = useState(false);
 
   useEffect(() => {
     if (!isMealPlanId || !userId) return undefined;
@@ -423,13 +492,32 @@ export default function HomeDietStart() {
         const nextMeals = mapPlanMenus(payload.planMenuList);
         setMeals(nextMeals);
         setSelectedMealId(nextMeals.find((m) => !m.completed)?.id ?? nextMeals[0]?.id ?? null);
+               if (!userLoginNumber) return;
+
+       // API 응답에 이미지가 없어서, 메뉴별로 레시피 상세를 추가 조회해 이미지만 채워넣음
+       const withImages = await Promise.all(
+         nextMeals.map(async (meal) => {
+           try {
+             const detailRes = await getRecipeDetail(meal.id, {
+               userNumber: userLoginNumber,
+               servings: 1,
+             });
+             const detailPayload = detailRes.data ?? detailRes;
+             return { ...meal, image: detailPayload.recipeThumbnailUrl || meal.image };
+           } catch (err) {
+             console.error(`메뉴 ${meal.id} 이미지 조회 실패:`, err);
+             return meal;
+           }
+         })
+       );
+       setMeals(withImages);
       } catch (error) {
         console.error("사용자 식단 상세 조회 실패:", error);
       }
     };
 
     fetchMealPlanDetail();
-  }, [isMealPlanId, userId, mealId]);
+  }, [isMealPlanId, userId, userLoginNumber, mealId]);
 
   const showToast = (message) => {
     setToastMessage(message);
@@ -468,7 +556,8 @@ export default function HomeDietStart() {
         console.error("사용자 식단 상태 수정 실패:", error);
       }
     }
-    navigate("/");
+    setActiveMealPlanId(null);
+     navigate("/", { state: { toastMessage: "식단이 중단되었어요" } });
   };
 
   return (
@@ -484,19 +573,22 @@ export default function HomeDietStart() {
 
       <EmptyNotice>
         {completedCount === 0
-          ? "아직 진행한 레시피가 없네요!"
-          : `${completedCount}끼 챙겨먹기에 성공했어요!`}
+          ? "아직 만든 레시피가 없네요!"
+          : `${MEAL_TAB_LABELS[completedCount - 1]} 챙겨먹기에 성공했어요!`}
       </EmptyNotice>
 
       <MealTabs>
-        {meals.map((meal, idx) => (
-          <MealTab key={meal.planMenuId ?? meal.id} $done={meal.completed}>
-            {idx + 1}끼
+               {meals.map((meal, idx) => (
+         <MealTab key={meal.planMenuId ?? meal.id} $done={idx < completedCount}>
+                       {MEAL_TAB_LABELS[idx] ?? `${idx + 1}끼`}
+           {idx < completedCount && (
+             <img className="check-icon" src={checkTabIcon} alt="" />
+           )}
           </MealTab>
         ))}
       </MealTabs>
 
-      <RecipeListHeading>{meals.length}끼 레시피</RecipeListHeading>
+      <RecipeListHeading>세 끼 레시피</RecipeListHeading>
 
       <MealList>
         {meals.map((meal) => (
@@ -529,6 +621,11 @@ export default function HomeDietStart() {
           </MealRow>
         ))}
       </MealList>
+      <StartButtonWrap>
+           <BottomFixedButton variant="inline" onClick={handleStartCooking}>
+       식단 시작하기
+     </BottomFixedButton>
+     </StartButtonWrap>
 
       {missingIngredients.length > 0 && (
         <MissingSection>
@@ -597,7 +694,17 @@ export default function HomeDietStart() {
               >
                 취소
               </BoughtActionButton>
-              <BoughtActionButton $variant="confirm" onClick={handleStopDiet}>
+              <BoughtActionButton
+                $variant="confirm"
+                $pressed={stopPressed}
+                onClick={() => {
+                  setStopPressed(true);
+                  window.setTimeout(() => {
+                    handleStopDiet();
+                    setStopPressed(false);
+                  }, 120);
+                }}
+              >
                 중단하기
               </BoughtActionButton>
             </BoughtActions>
@@ -611,10 +718,6 @@ export default function HomeDietStart() {
           <span>{toastMessage}</span>
         </Toast>
       )}
-
-      <BottomFixedButton variant="inline" onClick={handleStartCooking}>
-        식단 시작하기
-      </BottomFixedButton>
     </PageContainer>
   );
 }

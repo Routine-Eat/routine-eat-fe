@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 
 import { getCookingEquipments } from '@/api/cookingEquipmentApi';
 import { getFoodIngredients } from '@/api/foodIngredientApi';
@@ -43,6 +44,9 @@ const TOOL_TYPE_MAP = {
   prep: ['PREP_TOOL'],
 };
 
+const SHEET_MS = 360;
+const SHEET_EASE = 'cubic-bezier(0.22, 1, 0.36, 1)';
+
 /**
  * 식재료/조미료/도구 등록 모달
  * type: 'ingredient' | 'seasoning' | 'appliance' | 'basic' | 'prep'
@@ -61,11 +65,24 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
 
   const [qty, setQty] = useState('');
   const [skipQty, setSkipQty] = useState(false);
+  const [confirmPressed, setConfirmPressed] = useState(false);
+  const [visible, setVisible] = useState(false);
+  const [closing, setClosing] = useState(false);
 
-  const isIngredient = type === 'ingredient';
-  const isSeasoning = type === 'seasoning';
-  const isTool = Boolean(TOOL_TYPE_MAP[type]);
-  const toolCfg = TOOL_MAP[type];
+  const pressConfirmButton = () => {
+    setConfirmPressed(true);
+    window.setTimeout(() => setConfirmPressed(false), 120);
+  };
+
+  /* 닫는 동안 부모가 type을 기본값으로 바꿔도 제목이 바뀌지 않게 */
+  const typeRef = useRef(type);
+  if (open) typeRef.current = type;
+  const activeType = typeRef.current;
+
+  const isIngredient = activeType === 'ingredient';
+  const isSeasoning = activeType === 'seasoning';
+  const isTool = Boolean(TOOL_TYPE_MAP[activeType]);
+  const toolCfg = TOOL_MAP[activeType];
 
   /*
    * 식재료 / 조미료 / 조리도구 검색 API
@@ -99,7 +116,7 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
       try {
         if (isTool) {
           const response = await getCookingEquipments(q);
-          const allowed = TOOL_TYPE_MAP[type] ?? [];
+          const allowed = TOOL_TYPE_MAP[activeType] ?? [];
 
           const filtered = (response.data ?? [])
             .filter((item) => allowed.includes(item.cookingEquipmentType))
@@ -184,27 +201,45 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
    * 식재료/조미료/도구 → 백엔드 API 결과
    */
   const results = useMemo(() => {
-    if (!q) return [];
+    const list = (() => {
+      if (!q) return [];
 
-    if (isIngredient || isSeasoning || isTool) {
-      return apiResults;
-    }
+      if (isIngredient || isSeasoning || isTool) {
+        return apiResults;
+      }
 
-    return catalog.filter((item) => item.name.includes(q));
+      return catalog.filter((item) => item.name.includes(q));
+    })();
+
+    return [...list].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
   }, [q, isIngredient, isSeasoning, isTool, apiResults, catalog]);
 
-  if (!open) return null;
+  useEffect(() => {
+    if (open) {
+      setClosing(false);
+      setVisible(true);
+      return undefined;
+    }
+
+    setClosing(true);
+    const timer = setTimeout(() => {
+      setVisible(false);
+      setClosing(false);
+      setQuery('');
+      setApiResults([]);
+      setDraft([]);
+      setQtyTarget(null);
+      setQty('');
+      setSkipQty(false);
+    }, SHEET_MS);
+    return () => clearTimeout(timer);
+  }, [open]);
 
   const close = () => {
-    setQuery('');
-    setApiResults([]);
-    setDraft([]);
-    setQtyTarget(null);
-    setQty('');
-    setSkipQty(false);
-
     onClose();
   };
+
+  if (!visible) return null;
 
   /*
    * 식재료 선택
@@ -254,6 +289,11 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
     setQtyTarget(null);
     setQty('');
     setSkipQty(false);
+    setQuery('');
+  };
+
+  const removeDraft = (id) => {
+    setDraft((prev) => prev.filter((d) => d.id !== id));
   };
 
   /*
@@ -266,9 +306,9 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
     close();
   };
 
-  return (
-    <Overlay onClick={close}>
-      <Sheet onClick={(e) => e.stopPropagation()}>
+  return createPortal(
+    <Overlay $closing={closing} onClick={close}>
+      <Sheet $closing={closing} onClick={(e) => e.stopPropagation()}>
         <Handle />
         {qtyTarget ? (
           <>
@@ -294,9 +334,23 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
               <QtyField
                 type="number"
                 inputMode="numeric"
+                min="0"
                 value={qty}
                 disabled={skipQty}
-                onChange={(e) => setQty(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === '-' || e.key === 'e' || e.key === 'E' || e.key === '+') {
+                    e.preventDefault();
+                  }
+                }}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  if (next === '') {
+                    setQty('');
+                    return;
+                  }
+                  if (!/^\d*\.?\d*$/.test(next)) return;
+                  setQty(next);
+                }}
               />
 
               {/*
@@ -314,7 +368,12 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
               수량입력 안할래요
             </SkipRow>
 
-            <ConfirmBtn type="button" onClick={confirmQty}>
+            <ConfirmBtn
+              type="button"
+              $pressed={confirmPressed}
+              onPointerDown={pressConfirmButton}
+              onClick={confirmQty}
+            >
               입력완료
             </ConfirmBtn>
           </>
@@ -341,11 +400,33 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
 
             <Body>
               {!q ? (
-                <Empty>
-                  아직 등록된 {emptyName}가 없어요
-                  <br />
-                  검색을 통해 추가해주세요
-                </Empty>
+                draft.length > 0 ? (
+                  <DraftBlock>
+                    <DraftLabel>등록한 {emptyName}</DraftLabel>
+                    <DraftRow>
+                      {[...draft]
+                        .sort((a, b) => a.name.localeCompare(b.name, 'ko'))
+                        .map((item) => (
+                          <PillButton
+                            key={item.id}
+                            kind={isTool ? 'EQUIPMENT' : 'INGREDIENT'}
+                            detailType={item.type}
+                            name={item.name}
+                            amountValue={item.qty}
+                            isSelected
+                            deleteAvailable
+                            onClick={() => removeDraft(item.id)}
+                          />
+                        ))}
+                    </DraftRow>
+                  </DraftBlock>
+                ) : (
+                  <Empty>
+                    아직 등록된 {emptyName}가 없어요
+                    <br />
+                    검색을 통해 추가해주세요
+                  </Empty>
+                )
               ) : results.length === 0 ? (
                 <Empty>찾는 재료가 없어요</Empty>
               ) : (
@@ -374,35 +455,78 @@ function RegisterMaterialModal({ type, open, onClose, onSave }) {
             <ConfirmBtn
               type="button"
               $disabled={!draft.length}
+              $pressed={confirmPressed}
               disabled={!draft.length}
+              onPointerDown={pressConfirmButton}
               onClick={confirmRegister}
             >
-              {draft.length ? `등록완료(${draft.length})` : '확인'}
+              {draft.length ? `${draft.length}개 추가하기` : '확인'}
             </ConfirmBtn>
           </>
         )}
       </Sheet>
-    </Overlay>
+    </Overlay>,
+    document.body
   );
 }
 
 export default RegisterMaterialModal;
 
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+`;
+
+const fadeOut = keyframes`
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+`;
+
+const slideUp = keyframes`
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
+`;
+
+const slideDown = keyframes`
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(100%);
+  }
+`;
+
 /* —— 딤: 화면 full 반투명 직사각형 —— */
 const Overlay = styled.div`
   position: fixed;
-  top: 0;
-  bottom: 0;
-  left: 50%;
+  inset: 0;
   z-index: 40;
   display: flex;
   align-items: flex-end;
   justify-content: center;
-  width: 100%;
-  max-width: 390px;
-  transform: translateX(-50%);
+  width: 100vw;
+  max-width: none;
   padding-bottom: 20px;
+  overflow: hidden;
   background: rgba(0, 0, 0, 0.2);
+  pointer-events: ${({ $closing }) => ($closing ? 'none' : 'auto')};
+  animation: ${({ $closing }) => ($closing ? fadeOut : fadeIn)} ${SHEET_MS}ms ease both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 /* —— 바텀시트 —— */
@@ -419,6 +543,11 @@ const Sheet = styled.div`
   border: 0.5px solid #d9d9da;
   border-radius: 20px;
   background: #fff;
+  animation: ${({ $closing }) => ($closing ? slideDown : slideUp)} ${SHEET_MS}ms ${SHEET_EASE} both;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 const Handle = styled.div`
@@ -507,6 +636,12 @@ const Body = styled.div`
   min-height: 0;
   margin-top: 16px;
   overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 `;
 
 const Empty = styled.p`
@@ -526,6 +661,32 @@ const ResultRow = styled.div`
   width: 100%;
   padding: 16px 12px 24px;
   box-sizing: border-box;
+`;
+
+const DraftBlock = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 6px 8px;
+  box-sizing: border-box;
+`;
+
+const DraftLabel = styled.p`
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  color: #8b8b8b;
+`;
+
+const DraftRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 8px 4px;
+  width: 100%;
 `;
 
 const ActiveChipWrap = styled.div`
@@ -549,6 +710,31 @@ const ConfirmBtn = styled.button`
   font-weight: 600;
   letter-spacing: -0.18px;
   cursor: ${({ $disabled }) => ($disabled ? 'default' : 'pointer')};
+  transform-origin: center;
+  touch-action: manipulation;
+  transition:
+    transform 100ms ease,
+    background-color 100ms ease,
+    color 100ms ease,
+    font-size 100ms ease;
+  will-change: transform;
+
+  &:active:not(:disabled) {
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  }
+
+  ${({ $pressed, $disabled }) =>
+    $pressed && !$disabled
+      ? `
+    background: #36a73c;
+    color: #c6f5a6;
+    font-size: 17px;
+    transform: scale(0.97);
+  `
+      : ''}
 `;
 
 const BackBtn = styled.button`
